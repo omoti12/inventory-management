@@ -11,7 +11,7 @@
 HTML / CSS / 素の JavaScript のみで構成し、データはブラウザの `localStorage` に保存する。
 
 - ES Modules は `file://` で動かないため、classic script ＋ グローバル名前空間 `App` を使う。
-  `index.html` をそのままダブルクリックしても動作する。
+  `src/index.html` をそのままダブルクリックしても動作する。
 - 外部 CDN・Web フォント・画像を使わず、オフラインで開ける。
 - 見た目はモダン（白基調・アクセント1色・余白多め・薄い影）。
 - 製造番号のバーコード読み取り（カメラ）を使う場合のみ、`http://localhost` などのセキュアなコンテキストが必要。
@@ -19,22 +19,22 @@ HTML / CSS / 素の JavaScript のみで構成し、データはブラウザの 
 ## ファイル構成
 
 ```
-index.html          5画面ぶんの section とタブナビ
-css/style.css       デザイントークン（CSS変数）＋レイアウト＋コンポーネント
-js/store.js         データモデル（商品マスタ／個体／出荷）/ localStorage 永続化 / 検索・集計・バリデーション・旧データ移行
-js/seed.js          デモ用初期データ（商品マスタ＋在庫＋出荷履歴）
-js/ui.js            タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形
-js/inventory.js     在庫一覧（明細 / 型名まとめ）＋検索＋選択
-js/products.js      商品管理（商品マスタの登録・編集・削除）
-js/inbound.js       入庫（型名選択・コピー登録・連続登録）
-js/scanner.js       製造番号のバーコード読み取り（カメラ、BarcodeDetector API）
-js/shipping.js      出荷（必須項目チェック）
-js/history.js       出荷履歴・キャンセル
-js/app.js           起動処理
+src/index.html          5画面ぶんの section とタブナビ
+src/css/style.css       デザイントークン（CSS変数）＋レイアウト＋コンポーネント
+src/js/store.js         データモデル（商品マスタ／個体／出荷）/ localStorage 永続化 / 検索・集計・バリデーション・旧データ移行
+src/js/seed.js          デモ用初期データ（商品マスタ＋在庫＋出荷履歴）
+src/js/ui.js            タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形
+src/js/inventory.js     在庫一覧（明細 / 型名まとめ）＋検索＋選択
+src/js/products.js      商品管理（商品マスタの登録・編集・削除）
+src/js/inbound.js       入庫（型名選択・コピー登録・連続登録）
+src/js/scanner.js       製造番号のバーコード読み取り（カメラ、BarcodeDetector API）
+src/js/shipping.js      出荷（必須項目チェック）
+src/js/history.js       出荷履歴・キャンセル
+src/js/app.js           起動処理
 ```
 
 読み込み順は `store → seed → ui → inventory → products → inbound → shipping → history → app`。
-`js/scanner.js` は `js/inbound.js` より前に読み込む。`app.js` が `DOMContentLoaded` で初期化する。
+`src/js/scanner.js` は `src/js/inbound.js` より前に読み込む。`src/js/app.js` が `DOMContentLoaded` で初期化する。
 
 ## データモデル
 
@@ -160,7 +160,7 @@ shipment = {
 
 ## デモデータ
 
-`js/seed.js`。初回起動時と「デモデータを初期状態に戻す」操作のときだけ投入する。
+`src/js/seed.js`。初回起動時と「デモデータを初期状態に戻す」操作のときだけ投入する。
 
 | 型名 | 寸法 | 図番 | 入荷月 | 案件番号 | 個体数 |
 | --- | --- | --- | --- | --- | --- |

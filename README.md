@@ -5,17 +5,17 @@
 
 ## 起動方法
 
-`index.html` をブラウザで開くだけ（ビルド・インストール不要、オフラインで動作）。
+`src/index.html` をブラウザで開くだけで動作する（ビルド・インストール不要、オフライン対応）。
 
 ```
-open index.html
+open src/index.html
 ```
 
 `file://` でうまく動かない環境では、ローカルサーバー経由で開く。
 
 ```
-python3 -m http.server 8000
-# → http://localhost:8000/index.html
+python3 -m http.server 8000 --directory src
+# → http://localhost:8000/
 ```
 
 **製造番号のバーコード読み取り（カメラ）を使う場合は、`http://localhost` のようなセキュアなコンテキストで開く必要がある。**
@@ -57,10 +57,14 @@ python3 -m http.server 8000
 ## ファイル構成
 
 ```
-index.html    画面（5タブ）
-css/          スタイル
-js/           データモデル（store.js）と画面ごとのモジュール
+AGENTS.md     Codex 向けの作業ガイド
+CLAUDE.md     Claude 向けの作業ガイド
+README.md     利用方法と機能概要
 docs/         要件定義・設計メモ
+src/          実行可能なフロントエンド一式
+  index.html  画面（5タブ）
+  css/        スタイル
+  js/         データモデル（store.js）と画面ごとのモジュール
 ```
 
 ファイルごとの役割は [docs/design.md](docs/design.md) の「ファイル構成」を参照。
