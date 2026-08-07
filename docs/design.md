@@ -2,7 +2,8 @@
 
 最終更新: 2026-08-07
 
-要件は [requirements.md](requirements.md) を参照。ここではモックの作りを記録する。
+このドキュメントは「どう作ったか」を記録する。何を作るかは [requirements.md](requirements.md)、
+動かし方は [../README.md](../README.md) を参照。
 
 ## 方針
 
@@ -10,7 +11,7 @@
 HTML / CSS / 素の JavaScript のみで構成し、データはブラウザの `localStorage` に保存する。
 
 - ES Modules は `file://` で動かないため、classic script ＋ グローバル名前空間 `App` を使う。
-  `index.html` をそのままダブルクリックしても動作する。
+  `src/index.html` をそのままダブルクリックしても動作する。
 - 外部 CDN・Web フォント・画像を使わず、オフラインで開ける。
 - 見た目はモダン（白基調・アクセント1色・余白多め・薄い影）。
 - 製造番号のバーコード読み取り（カメラ）を使う場合のみ、`http://localhost` などのセキュアなコンテキストが必要。
@@ -18,22 +19,22 @@ HTML / CSS / 素の JavaScript のみで構成し、データはブラウザの 
 ## ファイル構成
 
 ```
-index.html          5画面ぶんの section とタブナビ
-css/style.css       デザイントークン（CSS変数）＋レイアウト＋コンポーネント
-js/store.js         データモデル（商品マスタ／個体／出荷）/ localStorage 永続化 / 検索・集計・バリデーション・旧データ移行
-js/seed.js          デモ用初期データ（商品マスタ＋在庫＋出荷履歴）
-js/ui.js            タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形
-js/inventory.js     在庫一覧（明細 / 型名まとめ）＋検索＋選択
-js/products.js      商品管理（商品マスタの登録・編集・削除）
-js/inbound.js       入庫（型名選択・コピー登録・連続登録）※旧 js/register.js
-js/scanner.js       製造番号のバーコード読み取り（カメラ、BarcodeDetector API）
-js/shipping.js      出荷（必須項目チェック）
-js/history.js       出荷履歴・キャンセル
-js/app.js           起動処理
+src/index.html          5画面ぶんの section とタブナビ
+src/css/style.css       デザイントークン（CSS変数）＋レイアウト＋コンポーネント
+src/js/store.js         データモデル（商品マスタ／個体／出荷）/ localStorage 永続化 / 検索・集計・バリデーション・旧データ移行
+src/js/seed.js          デモ用初期データ（商品マスタ＋在庫＋出荷履歴）
+src/js/ui.js            タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形
+src/js/inventory.js     在庫一覧（明細 / 型名まとめ）＋検索＋選択
+src/js/products.js      商品管理（商品マスタの登録・編集・削除）
+src/js/inbound.js       入庫（型名選択・コピー登録・連続登録）
+src/js/scanner.js       製造番号のバーコード読み取り（カメラ、BarcodeDetector API）
+src/js/shipping.js      出荷（必須項目チェック）
+src/js/history.js       出荷履歴・キャンセル
+src/js/app.js           起動処理
 ```
 
 読み込み順は `store → seed → ui → inventory → products → inbound → shipping → history → app`。
-`js/scanner.js` は `js/inbound.js` より前に読み込む。`app.js` が `DOMContentLoaded` で初期化する。
+`src/js/scanner.js` は `src/js/inbound.js` より前に読み込む。`src/js/app.js` が `DOMContentLoaded` で初期化する。
 
 ## データモデル
 
@@ -77,7 +78,12 @@ shipment = {
 
 出荷履歴は削除しない。キャンセルしても行は残り、状態表示だけが変わる。
 
-商品マスタは在庫・履歴から参照されている間は削除できない（`productUsage()` で使用数を数え、0件のときだけ `deleteProduct()` が成功する）。
+### 商品マスタの削除制約
+
+商品マスタは在庫・履歴から参照されている間は削除できない。
+`productUsage()` が `items` を走査して使用数（在庫数・出荷済み数・合計）を数え、
+合計が0件のときだけ `deleteProduct()` が成功する。
+この制約により、`decorate()` の参照先が消えて履歴が壊れることを防いでいる。
 
 ### 旧データの移行
 
@@ -154,7 +160,7 @@ shipment = {
 
 ## デモデータ
 
-`js/seed.js`。初回起動時と「デモデータを初期状態に戻す」操作のときだけ投入する。
+`src/js/seed.js`。初回起動時と「デモデータを初期状態に戻す」操作のときだけ投入する。
 
 | 型名 | 寸法 | 図番 | 入荷月 | 案件番号 | 個体数 |
 | --- | --- | --- | --- | --- | --- |
