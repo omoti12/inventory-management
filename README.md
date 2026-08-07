@@ -41,29 +41,26 @@ python3 -m http.server 8000
 
 ## 今回のスコープ外
 
-- **型名・寸法・図番のQRコード・写真読み取り**（要件定義 4章）— 設計・実装していない。商品マスタの登録は手入力で行う。
-  （製造番号のバーコード読み取りは実装済み。カメラで読み取った値はユーザーが確認・修正してから登録する。）
+- **型名・寸法・図番のQRコード・写真読み取り** — 設計・実装していない。商品マスタの登録は手入力で行う。
+  （製造番号のバーコード読み取りは実装済み。読み取った値は確認・修正してから登録する。）
 - ログイン・権限管理 — 要件どおり設けていない。
 - サーバー / DB / API — モックのため localStorage のみ。
 
 ## ドキュメント
 
-- [docs/requirements.md](docs/requirements.md) — 要件定義
-- [docs/design.md](docs/design.md) — 設計メモ（ファイル構成・データモデル・申し送り）
+| ドキュメント | 役割 |
+| --- | --- |
+| このファイル | 動かし方・できること・スコープ |
+| [docs/requirements.md](docs/requirements.md) | 何を作るか（機能要件・入力項目・業務フロー） |
+| [docs/design.md](docs/design.md) | どう作ったか（ファイル構成・データモデル・本実装への申し送り） |
 
 ## ファイル構成
 
 ```
-index.html          画面（5タブ）
-css/style.css       スタイル
-js/store.js         データモデル（商品マスタ・在庫・出荷）・localStorage・検索・バリデーション
-js/seed.js          デモデータ
-js/ui.js            共通UI部品
-js/inventory.js     在庫一覧
-js/products.js      商品管理（商品マスタの登録・編集・削除）
-js/inbound.js       入庫
-js/scanner.js       製造番号のバーコード読み取り（カメラ）
-js/shipping.js      出荷
-js/history.js       出荷履歴
-js/app.js           起動処理
+index.html    画面（5タブ）
+css/          スタイル
+js/           データモデル（store.js）と画面ごとのモジュール
+docs/         要件定義・設計メモ
 ```
+
+ファイルごとの役割は [docs/design.md](docs/design.md) の「ファイル構成」を参照。

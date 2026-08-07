@@ -2,7 +2,8 @@
 
 最終更新: 2026-08-07
 
-要件は [requirements.md](requirements.md) を参照。ここではモックの作りを記録する。
+このドキュメントは「どう作ったか」を記録する。何を作るかは [requirements.md](requirements.md)、
+動かし方は [../README.md](../README.md) を参照。
 
 ## 方針
 
@@ -25,7 +26,7 @@ js/seed.js          デモ用初期データ（商品マスタ＋在庫＋出荷
 js/ui.js            タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形
 js/inventory.js     在庫一覧（明細 / 型名まとめ）＋検索＋選択
 js/products.js      商品管理（商品マスタの登録・編集・削除）
-js/inbound.js       入庫（型名選択・コピー登録・連続登録）※旧 js/register.js
+js/inbound.js       入庫（型名選択・コピー登録・連続登録）
 js/scanner.js       製造番号のバーコード読み取り（カメラ、BarcodeDetector API）
 js/shipping.js      出荷（必須項目チェック）
 js/history.js       出荷履歴・キャンセル
@@ -77,7 +78,12 @@ shipment = {
 
 出荷履歴は削除しない。キャンセルしても行は残り、状態表示だけが変わる。
 
-商品マスタは在庫・履歴から参照されている間は削除できない（`productUsage()` で使用数を数え、0件のときだけ `deleteProduct()` が成功する）。
+### 商品マスタの削除制約
+
+商品マスタは在庫・履歴から参照されている間は削除できない。
+`productUsage()` が `items` を走査して使用数（在庫数・出荷済み数・合計）を数え、
+合計が0件のときだけ `deleteProduct()` が成功する。
+この制約により、`decorate()` の参照先が消えて履歴が壊れることを防いでいる。
 
 ### 旧データの移行
 
