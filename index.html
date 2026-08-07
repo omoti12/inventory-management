@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>在庫管理システム（モック）</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header__inner">
+    <div class="app-brand">
+      <h1 class="app-title">在庫管理システム</h1>
+      <span class="tag">MOCK</span>
+    </div>
+    <nav class="tabs" id="main-tabs" aria-label="メインメニュー">
+      <button type="button" class="tab" data-view="inventory">在庫一覧</button>
+      <button type="button" class="tab" data-view="inbound">入庫</button>
+      <button type="button" class="tab" data-view="shipping">出荷</button>
+      <button type="button" class="tab" data-view="history">出荷履歴</button>
+      <button type="button" class="tab" data-view="products">商品管理</button>
+    </nav>
+  </div>
+</header>
+
+<main class="app-main">
+
+  <!-- ============ 在庫一覧 ============ -->
+  <section class="view" id="view-inventory" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">在庫一覧</h2>
+        <p class="view__desc">出荷されていない商品を表示します。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <form class="search" id="inventory-search" autocomplete="off">
+        <div class="search__grid">
+          <div class="form-field">
+            <label for="search-model">型名</label>
+            <input type="text" id="search-model" name="modelName" placeholder="例：ABC-100">
+          </div>
+          <div class="form-field">
+            <label for="search-drawing">図番</label>
+            <input type="text" id="search-drawing" name="drawingNo" placeholder="例：A-001">
+          </div>
+          <div class="form-field">
+            <label for="search-serial">製造番号</label>
+            <input type="text" id="search-serial" name="serialNo" placeholder="例：0001">
+          </div>
+          <div class="form-field">
+            <label for="search-project">案件番号</label>
+            <input type="text" id="search-project" name="projectNo" placeholder="例：PJ-2026-001">
+          </div>
+          <div class="form-field">
+            <label for="search-month">入荷月</label>
+            <input type="month" id="search-month" name="arrivalMonth">
+          </div>
+        </div>
+        <div class="search__foot">
+          <button type="reset" class="btn btn--ghost">条件をクリア</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <div class="tabs tabs--sub" id="inventory-modes">
+          <button type="button" class="tab" data-mode="detail">明細</button>
+          <button type="button" class="tab" data-mode="group">型名まとめ</button>
+        </div>
+        <p class="count" id="inventory-count">該当 0 個</p>
+      </div>
+
+      <div class="table-wrap" id="inventory-detail-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="inventory-select-all" aria-label="すべて選択"></th>
+              <th>型名</th>
+              <th>寸法</th>
+              <th>図番</th>
+              <th>製造番号</th>
+              <th>入荷月</th>
+              <th>案件番号</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-detail-body"></tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap" id="inventory-group-wrap" hidden>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>型名</th>
+              <th>寸法</th>
+              <th>図番</th>
+              <th class="col-num">現在の個数</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-group-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="action-bar" id="inventory-action-bar" hidden>
+      <span class="action-bar__text" id="inventory-selected-text">0 個を選択中</span>
+      <div class="action-bar__buttons">
+        <button type="button" class="btn btn--ghost" id="inventory-clear-selection">選択を解除</button>
+        <button type="button" class="btn btn--primary" id="inventory-to-shipping">選択した商品を出荷</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 入庫 ============ -->
+  <section class="view" id="view-inbound" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">入庫</h2>
+        <p class="view__desc">入荷した商品を在庫に登録します。型名は「商品管理」で登録した商品から選びます。</p>
+      </div>
+    </div>
+
+    <div class="notice notice--warn" id="inbound-empty-notice" hidden>
+      <span>商品がまだ登録されていません。先に「商品管理」で商品を登録してください。</span>
+      <button type="button" class="btn btn--ghost btn--sm" id="inbound-to-products">商品管理へ</button>
+    </div>
+
+    <div class="notice" id="inbound-copy-notice" hidden>
+      <span id="inbound-copy-text"></span>
+      <button type="button" class="btn btn--ghost btn--sm" id="inbound-copy-clear">コピーを解除</button>
+    </div>
+
+    <div class="card">
+      <form class="form" id="inbound-form" autocomplete="off" novalidate>
+        <div class="form__grid">
+          <div class="form-field">
+            <label for="inbound-product">型名 <span class="req">必須</span></label>
+            <select id="inbound-product" name="productId">
+              <option value="">選択してください</option>
+            </select>
+            <p class="form-error" data-error-for="productId"></p>
+          </div>
+          <div class="form-field">
+            <label for="inbound-dimensions">寸法</label>
+            <input type="text" id="inbound-dimensions" readonly tabindex="-1" placeholder="型名を選ぶと表示されます">
+            <p class="form-note">型名に紐づく値です</p>
+          </div>
+          <div class="form-field">
+            <label for="inbound-drawing">図番</label>
+            <input type="text" id="inbound-drawing" readonly tabindex="-1" placeholder="型名を選ぶと表示されます">
+            <p class="form-note">型名に紐づく値です</p>
+          </div>
+          <div class="form-field">
+            <label for="inbound-serial">製造番号 <span class="req">必須</span></label>
+            <div class="field-row">
+              <input type="text" id="inbound-serial" name="serialNo" placeholder="例：0001">
+              <button type="button" class="btn btn--ghost btn--sm" id="inbound-scan-btn">バーコードを読み取る</button>
+            </div>
+            <p class="form-error" data-error-for="serialNo"></p>
+          </div>
+          <div class="form-field">
+            <label for="inbound-month">入荷月 <span class="req">必須</span></label>
+            <input type="month" id="inbound-month" name="arrivalMonth">
+            <p class="form-error" data-error-for="arrivalMonth"></p>
+          </div>
+          <div class="form-field">
+            <label for="inbound-project">案件番号 <span class="req">必須</span></label>
+            <input type="text" id="inbound-project" name="projectNo" placeholder="例：PJ-2026-001">
+            <p class="form-error" data-error-for="projectNo"></p>
+          </div>
+        </div>
+
+        <label class="checkbox" for="inbound-continuous">
+          <input type="checkbox" id="inbound-continuous">
+          <span>連続登録モード（登録後も入力内容を残し、製造番号を次の連番に進める）</span>
+        </label>
+
+        <div class="form__foot">
+          <button type="button" class="btn btn--ghost" id="inbound-reset">入力をクリア</button>
+          <button type="submit" class="btn btn--primary" id="inbound-submit">登録する</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ 出荷 ============ -->
+  <section class="view" id="view-shipping" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">出荷</h2>
+        <p class="view__desc">必須項目がすべて入力されるまで出荷できません。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">出荷する商品</h3>
+        <p class="count" id="shipping-count">0 個</p>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>型名</th>
+              <th>寸法</th>
+              <th>図番</th>
+              <th>製造番号</th>
+              <th>入荷月</th>
+              <th>案件番号</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="shipping-items-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">出荷情報</h3>
+      </div>
+      <form class="form" id="shipping-form" autocomplete="off" novalidate>
+        <div class="form__grid">
+          <div class="form-field">
+            <label for="shipping-person">出荷した人 <span class="req">必須</span></label>
+            <input type="text" id="shipping-person" name="shippedBy" placeholder="例：丸山">
+            <p class="form-error" data-error-for="shippedBy"></p>
+          </div>
+          <div class="form-field">
+            <label for="shipping-destination">出荷先 <span class="req">必須</span></label>
+            <input type="text" id="shipping-destination" name="destination" placeholder="例：株式会社○○ 東京営業所">
+            <p class="form-error" data-error-for="destination"></p>
+          </div>
+          <div class="form-field">
+            <label for="shipping-addressee">宛先 <span class="optional">任意</span></label>
+            <input type="text" id="shipping-addressee" name="addressee" placeholder="例：営業部　○○様">
+            <p class="form-error" data-error-for="addressee"></p>
+          </div>
+          <div class="form-field">
+            <label for="shipping-project">案件番号 <span class="req">必須</span></label>
+            <input type="text" id="shipping-project" name="projectNo" placeholder="例：PJ-2026-001">
+            <p class="form-error" data-error-for="projectNo"></p>
+          </div>
+        </div>
+
+        <div class="form__foot">
+          <p class="form__hint" id="shipping-hint"></p>
+          <button type="submit" class="btn btn--primary" id="shipping-submit" disabled>出荷する</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ 出荷履歴 ============ -->
+  <section class="view" id="view-history" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">出荷履歴</h2>
+        <p class="view__desc">出荷済みの商品はここからキャンセルして在庫に戻せます。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <form class="search search--inline" id="history-search" autocomplete="off">
+          <div class="form-field">
+            <label for="history-status">状態</label>
+            <select id="history-status" name="status">
+              <option value="all">すべて</option>
+              <option value="shipped">出荷済み</option>
+              <option value="cancelled">キャンセル</option>
+            </select>
+          </div>
+          <div class="form-field form-field--wide">
+            <label for="history-keyword">キーワード</label>
+            <input type="text" id="history-keyword" name="keyword" placeholder="型名・製造番号・案件番号・出荷先・担当者など">
+          </div>
+        </form>
+        <p class="count" id="history-count">0 件</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>型名</th>
+              <th>寸法</th>
+              <th>図番</th>
+              <th>製造番号</th>
+              <th>入荷月</th>
+              <th>案件番号</th>
+              <th>出荷した人</th>
+              <th>出荷先</th>
+              <th>宛先</th>
+              <th>出荷日時</th>
+              <th>状態</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 商品管理 ============ -->
+  <section class="view" id="view-products" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">商品管理</h2>
+        <p class="view__desc">入庫時にプルダウンで選ぶ商品を登録します。寸法・図番は型名に1対1で紐づきます。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title" id="products-form-title">商品を登録</h3>
+      </div>
+      <form class="form" id="products-form" autocomplete="off" novalidate>
+        <div class="form__grid">
+          <div class="form-field">
+            <label for="products-model">型名 <span class="req">必須</span></label>
+            <input type="text" id="products-model" name="modelName" placeholder="例：ABC-100">
+            <p class="form-error" data-error-for="modelName"></p>
+          </div>
+          <div class="form-field">
+            <label for="products-dimensions">寸法 <span class="req">必須</span></label>
+            <input type="text" id="products-dimensions" name="dimensions" placeholder="例：100×200">
+            <p class="form-error" data-error-for="dimensions"></p>
+          </div>
+          <div class="form-field">
+            <label for="products-drawing">図番 <span class="req">必須</span></label>
+            <input type="text" id="products-drawing" name="drawingNo" placeholder="例：A-001">
+            <p class="form-error" data-error-for="drawingNo"></p>
+          </div>
+        </div>
+
+        <div class="form__foot">
+          <button type="button" class="btn btn--ghost" id="products-cancel-edit" hidden>編集をやめる</button>
+          <button type="submit" class="btn btn--primary" id="products-submit">登録する</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">登録済みの商品</h3>
+        <p class="count" id="products-count">0 件</p>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>型名</th>
+              <th>寸法</th>
+              <th>図番</th>
+              <th class="col-num">在庫数</th>
+              <th class="col-num">出荷済み</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="products-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  <p>これは業務フロー確認用のモックです。データはブラウザ内（localStorage）にのみ保存されます。</p>
+  <button type="button" class="btn btn--ghost btn--sm" id="reset-demo-data">デモデータを初期状態に戻す</button>
+</footer>
+
+<div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+<dialog class="dialog" id="confirm-dialog">
+  <h3 class="dialog__title" id="confirm-title"></h3>
+  <p class="dialog__body" id="confirm-body"></p>
+  <div class="dialog__foot">
+    <button type="button" class="btn btn--ghost" id="confirm-cancel">キャンセル</button>
+    <button type="button" class="btn btn--primary" id="confirm-ok">OK</button>
+  </div>
+</dialog>
+
+<dialog class="dialog dialog--scanner" id="scanner-dialog">
+  <h3 class="dialog__title">バーコードを読み取る</h3>
+  <div class="scanner__viewport" id="scanner-viewport">
+    <video id="scanner-video" class="scanner__video" playsinline muted></video>
+    <div class="scanner__guide" aria-hidden="true"></div>
+  </div>
+  <p class="scanner__hint" id="scanner-hint">バーコードを枠内に収めてください。</p>
+  <p class="scanner__error" id="scanner-error" hidden></p>
+  <div class="dialog__foot">
+    <button type="button" class="btn btn--ghost" id="scanner-manual" hidden>手入力する</button>
+    <button type="button" class="btn btn--ghost" id="scanner-close">閉じる</button>
+  </div>
+</dialog>
+
+<script src="js/store.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/inventory.js"></script>
+<script src="js/products.js"></script>
+<script src="js/scanner.js"></script>
+<script src="js/inbound.js"></script>
+<script src="js/shipping.js"></script>
+<script src="js/history.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

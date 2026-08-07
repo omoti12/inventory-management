@@ -1,0 +1,683 @@
+/* ===================================================================
+   在庫管理システム（モック）
+   モダン：白基調・アクセント1色・余白多め・薄い影・控えめな角丸
+   =================================================================== */
+
+:root {
+  /* 色 */
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-border: #e4e7ec;
+  --color-border-strong: #d0d5dd;
+  --color-text: #1f2933;
+  --color-text-muted: #667085;
+  --color-accent: #2563eb;
+  --color-accent-weak: #eff4ff;
+  --color-accent-dark: #1d4ed8;
+  --color-danger: #b42318;
+  --color-danger-weak: #fef3f2;
+  --color-success: #067647;
+  --color-success-weak: #ecfdf3;
+
+  /* 余白スケール */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* 形 */
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+}
+
+* { box-sizing: border-box; }
+
+/* .btn などの display 指定に負けないよう、hidden 属性を最優先で効かせる。 */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p { margin: 0; }
+
+/* --- ヘッダー -------------------------------------------------------- */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-header__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  padding: 1px var(--space-2);
+}
+
+/* --- タブ ------------------------------------------------------------ */
+
+.tabs {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0 0 var(--space-3);
+  font: inherit;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab:hover { color: var(--color-text); }
+
+.tab.is-active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.tabs--sub {
+  gap: var(--space-4);
+}
+
+.tabs--sub .tab {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.tabs--sub .tab.is-active {
+  background: var(--color-accent-weak);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+}
+
+/* --- レイアウト ------------------------------------------------------ */
+
+.app-main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-7);
+}
+
+.view { display: block; }
+.view[hidden] { display: none; }
+
+.view__head {
+  margin-bottom: var(--space-5);
+}
+
+.view__title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.view__desc {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-5);
+  overflow: hidden;
+}
+
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.count {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: var(--color-accent-weak);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  color: var(--color-accent-dark);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  font-size: 13px;
+}
+
+.notice[hidden] { display: none; }
+
+.notice--warn {
+  background: #fffaeb;
+  border-color: #f79009;
+  color: #93370d;
+}
+
+.muted { color: var(--color-text-muted); }
+
+/* --- フォーム -------------------------------------------------------- */
+
+.search { padding: var(--space-5); }
+
+.search__grid,
+.form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+.search__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.search--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: 0;
+  align-items: flex-end;
+}
+
+.search--inline .form-field { min-width: 160px; }
+.form-field--wide { min-width: 320px; flex: 1; }
+
+.form { padding: var(--space-5); }
+
+.form__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.form__hint {
+  margin-right: auto;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.req {
+  margin-left: var(--space-1);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.optional {
+  margin-left: var(--space-1);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+input[type="text"],
+input[type="month"],
+select {
+  width: 100%;
+  padding: 8px var(--space-3);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="text"]:focus,
+input[type="month"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-weak);
+}
+
+input.is-invalid {
+  border-color: var(--color-danger);
+}
+
+input.is-invalid:focus {
+  box-shadow: 0 0 0 3px var(--color-danger-weak);
+}
+
+.form-error {
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+.form-note {
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+input[readonly] {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+input[readonly]:focus {
+  border-color: var(--color-border-strong);
+  box-shadow: none;
+}
+
+select:disabled {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+/* --- ボタン ---------------------------------------------------------- */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 8px var(--space-4);
+  font: inherit;
+  font-weight: 500;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.btn--sm {
+  padding: 3px var(--space-3);
+  font-size: 12px;
+}
+
+.btn--primary {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) { background: var(--color-accent-dark); }
+
+.btn--ghost {
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.btn--ghost:hover:not(:disabled) { background: var(--color-bg); }
+
+.btn--danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.btn--danger:hover:not(:disabled) { background: #912018; }
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --- テーブル -------------------------------------------------------- */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table-wrap[hidden] { display: none; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: #fbfcfd;
+}
+
+.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:hover { background: #fafbfc; }
+
+.table .col-check { width: 44px; }
+.table .col-num { text-align: right; }
+.table .col-action { text-align: right; width: 1%; }
+
+.row-empty td {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-6) var(--space-4);
+  white-space: normal;
+}
+
+.row-clickable { cursor: pointer; }
+.row-clickable:hover { background: var(--color-accent-weak); }
+
+.row-editing { background: var(--color-accent-weak); }
+
+.table .col-action .btn + .btn { margin-left: var(--space-2); }
+
+.badge {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge--success {
+  background: var(--color-success-weak);
+  color: var(--color-success);
+}
+
+.badge--muted {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+/* --- 選択時のアクションバー ------------------------------------------ */
+
+.action-bar {
+  position: sticky;
+  bottom: var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.action-bar[hidden] { display: none; }
+
+.action-bar__text {
+  font-weight: 500;
+}
+
+.action-bar__buttons {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* --- フッター -------------------------------------------------------- */
+
+.app-footer {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+/* --- トースト -------------------------------------------------------- */
+
+.toast-stack {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.toast {
+  background: var(--color-text);
+  color: #fff;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  max-width: 380px;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.toast--success { background: var(--color-success); }
+.toast--error { background: var(--color-danger); }
+.toast.is-leaving { opacity: 0; }
+
+/* --- ダイアログ ------------------------------------------------------ */
+
+.dialog {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-5);
+  max-width: 460px;
+  width: calc(100% - var(--space-6));
+  color: var(--color-text);
+}
+
+.dialog::backdrop {
+  background: rgba(16, 24, 40, 0.35);
+}
+
+.dialog__title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}
+
+.dialog__body {
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-5);
+}
+
+.dialog__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* --- 画面が狭いとき -------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .app-header__inner,
+  .app-main,
+  .app-footer {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .tabs { gap: var(--space-4); overflow-x: auto; }
+
+  .action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form__foot { flex-wrap: wrap; }
+}
+
+/* --- 入力欄とボタンの横並び（製造番号のバーコード読み取りなど） -------- */
+
+/* 入力欄と補助ボタンを横並びにする。列幅が足りないときはボタンを下へ折り返す。 */
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.field-row input {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.field-row .btn {
+  flex: 0 0 auto;
+}
+
+/* --- バーコードスキャナー ---------------------------------------------- */
+
+.dialog--scanner {
+  max-width: 420px;
+}
+
+.scanner__viewport {
+  position: relative;
+  background: var(--color-text);
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  margin-bottom: var(--space-3);
+}
+
+.scanner__viewport[hidden] { display: none; }
+
+.scanner__video {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.scanner__guide {
+  position: absolute;
+  top: 28%;
+  left: 8%;
+  right: 8%;
+  bottom: 28%;
+  border: 2px solid #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 999px rgba(16, 24, 40, 0.35);
+  pointer-events: none;
+}
+
+.scanner__hint {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  margin-bottom: var(--space-4);
+}
+
+.scanner__hint[hidden] { display: none; }
+
+.scanner__error {
+  background: var(--color-danger-weak);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  font-size: 13px;
+  margin-bottom: var(--space-4);
+}
+
+.scanner__error[hidden] { display: none; }
