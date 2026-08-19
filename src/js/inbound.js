@@ -1,4 +1,4 @@
-/* 入庫：商品コード・製品名（自由入力可）と数量・受注番号・入庫した人などを入力して在庫に登録する。 */
+/* 入庫：商品コード・製品名（自由入力可）と数量・入庫した人などを入力して在庫に登録する。 */
 window.App = window.App || {};
 App.views = App.views || {};
 
@@ -6,7 +6,7 @@ App.inbound = (function () {
   'use strict';
 
   var CATEGORY = 'normal';
-  var INPUT_NAMES = ['productCode', 'productName', 'quantity', 'serialNo', 'orderNo', 'receivedBy', 'arrivalDate', 'remarks'];
+  var INPUT_NAMES = ['productCode', 'productName', 'quantity', 'receivedBy', 'arrivalDate', 'remarks'];
 
   var form, codeField, nameField, codeList, nameList;
   var notice, noticeText;
@@ -59,8 +59,6 @@ App.inbound = (function () {
     form.elements.productCode.value = row.productCode;
     form.elements.productName.value = row.productName;
     form.elements.quantity.value = row.quantity;
-    form.elements.serialNo.value = row.serialNo || '';
-    form.elements.orderNo.value = row.orderNo || '';
     form.elements.arrivalDate.value = row.arrivalDate || '';
     form.elements.remarks.value = row.remarks || '';
 
@@ -119,20 +117,6 @@ App.inbound = (function () {
 
     document.getElementById('inbound-reset').addEventListener('click', resetForm);
     document.getElementById('inbound-copy-clear').addEventListener('click', resetForm);
-
-    var scanButton = document.getElementById('inbound-scan-btn');
-    if (scanButton) {
-      scanButton.addEventListener('click', function () {
-        App.scanner.open().then(function (value) {
-          if (!value) return;
-          var input = form.elements.serialNo;
-          input.value = value;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          App.ui.toast('製造番号を読み取りました：' + value, 'success');
-          input.focus();
-        });
-      });
-    }
 
     refreshProducts();
   }

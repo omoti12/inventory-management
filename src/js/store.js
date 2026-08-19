@@ -404,8 +404,8 @@ App.store = (function () {
   /* --- 入庫登録 --------------------------------------------------------- */
 
   /**
-   * 通常品を入庫登録する（商品コード・製品名は自由入力可。数量・受注番号・入庫した人が必須、
-   * 製造番号は任意）。
+   * 通常品を入庫登録する（商品コード・製品名は自由入力可。数量・入庫した人が必須）。
+   * 製造番号・受注番号は入庫画面では扱わない（在庫一覧の表示・検索用の項目）。
    * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
    */
   function addItem(data) {
@@ -427,9 +427,6 @@ App.store = (function () {
     }
     if (toQuantity(input.quantity) === 0) {
       errors.quantity = '数量を1以上で入力してください。';
-    }
-    if (!text(input.orderNo)) {
-      errors.orderNo = '受注番号を入力してください。';
     }
     if (!text(input.receivedBy)) {
       errors.receivedBy = '入庫した人を入力してください。';
