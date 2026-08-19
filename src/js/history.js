@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.history = (function () {
   'use strict';
 
-  var COLUMNS = 11;
+  var COLUMNS = 10;
 
   var searchForm, body, countLabel;
 
@@ -29,7 +29,7 @@ App.history = (function () {
   function onCancel(row) {
     App.ui.confirm({
       title: '出庫のキャンセル',
-      message: '「' + row.productCode + ' / 受注番号 ' + row.orderNo + '」の出庫をキャンセルし、在庫に戻します。よろしいですか？',
+      message: '「' + row.productCode + ' / ' + row.productName + '」の出庫をキャンセルし、在庫に戻します。よろしいですか？',
       okLabel: 'キャンセルする',
       danger: true
     }).then(function (approved) {
@@ -63,7 +63,6 @@ App.history = (function () {
         row.productCode,
         row.productName,
         row.quantity + ' 個',
-        row.orderNo,
         row.arrivalDate || '—',
         row.shippedBy,
         row.orderTo,

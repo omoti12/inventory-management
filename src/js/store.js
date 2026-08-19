@@ -107,8 +107,9 @@ App.store = (function () {
   }
 
   /**
-   * 旧・個体ベース（製造番号1本＝在庫1個、入荷月・案件番号）のデータを
-   * 受注番号・数量ベースに移行する。商品マスタが無い旧データ（modelName直持ち）にも対応する。
+   * 旧・個体ベース（製造番号1本＝在庫1個、入荷月）のデータを数量ベースに移行する。
+   * 商品マスタが無い旧データ（modelName直持ち）にも対応する。受注番号・案件番号は
+   * 廃止したフィールドなので、残っていれば無条件に取り除く。
    */
   function migrateLegacyItems() {
     var changed = false;
@@ -125,15 +126,21 @@ App.store = (function () {
         delete item.drawingNo;
         changed = true;
       }
-      if (item.orderNo === undefined) {
-        item.orderNo = text(item.projectNo);
+      if (item.stockType !== 'filter' && item.quantity === undefined) {
         item.quantity = toQuantity(item.quantity) || 1;
         item.receivedBy = text(item.receivedBy);
         item.remarks = text(item.remarks);
         item.arrivalDate = text(item.arrivalDate) || (text(item.arrivalMonth) ? text(item.arrivalMonth) + '-01' : '');
-        delete item.projectNo;
         delete item.arrivalMonth;
         delete item.serialNo;
+        changed = true;
+      }
+      if (item.orderNo !== undefined) {
+        delete item.orderNo;
+        changed = true;
+      }
+      if (item.projectNo !== undefined) {
+        delete item.projectNo;
         changed = true;
       }
     });
@@ -301,8 +308,8 @@ App.store = (function () {
 
   /**
    * 保存用の item に商品マスタの商品コード・製品名を足した表示用オブジェクトを作る。
-   * 通常品（数量・受注番号・入庫した人・備考）とフィルター品（製造番号・案件番号）で
-   * 持つ項目が異なるため、item が持つ項目をそのまま引き継いだ上で商品情報を合成する。
+   * 通常品（数量・入庫した人・備考）とフィルター品（製造番号）で持つ項目が異なるため、
+   * item が持つ項目をそのまま引き継いだ上で商品情報を合成する。
    */
   function decorate(item) {
     var product = findProduct(item.productId) || {};
@@ -312,11 +319,9 @@ App.store = (function () {
       productCode: product.productCode || '(削除済み商品)',
       productName: product.productName || '',
       quantity: item.quantity,
-      orderNo: item.orderNo,
       receivedBy: item.receivedBy,
       remarks: item.remarks,
       serialNo: item.serialNo,
-      projectNo: item.projectNo,
       arrivalDate: item.arrivalDate,
       stockType: item.stockType,
       status: item.status,
@@ -335,14 +340,13 @@ App.store = (function () {
     var f = filter || {};
     if (text(f.productCode) && !includes(row.productCode, f.productCode)) return false;
     if (text(f.productName) && !includes(row.productName, f.productName)) return false;
-    if (text(f.orderNo) && !includes(row.orderNo, f.orderNo)) return false;
     if (text(f.arrivalDate) && row.arrivalDate !== text(f.arrivalDate)) return false;
     return true;
   }
 
   function compareRows(a, b) {
     if (a.productCode !== b.productCode) return a.productCode < b.productCode ? -1 : 1;
-    if (a.orderNo !== b.orderNo) return a.orderNo < b.orderNo ? -1 : 1;
+    if (a.registeredAt !== b.registeredAt) return a.registeredAt < b.registeredAt ? -1 : 1;
     return 0;
   }
 
@@ -397,7 +401,7 @@ App.store = (function () {
   /* --- 入庫登録 --------------------------------------------------------- */
 
   /**
-   * 通常品を入庫登録する（商品コード・製品名は自由入力可。数量・受注番号・入庫した人が必須）。
+   * 通常品を入庫登録する（商品コード・製品名は自由入力可。数量・入庫した人が必須）。
    * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
    */
   function addItem(data) {
@@ -420,9 +424,6 @@ App.store = (function () {
     if (toQuantity(input.quantity) === 0) {
       errors.quantity = '数量を1以上で入力してください。';
     }
-    if (!text(input.orderNo)) {
-      errors.orderNo = '受注番号を入力してください。';
-    }
     if (!text(input.receivedBy)) {
       errors.receivedBy = '入庫した人を入力してください。';
     }
@@ -440,7 +441,6 @@ App.store = (function () {
       id: uid('item'),
       productId: productId,
       quantity: toQuantity(input.quantity),
-      orderNo: text(input.orderNo),
       arrivalDate: text(input.arrivalDate),
       receivedBy: text(input.receivedBy),
       remarks: text(input.remarks),
@@ -454,7 +454,7 @@ App.store = (function () {
   }
 
   /**
-   * フィルター品を入庫登録する（フィルター商品管理から選んだ商品・製造番号・入荷日付・案件番号が必須）。
+   * フィルター品を入庫登録する（フィルター商品管理から選んだ商品・製造番号・入荷日付が必須）。
    * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
    */
   function addFilterItem(data) {
@@ -472,9 +472,6 @@ App.store = (function () {
     if (!text(input.arrivalDate)) {
       errors.arrivalDate = '入荷日付を入力してください。';
     }
-    if (!text(input.projectNo)) {
-      errors.projectNo = '案件番号を入力してください。';
-    }
 
     if (Object.keys(errors).length > 0) {
       return { ok: false, errors: errors };
@@ -485,7 +482,6 @@ App.store = (function () {
       productId: text(input.productId),
       serialNo: text(input.serialNo),
       arrivalDate: text(input.arrivalDate),
-      projectNo: text(input.projectNo),
       stockType: 'filter',
       status: 'in_stock',
       registeredAt: new Date().toISOString()
@@ -549,7 +545,7 @@ App.store = (function () {
     var keyword = text(f.keyword);
     if (!keyword) return true;
     return [
-      row.productCode, row.productName, row.orderNo, row.serialNo, row.projectNo,
+      row.productCode, row.productName, row.serialNo,
       row.shippedBy, row.orderTo, row.endUser
     ].some(function (value) { return includes(value, keyword); });
   }
@@ -567,9 +563,7 @@ App.store = (function () {
           productCode: row.productCode || '(削除済み)',
           productName: row.productName || '',
           quantity: row.quantity,
-          orderNo: row.orderNo || '',
           serialNo: row.serialNo || '',
-          projectNo: row.projectNo || '',
           arrivalDate: row.arrivalDate || '',
           remarks: row.remarks || '',
           shippedBy: shipment.shippedBy,

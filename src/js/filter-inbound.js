@@ -1,4 +1,4 @@
-/* フィルター入庫：フィルター商品を選び、製造番号・入荷日付・案件番号を入力して登録する。 */
+/* フィルター入庫：フィルター商品を選び、製造番号・入荷日付を入力して登録する。 */
 window.App = window.App || {};
 App.views = App.views || {};
 
@@ -6,7 +6,7 @@ App.filterInbound = (function () {
   'use strict';
 
   var CATEGORY = 'filter';
-  var INPUT_NAMES = ['productId', 'serialNo', 'arrivalDate', 'projectNo'];
+  var INPUT_NAMES = ['productId', 'serialNo', 'arrivalDate'];
 
   var form, select, emptyNotice, submitButton;
 

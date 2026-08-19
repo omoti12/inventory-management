@@ -44,15 +44,14 @@
         <div class="search__grid">
           <div class="form-field">
             <label for="search-code">商品コード</label>
-            <input type="text" id="search-code" name="productCode" placeholder="例：ABC-100">
+            <div class="field-row">
+              <input type="text" id="search-code" name="productCode" placeholder="例：ABC-100">
+              <button type="button" class="btn btn--ghost btn--sm" id="inventory-scan-btn">バーコードを読み取る</button>
+            </div>
           </div>
           <div class="form-field">
             <label for="search-name">製品名</label>
             <input type="text" id="search-name" name="productName" placeholder="例：アングルブラケット">
-          </div>
-          <div class="form-field">
-            <label for="search-order">受注番号</label>
-            <input type="text" id="search-order" name="orderNo" placeholder="例：PJ-2026-001">
           </div>
           <div class="form-field">
             <label for="search-date">入荷日</label>
@@ -82,7 +81,6 @@
               <th>商品コード</th>
               <th>製品名</th>
               <th class="col-num">数量</th>
-              <th>受注番号</th>
               <th>入荷日</th>
               <th>備考</th>
               <th class="col-action">操作</th>
@@ -150,11 +148,6 @@
             <p class="form-error" data-error-for="quantity"></p>
           </div>
           <div class="form-field">
-            <label for="inbound-order">受注番号 <span class="req">必須</span></label>
-            <input type="text" id="inbound-order" name="orderNo" placeholder="例：PJ-2026-001">
-            <p class="form-error" data-error-for="orderNo"></p>
-          </div>
-          <div class="form-field">
             <label for="inbound-received-by">入庫した人 <span class="req">必須</span></label>
             <input type="text" id="inbound-received-by" name="receivedBy" placeholder="例：丸山">
             <p class="form-error" data-error-for="receivedBy"></p>
@@ -200,7 +193,6 @@
               <th>商品コード</th>
               <th>製品名</th>
               <th class="col-num">数量</th>
-              <th>受注番号</th>
               <th>入荷日</th>
               <th>備考</th>
               <th class="col-action">操作</th>
@@ -264,7 +256,7 @@
           </div>
           <div class="form-field form-field--wide">
             <label for="history-keyword">キーワード</label>
-            <input type="text" id="history-keyword" name="keyword" placeholder="商品コード・製品名・受注番号・受注先・担当者など">
+            <input type="text" id="history-keyword" name="keyword" placeholder="商品コード・製品名・受注先・担当者など">
           </div>
         </form>
         <p class="count" id="history-count">0 件</p>
@@ -277,7 +269,6 @@
               <th>商品コード</th>
               <th>製品名</th>
               <th class="col-num">数量</th>
-              <th>受注番号</th>
               <th>入荷日</th>
               <th>出庫した人</th>
               <th>受注先</th>
@@ -354,7 +345,7 @@
     <div class="view__head">
       <div>
         <h2 class="view__title">フィルター入庫</h2>
-        <p class="view__desc">フィルター商品管理で登録した商品を選び、製造番号・入荷日・案件番号を入力して在庫に登録します。</p>
+        <p class="view__desc">フィルター商品管理で登録した商品を選び、製造番号・入荷日を入力して在庫に登録します。</p>
       </div>
     </div>
 
@@ -404,19 +395,6 @@
             <p class="form-error" data-error-for="arrivalDate"></p>
           </div>
 
-          <div class="form-field">
-            <label for="filter-inbound-project">
-              案件番号 <span class="req">必須</span>
-            </label>
-            <input
-              type="text"
-              id="filter-inbound-project"
-              name="projectNo"
-              placeholder="例：PJ-2026-001"
-            >
-            <p class="form-error" data-error-for="projectNo"></p>
-          </div>
-
         </div>
 
         <div class="form__foot">
@@ -463,7 +441,6 @@
               <th>製品名</th>
               <th>製造番号</th>
               <th>入荷日</th>
-              <th>案件番号</th>
             </tr>
           </thead>
           <tbody id="filter-shipping-stock-body"></tbody>
@@ -484,7 +461,6 @@
               <th>製品名</th>
               <th>製造番号</th>
               <th>入荷日</th>
-              <th>案件番号</th>
               <th class="col-action">操作</th>
             </tr>
           </thead>
@@ -546,7 +522,7 @@
           </div>
           <div class="form-field form-field--wide">
             <label for="filter-history-keyword">キーワード</label>
-            <input type="text" id="filter-history-keyword" name="keyword" placeholder="商品コード・製造番号・案件番号・受注先・担当者など">
+            <input type="text" id="filter-history-keyword" name="keyword" placeholder="商品コード・製造番号・受注先・担当者など">
           </div>
         </form>
         <p class="count" id="filter-history-count">0 件</p>
@@ -560,7 +536,6 @@
               <th>製品名</th>
               <th>製造番号</th>
               <th>入荷日</th>
-              <th>案件番号</th>
               <th>出庫した人</th>
               <th>受注先</th>
               <th>エンドユーザー</th>

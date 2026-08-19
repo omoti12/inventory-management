@@ -1,4 +1,6 @@
-/* モック用のデモデータ。初回起動時と「初期状態に戻す」操作のときだけ投入する。 */
+/* モック用のデモデータ。初回起動時と「初期状態に戻す」操作のときだけ投入する。
+   すべての画面に何かしらデータが表示されるよう、通常品・フィルター品それぞれで
+   在庫・出庫済み・キャンセル済みの状態を用意している。 */
 window.App = window.App || {};
 
 App.seed = (function () {
@@ -8,26 +10,38 @@ App.seed = (function () {
     { id: 'seed-prod-1', productCode: 'ABC-100', productName: 'アングルブラケット ABC-100', category: 'normal' },
     { id: 'seed-prod-2', productCode: 'DEF-200', productName: 'フランジ DEF-200', category: 'normal' },
     { id: 'seed-prod-3', productCode: 'GH-3000', productName: 'ステー GH-3000', category: 'normal' },
+    { id: 'seed-prod-4', productCode: 'JKL-450', productName: 'プレート JKL-450', category: 'normal' },
     /* 在庫も履歴もないので削除できる商品（削除機能の確認用） */
-    { id: 'seed-prod-4', productCode: 'XYZ-500', productName: 'カバー XYZ-500', category: 'normal' },
+    { id: 'seed-prod-5', productCode: 'XYZ-500', productName: 'カバー XYZ-500', category: 'normal' },
 
     { id: 'seed-fprod-1', productCode: 'F-100', productName: 'エアフィルター F-100', category: 'filter' },
-    { id: 'seed-fprod-2', productCode: 'F-200', productName: 'オイルフィルター F-200', category: 'filter' }
+    { id: 'seed-fprod-2', productCode: 'F-200', productName: 'オイルフィルター F-200', category: 'filter' },
+    { id: 'seed-fprod-3', productCode: 'F-300', productName: '燃料フィルター F-300', category: 'filter' }
   ];
 
   var STOCKS = [
-    { productId: 'seed-prod-1', orderNo: 'PJ-2026-001', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 10, remarks: '' },
-    { productId: 'seed-prod-2', orderNo: 'PJ-2026-004', arrivalDate: '2026-07-02', receivedBy: '田中', quantity: 5, remarks: '' },
-    { productId: 'seed-prod-3', orderNo: 'PJ-2026-002', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 3, remarks: 'キャンセル後に在庫へ戻った分を含む' }
+    { productId: 'seed-prod-1', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 10, remarks: '' },
+    { productId: 'seed-prod-2', arrivalDate: '2026-07-02', receivedBy: '田中', quantity: 5, remarks: '' },
+    { productId: 'seed-prod-3', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 3, remarks: 'キャンセル後に在庫へ戻った分を含む' },
+    { productId: 'seed-prod-4', arrivalDate: '', receivedBy: '田中', quantity: 20, remarks: '入荷日未確定' }
   ];
 
   var SHIPPED_STOCKS = [
-    { productId: 'seed-prod-1', orderNo: 'PJ-2026-001', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 2, remarks: '' }
+    { productId: 'seed-prod-1', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 2, remarks: '' }
   ];
 
   var FILTER_STOCKS = [
-    { productId: 'seed-fprod-1', serialNo: 'FS-0001', arrivalDate: '2026-06-15', projectNo: 'PJ-F-2026-001' },
-    { productId: 'seed-fprod-2', serialNo: 'FS-0002', arrivalDate: '', projectNo: 'PJ-F-2026-002' }
+    { productId: 'seed-fprod-1', serialNo: 'FS-0001', arrivalDate: '2026-06-15' },
+    { productId: 'seed-fprod-2', serialNo: 'FS-0002', arrivalDate: '' },
+    { productId: 'seed-fprod-3', serialNo: 'FS-0003', arrivalDate: '2026-07-01' }
+  ];
+
+  var FILTER_SHIPPED_STOCKS = [
+    { productId: 'seed-fprod-1', serialNo: 'FS-0004', arrivalDate: '2026-06-16' }
+  ];
+
+  var FILTER_CANCELLED_STOCKS = [
+    { productId: 'seed-fprod-3', serialNo: 'FS-0005', arrivalDate: '2026-07-02' }
   ];
 
   function daysAgo(days) {
@@ -54,7 +68,6 @@ App.seed = (function () {
         id: 'seed-item-' + index,
         productId: stock.productId,
         quantity: stock.quantity,
-        orderNo: stock.orderNo,
         arrivalDate: stock.arrivalDate,
         receivedBy: stock.receivedBy,
         remarks: stock.remarks,
@@ -73,7 +86,6 @@ App.seed = (function () {
         productId: stock.productId,
         serialNo: stock.serialNo,
         arrivalDate: stock.arrivalDate,
-        projectNo: stock.projectNo,
         stockType: 'filter',
         status: status,
         registeredAt: daysAgo(30 - (index % 20))
@@ -87,7 +99,7 @@ App.seed = (function () {
 
     var shipments = [];
 
-    /* 出庫済み1件（在庫からは外れる） */
+    /* 出庫済み1件（通常品、在庫からは外れる） */
     var shippedItem = pushNormalItem(SHIPPED_STOCKS[0], 'shipped');
     shipments.push({
       id: 'seed-ship-1',
@@ -100,9 +112,9 @@ App.seed = (function () {
       cancelledAt: null
     });
 
-    /* キャンセル済み1件（履歴には残り、商品は在庫に戻っている） */
+    /* キャンセル済み1件（通常品、履歴には残り、商品は在庫に戻っている） */
     var cancelledStock = {
-      productId: 'seed-prod-3', orderNo: 'PJ-2026-002', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 1, remarks: ''
+      productId: 'seed-prod-3', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 1, remarks: ''
     };
     var cancelledItem = pushNormalItem(cancelledStock, 'in_stock');
     shipments.push({
@@ -114,6 +126,32 @@ App.seed = (function () {
       shippedAt: daysAgo(6),
       status: 'cancelled',
       cancelledAt: daysAgo(5)
+    });
+
+    /* 出庫済み1件（フィルター品、在庫からは外れる） */
+    var filterShippedItem = pushFilterItem(FILTER_SHIPPED_STOCKS[0], 'shipped');
+    shipments.push({
+      id: 'seed-ship-3',
+      itemId: filterShippedItem.id,
+      shippedBy: 'テスト太郎',
+      orderTo: '株式会社フィルター商事',
+      endUser: '製造部　鈴木様',
+      shippedAt: daysAgo(2),
+      status: 'shipped',
+      cancelledAt: null
+    });
+
+    /* キャンセル済み1件（フィルター品、履歴には残り、商品は在庫に戻っている） */
+    var filterCancelledItem = pushFilterItem(FILTER_CANCELLED_STOCKS[0], 'in_stock');
+    shipments.push({
+      id: 'seed-ship-4',
+      itemId: filterCancelledItem.id,
+      shippedBy: '丸山',
+      orderTo: '株式会社中村精機',
+      endUser: '品質管理課　伊藤様',
+      shippedAt: daysAgo(4),
+      status: 'cancelled',
+      cancelledAt: daysAgo(3)
     });
 
     return { products: products, items: items, shipments: shipments };

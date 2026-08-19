@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.filterHistory = (function () {
   'use strict';
 
-  var COLUMNS = 11;
+  var COLUMNS = 10;
 
   var searchForm, body, countLabel;
 
@@ -64,7 +64,6 @@ App.filterHistory = (function () {
         row.productName,
         row.serialNo,
         row.arrivalDate || '—',
-        row.projectNo,
         row.shippedBy,
         row.orderTo,
         row.endUser,

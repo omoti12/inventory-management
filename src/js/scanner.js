@@ -87,6 +87,12 @@ App.scanner = (function () {
     manualButton.hidden = false;
   }
 
+  /** https、または localhost からの表示かどうか。カメラ利用にはこの「セキュアなコンテキスト」が必須。 */
+  function isSecureContext() {
+    if (typeof window.isSecureContext === 'boolean') return window.isSecureContext;
+    return location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  }
+
   function describeError(err) {
     if (err && err.name === 'NotAllowedError') {
       return 'カメラの利用が許可されませんでした。ブラウザまたはOSの設定でカメラへのアクセスを許可してから、もう一度お試しください。';
@@ -96,6 +102,13 @@ App.scanner = (function () {
     }
     if (location.protocol === 'file:') {
       return 'この画面は file:// で開かれているためカメラを利用できません。http://localhost などのサーバー経由で開いてください。';
+    }
+    if (!isSecureContext()) {
+      /* スマートフォンから http://（パソコンのIPアドレス） のような形で開いた場合はここに該当する。
+         ブラウザは https か localhost（自分自身）以外ではカメラを一切使わせないため、コード側で回避できない。 */
+      return 'この接続がセキュア（https、または localhost）ではないため、カメラを使えません。' +
+        'スマートフォンからパソコンのIPアドレスに http:// でアクセスしている場合はこれが原因です。' +
+        'https で配信するか、手入力で登録してください。';
     }
     return 'カメラを利用できませんでした。手入力してください。';
   }
