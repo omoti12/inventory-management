@@ -17,9 +17,13 @@
     <nav class="tabs" id="main-tabs" aria-label="メインメニュー">
       <button type="button" class="tab" data-view="inventory">在庫一覧</button>
       <button type="button" class="tab" data-view="inbound">入庫</button>
-      <button type="button" class="tab" data-view="shipping">出荷</button>
-      <button type="button" class="tab" data-view="history">出荷履歴</button>
+      <button type="button" class="tab" data-view="shipping">出庫</button>
+      <button type="button" class="tab" data-view="history">出庫履歴</button>
       <button type="button" class="tab" data-view="products">商品管理</button>
+      <button type="button" class="tab" data-view="filter-inbound">フィルター入庫</button>
+      <button type="button" class="tab" data-view="filter-shipping">フィルター出庫</button>
+      <button type="button" class="tab" data-view="filter-history">フィルター出庫履歴</button>
+      <button type="button" class="tab" data-view="filter-products">フィルター商品管理</button>
     </nav>
   </div>
 </header>
@@ -31,7 +35,7 @@
     <div class="view__head">
       <div>
         <h2 class="view__title">在庫一覧</h2>
-        <p class="view__desc">出荷されていない商品を表示します。</p>
+        <p class="view__desc">出庫されていない商品を表示します。</p>
       </div>
     </div>
 
@@ -39,24 +43,20 @@
       <form class="search" id="inventory-search" autocomplete="off">
         <div class="search__grid">
           <div class="form-field">
-            <label for="search-model">型名</label>
-            <input type="text" id="search-model" name="modelName" placeholder="例：ABC-100">
+            <label for="search-code">商品コード</label>
+            <input type="text" id="search-code" name="productCode" placeholder="例：ABC-100">
           </div>
           <div class="form-field">
-            <label for="search-drawing">図番</label>
-            <input type="text" id="search-drawing" name="drawingNo" placeholder="例：A-001">
+            <label for="search-name">製品名</label>
+            <input type="text" id="search-name" name="productName" placeholder="例：アングルブラケット">
           </div>
           <div class="form-field">
-            <label for="search-serial">製造番号</label>
-            <input type="text" id="search-serial" name="serialNo" placeholder="例：0001">
+            <label for="search-order">受注番号</label>
+            <input type="text" id="search-order" name="orderNo" placeholder="例：PJ-2026-001">
           </div>
           <div class="form-field">
-            <label for="search-project">案件番号</label>
-            <input type="text" id="search-project" name="projectNo" placeholder="例：PJ-2026-001">
-          </div>
-          <div class="form-field">
-            <label for="search-month">入荷月</label>
-            <input type="month" id="search-month" name="arrivalMonth">
+            <label for="search-date">入荷日</label>
+            <input type="date" id="search-date" name="arrivalDate">
           </div>
         </div>
         <div class="search__foot">
@@ -69,7 +69,7 @@
       <div class="card__head">
         <div class="tabs tabs--sub" id="inventory-modes">
           <button type="button" class="tab" data-mode="detail">明細</button>
-          <button type="button" class="tab" data-mode="group">型名まとめ</button>
+          <button type="button" class="tab" data-mode="group">商品まとめ</button>
         </div>
         <p class="count" id="inventory-count">該当 0 個</p>
       </div>
@@ -79,12 +79,12 @@
           <thead>
             <tr>
               <th class="col-check"><input type="checkbox" id="inventory-select-all" aria-label="すべて選択"></th>
-              <th>型名</th>
-              <th>寸法</th>
-              <th>図番</th>
-              <th>製造番号</th>
-              <th>入荷月</th>
-              <th>案件番号</th>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th class="col-num">数量</th>
+              <th>受注番号</th>
+              <th>入荷日</th>
+              <th>備考</th>
               <th class="col-action">操作</th>
             </tr>
           </thead>
@@ -96,10 +96,9 @@
         <table class="table">
           <thead>
             <tr>
-              <th>型名</th>
-              <th>寸法</th>
-              <th>図番</th>
-              <th class="col-num">現在の個数</th>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th class="col-num">在庫数量</th>
             </tr>
           </thead>
           <tbody id="inventory-group-body"></tbody>
@@ -111,7 +110,7 @@
       <span class="action-bar__text" id="inventory-selected-text">0 個を選択中</span>
       <div class="action-bar__buttons">
         <button type="button" class="btn btn--ghost" id="inventory-clear-selection">選択を解除</button>
-        <button type="button" class="btn btn--primary" id="inventory-to-shipping">選択した商品を出荷</button>
+        <button type="button" class="btn btn--primary" id="inventory-to-shipping">選択した商品を出庫</button>
       </div>
     </div>
   </section>
@@ -121,13 +120,8 @@
     <div class="view__head">
       <div>
         <h2 class="view__title">入庫</h2>
-        <p class="view__desc">入荷した商品を在庫に登録します。型名は「商品管理」で登録した商品から選びます。</p>
+        <p class="view__desc">入荷した商品を在庫に登録します。商品コードは一覧から選ぶことも、直接入力することもできます。</p>
       </div>
-    </div>
-
-    <div class="notice notice--warn" id="inbound-empty-notice" hidden>
-      <span>商品がまだ登録されていません。先に「商品管理」で商品を登録してください。</span>
-      <button type="button" class="btn btn--ghost btn--sm" id="inbound-to-products">商品管理へ</button>
     </div>
 
     <div class="notice" id="inbound-copy-notice" hidden>
@@ -139,46 +133,43 @@
       <form class="form" id="inbound-form" autocomplete="off" novalidate>
         <div class="form__grid">
           <div class="form-field">
-            <label for="inbound-product">型名 <span class="req">必須</span></label>
-            <select id="inbound-product" name="productId">
-              <option value="">選択してください</option>
-            </select>
-            <p class="form-error" data-error-for="productId"></p>
+            <label for="inbound-product-code">商品コード <span class="req">必須</span></label>
+            <input type="text" id="inbound-product-code" name="productCode" list="inbound-product-code-list" placeholder="例：ABC-100" autocomplete="off">
+            <datalist id="inbound-product-code-list"></datalist>
+            <p class="form-error" data-error-for="productCode"></p>
           </div>
           <div class="form-field">
-            <label for="inbound-dimensions">寸法</label>
-            <input type="text" id="inbound-dimensions" readonly tabindex="-1" placeholder="型名を選ぶと表示されます">
-            <p class="form-note">型名に紐づく値です</p>
+            <label for="inbound-product-name">製品名 <span class="req">必須</span></label>
+            <input type="text" id="inbound-product-name" name="productName" list="inbound-product-name-list" placeholder="例：アングルブラケット ABC-100" autocomplete="off">
+            <datalist id="inbound-product-name-list"></datalist>
+            <p class="form-error" data-error-for="productName"></p>
           </div>
           <div class="form-field">
-            <label for="inbound-drawing">図番</label>
-            <input type="text" id="inbound-drawing" readonly tabindex="-1" placeholder="型名を選ぶと表示されます">
-            <p class="form-note">型名に紐づく値です</p>
+            <label for="inbound-quantity">数量 <span class="req">必須</span></label>
+            <input type="number" id="inbound-quantity" name="quantity" min="1" step="1" placeholder="例：10">
+            <p class="form-error" data-error-for="quantity"></p>
           </div>
           <div class="form-field">
-            <label for="inbound-serial">製造番号 <span class="req">必須</span></label>
-            <div class="field-row">
-              <input type="text" id="inbound-serial" name="serialNo" placeholder="例：0001">
-              <button type="button" class="btn btn--ghost btn--sm" id="inbound-scan-btn">バーコードを読み取る</button>
-            </div>
-            <p class="form-error" data-error-for="serialNo"></p>
+            <label for="inbound-order">受注番号 <span class="req">必須</span></label>
+            <input type="text" id="inbound-order" name="orderNo" placeholder="例：PJ-2026-001">
+            <p class="form-error" data-error-for="orderNo"></p>
           </div>
           <div class="form-field">
-            <label for="inbound-month">入荷月 <span class="req">必須</span></label>
-            <input type="month" id="inbound-month" name="arrivalMonth">
-            <p class="form-error" data-error-for="arrivalMonth"></p>
+            <label for="inbound-received-by">入庫した人 <span class="req">必須</span></label>
+            <input type="text" id="inbound-received-by" name="receivedBy" placeholder="例：丸山">
+            <p class="form-error" data-error-for="receivedBy"></p>
           </div>
           <div class="form-field">
-            <label for="inbound-project">案件番号 <span class="req">必須</span></label>
-            <input type="text" id="inbound-project" name="projectNo" placeholder="例：PJ-2026-001">
-            <p class="form-error" data-error-for="projectNo"></p>
+            <label for="inbound-date">入荷日 <span class="optional">任意</span></label>
+            <input type="date" id="inbound-date" name="arrivalDate">
+            <p class="form-error" data-error-for="arrivalDate"></p>
+          </div>
+          <div class="form-field form-field--wide">
+            <label for="inbound-remarks">備考 <span class="optional">任意</span></label>
+            <textarea id="inbound-remarks" name="remarks" rows="2" placeholder="申し送りがあれば入力してください"></textarea>
+            <p class="form-error" data-error-for="remarks"></p>
           </div>
         </div>
-
-        <label class="checkbox" for="inbound-continuous">
-          <input type="checkbox" id="inbound-continuous">
-          <span>連続登録モード（登録後も入力内容を残し、製造番号を次の連番に進める）</span>
-        </label>
 
         <div class="form__foot">
           <button type="button" class="btn btn--ghost" id="inbound-reset">入力をクリア</button>
@@ -188,30 +179,30 @@
     </div>
   </section>
 
-  <!-- ============ 出荷 ============ -->
+  <!-- ============ 出庫 ============ -->
   <section class="view" id="view-shipping" hidden>
     <div class="view__head">
       <div>
-        <h2 class="view__title">出荷</h2>
-        <p class="view__desc">必須項目がすべて入力されるまで出荷できません。</p>
+        <h2 class="view__title">出庫</h2>
+        <p class="view__desc">必須項目がすべて入力されるまで出庫できません。</p>
       </div>
     </div>
 
     <div class="card">
       <div class="card__head">
-        <h3 class="card__title">出荷する商品</h3>
+        <h3 class="card__title">出庫する商品</h3>
         <p class="count" id="shipping-count">0 個</p>
       </div>
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>型名</th>
-              <th>寸法</th>
-              <th>図番</th>
-              <th>製造番号</th>
-              <th>入荷月</th>
-              <th>案件番号</th>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th class="col-num">数量</th>
+              <th>受注番号</th>
+              <th>入荷日</th>
+              <th>備考</th>
               <th class="col-action">操作</th>
             </tr>
           </thead>
@@ -222,46 +213,41 @@
 
     <div class="card">
       <div class="card__head">
-        <h3 class="card__title">出荷情報</h3>
+        <h3 class="card__title">出庫情報</h3>
       </div>
       <form class="form" id="shipping-form" autocomplete="off" novalidate>
         <div class="form__grid">
           <div class="form-field">
-            <label for="shipping-person">出荷した人 <span class="req">必須</span></label>
+            <label for="shipping-person">出庫した人 <span class="req">必須</span></label>
             <input type="text" id="shipping-person" name="shippedBy" placeholder="例：丸山">
             <p class="form-error" data-error-for="shippedBy"></p>
           </div>
           <div class="form-field">
-            <label for="shipping-destination">出荷先 <span class="req">必須</span></label>
-            <input type="text" id="shipping-destination" name="destination" placeholder="例：株式会社○○ 東京営業所">
-            <p class="form-error" data-error-for="destination"></p>
+            <label for="shipping-order-to">受注先 <span class="req">必須</span></label>
+            <input type="text" id="shipping-order-to" name="orderTo" placeholder="例：株式会社○○ 東京営業所">
+            <p class="form-error" data-error-for="orderTo"></p>
           </div>
           <div class="form-field">
-            <label for="shipping-addressee">宛先 <span class="optional">任意</span></label>
-            <input type="text" id="shipping-addressee" name="addressee" placeholder="例：営業部　○○様">
-            <p class="form-error" data-error-for="addressee"></p>
-          </div>
-          <div class="form-field">
-            <label for="shipping-project">案件番号 <span class="req">必須</span></label>
-            <input type="text" id="shipping-project" name="projectNo" placeholder="例：PJ-2026-001">
-            <p class="form-error" data-error-for="projectNo"></p>
+            <label for="shipping-end-user">エンドユーザー <span class="req">必須</span></label>
+            <input type="text" id="shipping-end-user" name="endUser" placeholder="例：営業部　○○様">
+            <p class="form-error" data-error-for="endUser"></p>
           </div>
         </div>
 
         <div class="form__foot">
           <p class="form__hint" id="shipping-hint"></p>
-          <button type="submit" class="btn btn--primary" id="shipping-submit" disabled>出荷する</button>
+          <button type="submit" class="btn btn--primary" id="shipping-submit" disabled>出庫する</button>
         </div>
       </form>
     </div>
   </section>
 
-  <!-- ============ 出荷履歴 ============ -->
+  <!-- ============ 出庫履歴 ============ -->
   <section class="view" id="view-history" hidden>
     <div class="view__head">
       <div>
-        <h2 class="view__title">出荷履歴</h2>
-        <p class="view__desc">出荷済みの商品はここからキャンセルして在庫に戻せます。</p>
+        <h2 class="view__title">出庫履歴</h2>
+        <p class="view__desc">出庫済みの商品はここからキャンセルして在庫に戻せます。</p>
       </div>
     </div>
 
@@ -272,13 +258,13 @@
             <label for="history-status">状態</label>
             <select id="history-status" name="status">
               <option value="all">すべて</option>
-              <option value="shipped">出荷済み</option>
+              <option value="shipped">出庫済み</option>
               <option value="cancelled">キャンセル</option>
             </select>
           </div>
           <div class="form-field form-field--wide">
             <label for="history-keyword">キーワード</label>
-            <input type="text" id="history-keyword" name="keyword" placeholder="型名・製造番号・案件番号・出荷先・担当者など">
+            <input type="text" id="history-keyword" name="keyword" placeholder="商品コード・製品名・受注番号・受注先・担当者など">
           </div>
         </form>
         <p class="count" id="history-count">0 件</p>
@@ -288,16 +274,15 @@
         <table class="table">
           <thead>
             <tr>
-              <th>型名</th>
-              <th>寸法</th>
-              <th>図番</th>
-              <th>製造番号</th>
-              <th>入荷月</th>
-              <th>案件番号</th>
-              <th>出荷した人</th>
-              <th>出荷先</th>
-              <th>宛先</th>
-              <th>出荷日時</th>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th class="col-num">数量</th>
+              <th>受注番号</th>
+              <th>入荷日</th>
+              <th>出庫した人</th>
+              <th>受注先</th>
+              <th>エンドユーザー</th>
+              <th>出庫日時</th>
               <th>状態</th>
               <th class="col-action">操作</th>
             </tr>
@@ -313,7 +298,7 @@
     <div class="view__head">
       <div>
         <h2 class="view__title">商品管理</h2>
-        <p class="view__desc">入庫時にプルダウンで選ぶ商品を登録します。寸法・図番は型名に1対1で紐づきます。</p>
+        <p class="view__desc">入庫時に選ぶ商品を登録します。商品コードは一意です。</p>
       </div>
     </div>
 
@@ -324,19 +309,14 @@
       <form class="form" id="products-form" autocomplete="off" novalidate>
         <div class="form__grid">
           <div class="form-field">
-            <label for="products-model">型名 <span class="req">必須</span></label>
-            <input type="text" id="products-model" name="modelName" placeholder="例：ABC-100">
-            <p class="form-error" data-error-for="modelName"></p>
+            <label for="products-code">商品コード <span class="req">必須</span></label>
+            <input type="text" id="products-code" name="productCode" placeholder="例：ABC-100">
+            <p class="form-error" data-error-for="productCode"></p>
           </div>
           <div class="form-field">
-            <label for="products-dimensions">寸法 <span class="req">必須</span></label>
-            <input type="text" id="products-dimensions" name="dimensions" placeholder="例：100×200">
-            <p class="form-error" data-error-for="dimensions"></p>
-          </div>
-          <div class="form-field">
-            <label for="products-drawing">図番 <span class="req">必須</span></label>
-            <input type="text" id="products-drawing" name="drawingNo" placeholder="例：A-001">
-            <p class="form-error" data-error-for="drawingNo"></p>
+            <label for="products-name">製品名 <span class="req">必須</span></label>
+            <input type="text" id="products-name" name="productName" placeholder="例：アングルブラケット ABC-100">
+            <p class="form-error" data-error-for="productName"></p>
           </div>
         </div>
 
@@ -356,15 +336,329 @@
         <table class="table">
           <thead>
             <tr>
-              <th>型名</th>
-              <th>寸法</th>
-              <th>図番</th>
+              <th>商品コード</th>
+              <th>製品名</th>
               <th class="col-num">在庫数</th>
-              <th class="col-num">出荷済み</th>
+              <th class="col-num">出庫済み</th>
               <th class="col-action">操作</th>
             </tr>
           </thead>
           <tbody id="products-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ フィルター入庫 ============ -->
+  <section class="view" id="view-filter-inbound" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">フィルター入庫</h2>
+        <p class="view__desc">フィルター商品管理で登録した商品を選び、製造番号・入荷日・案件番号を入力して在庫に登録します。</p>
+      </div>
+    </div>
+
+    <div class="notice notice--warn" id="filter-inbound-empty-notice" hidden>
+      <span>フィルター商品がまだ登録されていません。先に「フィルター商品管理」で商品を登録してください。</span>
+      <button type="button" class="btn btn--ghost btn--sm" id="filter-inbound-to-products">フィルター商品管理へ</button>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">フィルター在庫を登録</h3>
+      </div>
+
+      <form class="form" id="filter-inbound-form" autocomplete="off" novalidate>
+        <div class="form__grid">
+
+          <div class="form-field">
+            <label for="filter-inbound-product">
+              フィルター商品 <span class="req">必須</span>
+            </label>
+            <select id="filter-inbound-product" name="productId">
+              <option value="">選択してください</option>
+            </select>
+            <p class="form-error" data-error-for="productId"></p>
+          </div>
+
+          <div class="form-field">
+            <label for="filter-inbound-serial">
+              製造番号 <span class="req">必須</span>
+            </label>
+            <div class="field-row">
+              <input type="text" id="filter-inbound-serial" name="serialNo" placeholder="例：0001">
+              <button type="button" class="btn btn--ghost btn--sm" id="filter-inbound-scan-btn">バーコードを読み取る</button>
+            </div>
+            <p class="form-error" data-error-for="serialNo"></p>
+          </div>
+
+          <div class="form-field">
+            <label for="filter-inbound-date">
+              入荷日付 <span class="req">必須</span>
+            </label>
+            <input
+              type="date"
+              id="filter-inbound-date"
+              name="arrivalDate"
+            >
+            <p class="form-error" data-error-for="arrivalDate"></p>
+          </div>
+
+          <div class="form-field">
+            <label for="filter-inbound-project">
+              案件番号 <span class="req">必須</span>
+            </label>
+            <input
+              type="text"
+              id="filter-inbound-project"
+              name="projectNo"
+              placeholder="例：PJ-2026-001"
+            >
+            <p class="form-error" data-error-for="projectNo"></p>
+          </div>
+
+        </div>
+
+        <div class="form__foot">
+          <button
+            type="button"
+            class="btn btn--ghost"
+            id="filter-inbound-reset"
+          >
+            入力をクリア
+          </button>
+
+          <button
+            type="submit"
+            class="btn btn--primary"
+            id="filter-inbound-submit"
+          >
+            登録する
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ フィルター出庫 ============ -->
+  <section class="view" id="view-filter-shipping" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">フィルター出庫</h2>
+        <p class="view__desc">フィルター在庫から出庫する商品を選び、出庫情報を入力します。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">フィルター在庫</h3>
+        <p class="count" id="filter-shipping-stock-count">該当 0 個</p>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="filter-shipping-select-all" aria-label="すべて選択"></th>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th>製造番号</th>
+              <th>入荷日</th>
+              <th>案件番号</th>
+            </tr>
+          </thead>
+          <tbody id="filter-shipping-stock-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">出庫する商品</h3>
+        <p class="count" id="filter-shipping-count">0 個</p>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th>製造番号</th>
+              <th>入荷日</th>
+              <th>案件番号</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="filter-shipping-items-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">出庫情報</h3>
+      </div>
+      <form class="form" id="filter-shipping-form" autocomplete="off" novalidate>
+        <div class="form__grid">
+          <div class="form-field">
+            <label for="filter-shipping-person">出庫した人 <span class="req">必須</span></label>
+            <input type="text" id="filter-shipping-person" name="shippedBy" placeholder="例：丸山">
+            <p class="form-error" data-error-for="shippedBy"></p>
+          </div>
+          <div class="form-field">
+            <label for="filter-shipping-order-to">受注先 <span class="req">必須</span></label>
+            <input type="text" id="filter-shipping-order-to" name="orderTo" placeholder="例：株式会社○○ 東京営業所">
+            <p class="form-error" data-error-for="orderTo"></p>
+          </div>
+          <div class="form-field">
+            <label for="filter-shipping-end-user">エンドユーザー <span class="req">必須</span></label>
+            <input type="text" id="filter-shipping-end-user" name="endUser" placeholder="例：営業部　○○様">
+            <p class="form-error" data-error-for="endUser"></p>
+          </div>
+        </div>
+
+        <div class="form__foot">
+          <p class="form__hint" id="filter-shipping-hint"></p>
+          <button type="submit" class="btn btn--primary" id="filter-shipping-submit" disabled>出庫する</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ フィルター出庫履歴 ============ -->
+  <section class="view" id="view-filter-history" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">フィルター出庫履歴</h2>
+        <p class="view__desc">フィルター商品の出庫実績の一覧です。キャンセルして在庫に戻せます。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <form class="search search--inline" id="filter-history-search" autocomplete="off">
+          <div class="form-field">
+            <label for="filter-history-status">状態</label>
+            <select id="filter-history-status" name="status">
+              <option value="all">すべて</option>
+              <option value="shipped">出庫済み</option>
+              <option value="cancelled">キャンセル</option>
+            </select>
+          </div>
+          <div class="form-field form-field--wide">
+            <label for="filter-history-keyword">キーワード</label>
+            <input type="text" id="filter-history-keyword" name="keyword" placeholder="商品コード・製造番号・案件番号・受注先・担当者など">
+          </div>
+        </form>
+        <p class="count" id="filter-history-count">0 件</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th>製造番号</th>
+              <th>入荷日</th>
+              <th>案件番号</th>
+              <th>出庫した人</th>
+              <th>受注先</th>
+              <th>エンドユーザー</th>
+              <th>出庫日時</th>
+              <th>状態</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="filter-history-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ フィルター商品管理 ============ -->
+  <section class="view" id="view-filter-products" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">フィルター商品管理</h2>
+        <p class="view__desc">フィルター商品の登録・管理を行います。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title" id="filter-products-form-title">フィルター商品を登録</h3>
+      </div>
+
+      <form class="form" id="filter-products-form" autocomplete="off" novalidate>
+        <div class="form__grid">
+
+          <div class="form-field">
+            <label for="filter-products-code">
+              商品コード <span class="req">必須</span>
+            </label>
+            <input
+              type="text"
+              id="filter-products-code"
+              name="productCode"
+              placeholder="例：F-100"
+            >
+            <p class="form-error" data-error-for="productCode"></p>
+          </div>
+
+          <div class="form-field">
+            <label for="filter-products-name">
+              製品名 <span class="req">必須</span>
+            </label>
+            <input
+              type="text"
+              id="filter-products-name"
+              name="productName"
+              placeholder="例：エアフィルター F-100"
+            >
+            <p class="form-error" data-error-for="productName"></p>
+          </div>
+
+        </div>
+
+        <div class="form__foot">
+          <button
+            type="button"
+            class="btn btn--ghost"
+            id="filter-products-cancel-edit"
+            hidden
+          >
+            編集をやめる
+          </button>
+
+          <button
+            type="submit"
+            class="btn btn--primary"
+            id="filter-products-submit"
+          >
+            登録する
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">登録済みのフィルター商品</h3>
+        <p class="count" id="filter-products-count">0 件</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th class="col-num">在庫数</th>
+              <th class="col-num">出庫済み</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="filter-products-body"></tbody>
         </table>
       </div>
     </div>
@@ -407,10 +701,14 @@
 <script src="js/ui.js"></script>
 <script src="js/inventory.js"></script>
 <script src="js/products.js"></script>
+<script src="js/filter-products.js"></script>
 <script src="js/scanner.js"></script>
 <script src="js/inbound.js"></script>
+<script src="js/filter-inbound.js"></script>
 <script src="js/shipping.js"></script>
+<script src="js/filter-shipping.js"></script>
 <script src="js/history.js"></script>
+<script src="js/filter-history.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

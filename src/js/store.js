@@ -13,26 +13,17 @@ App.store = (function () {
   var items = [];
   var shipments = [];
 
-  /* 商品マスタの必須項目。型名と寸法・図番は1対1で、型名から一意に決まる。 */
+  /* 商品マスタの必須項目。商品コードは一意。 */
   var PRODUCT_FIELDS = [
-    { key: 'modelName', label: '型名' },
-    { key: 'dimensions', label: '寸法' },
-    { key: 'drawingNo', label: '図番' }
+    { key: 'productCode', label: '商品コード' },
+    { key: 'productName', label: '製品名' }
   ];
 
-  /* 入庫登録の必須項目。型名・寸法・図番は商品マスタから引くので含めない。 */
-  var ITEM_FIELDS = [
-    { key: 'productId', label: '型名' },
-    { key: 'serialNo', label: '製造番号' },
-    { key: 'arrivalMonth', label: '入荷月' },
-    { key: 'projectNo', label: '案件番号' }
-  ];
-
-  /* 出荷時の必須項目。宛先は任意入力なので含めない。 */
+  /* 出庫時の必須項目。 */
   var SHIPMENT_FIELDS = [
-    { key: 'shippedBy', label: '出荷した人' },
-    { key: 'destination', label: '出荷先' },
-    { key: 'projectNo', label: '案件番号' }
+    { key: 'shippedBy', label: '出庫した人' },
+    { key: 'orderTo', label: '受注先' },
+    { key: 'endUser', label: 'エンドユーザー' }
   ];
 
   function readJson(key, fallback) {
@@ -68,45 +59,111 @@ App.store = (function () {
     return norm(value).indexOf(norm(needle)) !== -1;
   }
 
+  function toQuantity(value) {
+    var n = parseInt(value, 10);
+    return isNaN(n) || n < 1 ? 0 : n;
+  }
+
   /* --- 読み込みと移行 --------------------------------------------------- */
 
   function load() {
     products = readJson(KEY_PRODUCTS, []);
     items = readJson(KEY_ITEMS, []);
     shipments = readJson(KEY_SHIPMENTS, []);
+
+    migrateLegacyProducts();
     migrateLegacyItems();
+    migrateLegacyShipments();
+
+    items.forEach(function (item) {
+      if (!item.stockType) item.stockType = 'normal';
+    });
+
+    save();
   }
 
   /**
-   * 商品マスタを導入する前のデータ（型名・寸法・図番を商品側に直接持っていた）を
-   * マスタ参照に移行する。型名ごとに1件のマスタを起こす。
+   * 旧・型名ベースの商品マスタ（modelName / dimensions / drawingNo）を
+   * 商品コード・製品名ベースに移行する。
+   */
+  function migrateLegacyProducts() {
+    var changed = false;
+    products.forEach(function (product) {
+      if (product.productCode === undefined) {
+        product.productCode = text(product.modelName) || product.id;
+        product.productName = text(product.modelName) || '(旧データ)';
+        product.category = product.category || 'normal';
+        delete product.modelName;
+        delete product.dimensions;
+        delete product.drawingNo;
+        changed = true;
+      }
+      if (!product.category) {
+        product.category = 'normal';
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  /**
+   * 旧・個体ベース（製造番号1本＝在庫1個、入荷月・案件番号）のデータを
+   * 受注番号・数量ベースに移行する。商品マスタが無い旧データ（modelName直持ち）にも対応する。
    */
   function migrateLegacyItems() {
     var changed = false;
     items.forEach(function (item) {
-      if (item.productId) return;
-      var product = findProductByModelName(item.modelName);
-      if (!product) {
-        product = buildProduct(item.modelName, item.dimensions, item.drawingNo);
-        products.push(product);
+      if (!item.productId) {
+        var product = findProductByCode(item.modelName);
+        if (!product) {
+          product = buildProduct(item.modelName || '(不明)', item.modelName || '(不明)', 'normal');
+          products.push(product);
+        }
+        item.productId = product.id;
+        delete item.modelName;
+        delete item.dimensions;
+        delete item.drawingNo;
+        changed = true;
       }
-      item.productId = product.id;
-      delete item.modelName;
-      delete item.dimensions;
-      delete item.drawingNo;
-      changed = true;
+      if (item.orderNo === undefined) {
+        item.orderNo = text(item.projectNo);
+        item.quantity = toQuantity(item.quantity) || 1;
+        item.receivedBy = text(item.receivedBy);
+        item.remarks = text(item.remarks);
+        item.arrivalDate = text(item.arrivalDate) || (text(item.arrivalMonth) ? text(item.arrivalMonth) + '-01' : '');
+        delete item.projectNo;
+        delete item.arrivalMonth;
+        delete item.serialNo;
+        changed = true;
+      }
     });
-    if (changed) save();
+    return changed;
+  }
+
+  /** 旧・出荷先/宛先ベースのデータを受注先/エンドユーザーに移行する。 */
+  function migrateLegacyShipments() {
+    var changed = false;
+    shipments.forEach(function (shipment) {
+      if (shipment.orderTo === undefined) {
+        shipment.orderTo = text(shipment.destination);
+        shipment.endUser = text(shipment.addressee);
+        delete shipment.destination;
+        delete shipment.addressee;
+        delete shipment.projectNo;
+        changed = true;
+      }
+    });
+    return changed;
   }
 
   /* --- 商品マスタ ------------------------------------------------------- */
 
-  function buildProduct(modelName, dimensions, drawingNo) {
+  function buildProduct(productCode, productName, category) {
     return {
       id: uid('prod'),
-      modelName: text(modelName),
-      dimensions: text(dimensions),
-      drawingNo: text(drawingNo),
+      productCode: text(productCode),
+      productName: text(productName),
+      category: category === 'filter' ? 'filter' : 'normal',
       createdAt: new Date().toISOString()
     };
   }
@@ -118,29 +175,39 @@ App.store = (function () {
     return null;
   }
 
-  function findProductByModelName(modelName) {
+  function findProductByCode(productCode, category) {
     for (var i = 0; i < products.length; i++) {
-      if (norm(products[i].modelName) === norm(modelName)) return products[i];
+      if (category && products[i].category !== category) continue;
+      if (norm(products[i].productCode) === norm(productCode)) return products[i];
     }
     return null;
   }
 
   function compareProducts(a, b) {
-    return a.modelName < b.modelName ? -1 : a.modelName > b.modelName ? 1 : 0;
+    return a.productCode < b.productCode ? -1 : a.productCode > b.productCode ? 1 : 0;
   }
 
-  /** 商品マスタを型名順で返す。 */
-  function listProducts() {
-    return products.slice().sort(compareProducts);
+  /** 商品マスタを商品コード順で返す。category を指定するとその種別だけを返す。 */
+  function listProducts(category) {
+    return products
+      .filter(function (p) { return !category || p.category === category; })
+      .slice()
+      .sort(compareProducts);
+  }
+
+  /** 商品コードから商品を探す（入庫画面の自動補完用）。見つからなければ null。 */
+  function getProductByCode(productCode, category) {
+    var product = findProductByCode(productCode, category);
+    return product ? getProduct(product.id) : null;
   }
 
   function getProduct(id) {
     var product = findProduct(id);
     return product ? {
       id: product.id,
-      modelName: product.modelName,
-      dimensions: product.dimensions,
-      drawingNo: product.drawingNo,
+      productCode: product.productCode,
+      productName: product.productName,
+      category: product.category,
       createdAt: product.createdAt
     } : null;
   }
@@ -164,41 +231,50 @@ App.store = (function () {
         errors[field.key] = field.label + 'を入力してください。';
       }
     });
-    if (!errors.modelName) {
+    if (!errors.productCode) {
       var duplicated = products.some(function (product) {
-        return product.id !== excludeId && norm(product.modelName) === norm(input.modelName);
+        return product.id !== excludeId && norm(product.productCode) === norm(input.productCode);
       });
       if (duplicated) {
-        errors.modelName = 'この型名は既に登録されています。';
+        errors.productCode = 'この商品コードは既に登録されています。';
       }
     }
     return errors;
   }
 
-  /** 商品マスタを登録する。型名は重複できない。 */
+  /** 商品マスタを登録する。商品コードは重複できない。 */
   function addProduct(data) {
     var input = data || {};
     var errors = validateProduct(input, null);
     if (Object.keys(errors).length > 0) return { ok: false, errors: errors };
 
-    var product = buildProduct(input.modelName, input.dimensions, input.drawingNo);
+    var product = buildProduct(input.productCode, input.productName, input.category);
     products.push(product);
     save();
     return { ok: true, product: product };
   }
 
+  /** 商品コードから商品を探し、無ければ自動登録する（入庫画面の自由入力用）。 */
+  function findOrCreateProduct(productCode, productName, category) {
+    var existing = findProductByCode(productCode, category);
+    if (existing) return existing;
+    var product = buildProduct(productCode, productName || productCode, category);
+    products.push(product);
+    save();
+    return product;
+  }
+
   /** 商品マスタを更新する。在庫・履歴の表示にもそのまま反映される。 */
   function updateProduct(id, data) {
     var product = findProduct(id);
-    if (!product) return { ok: false, errors: { modelName: '対象の商品が見つかりません。' } };
+    if (!product) return { ok: false, errors: { productCode: '対象の商品が見つかりません。' } };
 
     var input = data || {};
     var errors = validateProduct(input, id);
     if (Object.keys(errors).length > 0) return { ok: false, errors: errors };
 
-    product.modelName = text(input.modelName);
-    product.dimensions = text(input.dimensions);
-    product.drawingNo = text(input.drawingNo);
+    product.productCode = text(input.productCode);
+    product.productName = text(input.productName);
     save();
     return { ok: true, product: product };
   }
@@ -212,7 +288,7 @@ App.store = (function () {
     if (usage.total > 0) {
       return {
         ok: false,
-        message: 'この商品は在庫 ' + usage.inStock + ' 個・出荷済み ' + usage.shipped + ' 個で使われているため削除できません。'
+        message: 'この商品は在庫 ' + usage.inStock + ' 個・出庫済み ' + usage.shipped + ' 個で使われているため削除できません。'
       };
     }
 
@@ -223,18 +299,26 @@ App.store = (function () {
 
   /* --- 在庫（商品マスタと結合して返す） -------------------------------- */
 
-  /** 保存用の item に商品マスタの型名・寸法・図番を足した表示用オブジェクトを作る。 */
+  /**
+   * 保存用の item に商品マスタの商品コード・製品名を足した表示用オブジェクトを作る。
+   * 通常品（数量・受注番号・入庫した人・備考）とフィルター品（製造番号・案件番号）で
+   * 持つ項目が異なるため、item が持つ項目をそのまま引き継いだ上で商品情報を合成する。
+   */
   function decorate(item) {
     var product = findProduct(item.productId) || {};
     return {
       id: item.id,
       productId: item.productId,
-      modelName: product.modelName || '(削除済み商品)',
-      dimensions: product.dimensions || '',
-      drawingNo: product.drawingNo || '',
+      productCode: product.productCode || '(削除済み商品)',
+      productName: product.productName || '',
+      quantity: item.quantity,
+      orderNo: item.orderNo,
+      receivedBy: item.receivedBy,
+      remarks: item.remarks,
       serialNo: item.serialNo,
-      arrivalMonth: item.arrivalMonth,
       projectNo: item.projectNo,
+      arrivalDate: item.arrivalDate,
+      stockType: item.stockType,
       status: item.status,
       registeredAt: item.registeredAt
     };
@@ -249,30 +333,40 @@ App.store = (function () {
 
   function matchesRow(row, filter) {
     var f = filter || {};
-    if (text(f.modelName) && !includes(row.modelName, f.modelName)) return false;
-    if (text(f.drawingNo) && !includes(row.drawingNo, f.drawingNo)) return false;
-    if (text(f.serialNo) && !includes(row.serialNo, f.serialNo)) return false;
-    if (text(f.projectNo) && !includes(row.projectNo, f.projectNo)) return false;
-    if (text(f.arrivalMonth) && row.arrivalMonth !== text(f.arrivalMonth)) return false;
+    if (text(f.productCode) && !includes(row.productCode, f.productCode)) return false;
+    if (text(f.productName) && !includes(row.productName, f.productName)) return false;
+    if (text(f.orderNo) && !includes(row.orderNo, f.orderNo)) return false;
+    if (text(f.arrivalDate) && row.arrivalDate !== text(f.arrivalDate)) return false;
     return true;
   }
 
   function compareRows(a, b) {
-    if (a.modelName !== b.modelName) return a.modelName < b.modelName ? -1 : 1;
-    if (a.serialNo !== b.serialNo) return a.serialNo < b.serialNo ? -1 : 1;
+    if (a.productCode !== b.productCode) return a.productCode < b.productCode ? -1 : 1;
+    if (a.orderNo !== b.orderNo) return a.orderNo < b.orderNo ? -1 : 1;
     return 0;
   }
 
-  /** 在庫中（未出荷）の商品を製造番号ごとに1件返す。 */
-  function listInStock(filter) {
+  function listByStockType(stockType, filter) {
     return items
-      .filter(function (item) { return item.status === 'in_stock'; })
+      .filter(function (item) {
+        return item.status === 'in_stock' && (item.stockType || 'normal') === stockType;
+      })
       .map(decorate)
       .filter(function (row) { return matchesRow(row, filter); })
       .sort(compareRows);
   }
 
-  /** 在庫中の商品を商品マスタ単位でまとめ、在庫数を付けて返す。 */
+  /** 在庫中（未出庫）の通常商品を返す。 */
+  function listInStock(filter) {
+    return listByStockType('normal', filter);
+  }
+
+  /** 在庫中（未出庫）のフィルター商品を返す。 */
+  function listFilterInStock(filter) {
+    return listByStockType('filter', filter);
+  }
+
+  /** 在庫中の商品を商品マスタ単位でまとめ、数量合計を付けて返す。 */
   function groupInStock(filter) {
     var map = {};
     var order = [];
@@ -280,14 +374,13 @@ App.store = (function () {
       if (!map[row.productId]) {
         map[row.productId] = {
           productId: row.productId,
-          modelName: row.modelName,
-          dimensions: row.dimensions,
-          drawingNo: row.drawingNo,
+          productCode: row.productCode,
+          productName: row.productName,
           count: 0
         };
         order.push(row.productId);
       }
-      map[row.productId].count += 1;
+      map[row.productId].count += toQuantity(row.quantity) || 0;
     });
     return order.map(function (key) { return map[key]; });
   }
@@ -304,32 +397,83 @@ App.store = (function () {
   /* --- 入庫登録 --------------------------------------------------------- */
 
   /**
-   * 入庫した商品を登録する。
+   * 通常品を入庫登録する（商品コード・製品名は自由入力可。数量・受注番号・入庫した人が必須）。
    * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
    */
   function addItem(data) {
     var input = data || {};
     var errors = {};
 
-    ITEM_FIELDS.forEach(function (field) {
-      if (!text(input[field.key])) {
-        errors[field.key] = field.key === 'productId'
-          ? '型名を選択してください。'
-          : field.label + 'を入力してください。';
-      }
-    });
-
-    if (!errors.productId && !findProduct(input.productId)) {
-      errors.productId = '選択した商品が見つかりません。';
+    /* 商品コードの自由入力に対応するため、productId が無ければコードから解決する。 */
+    var productId = text(input.productId);
+    if (!productId && text(input.productCode)) {
+      var resolved = findProductByCode(input.productCode, 'normal');
+      if (resolved) productId = resolved.id;
     }
 
-    if (!errors.serialNo) {
-      var duplicated = items.some(function (item) {
-        return item.status === 'in_stock' && norm(item.serialNo) === norm(input.serialNo);
-      });
-      if (duplicated) {
-        errors.serialNo = 'この製造番号は既に在庫として登録されています。';
-      }
+    if (!text(input.productCode) && !productId) {
+      errors.productCode = '商品コードを入力してください。';
+    }
+    if (!text(input.productName) && !productId) {
+      errors.productName = '製品名を入力してください。';
+    }
+    if (toQuantity(input.quantity) === 0) {
+      errors.quantity = '数量を1以上で入力してください。';
+    }
+    if (!text(input.orderNo)) {
+      errors.orderNo = '受注番号を入力してください。';
+    }
+    if (!text(input.receivedBy)) {
+      errors.receivedBy = '入庫した人を入力してください。';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      return { ok: false, errors: errors };
+    }
+
+    if (!productId) {
+      var product = findOrCreateProduct(input.productCode, input.productName, 'normal');
+      productId = product.id;
+    }
+
+    var item = {
+      id: uid('item'),
+      productId: productId,
+      quantity: toQuantity(input.quantity),
+      orderNo: text(input.orderNo),
+      arrivalDate: text(input.arrivalDate),
+      receivedBy: text(input.receivedBy),
+      remarks: text(input.remarks),
+      stockType: 'normal',
+      status: 'in_stock',
+      registeredAt: new Date().toISOString()
+    };
+    items.push(item);
+    save();
+    return { ok: true, item: decorate(item) };
+  }
+
+  /**
+   * フィルター品を入庫登録する（フィルター商品管理から選んだ商品・製造番号・入荷日付・案件番号が必須）。
+   * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
+   */
+  function addFilterItem(data) {
+    var input = data || {};
+    var errors = {};
+
+    if (!text(input.productId)) {
+      errors.productId = 'フィルター商品を選択してください。';
+    } else if (!findProduct(input.productId)) {
+      errors.productId = '選択した商品が見つかりません。';
+    }
+    if (!text(input.serialNo)) {
+      errors.serialNo = '製造番号を入力してください。';
+    }
+    if (!text(input.arrivalDate)) {
+      errors.arrivalDate = '入荷日付を入力してください。';
+    }
+    if (!text(input.projectNo)) {
+      errors.projectNo = '案件番号を入力してください。';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -340,8 +484,9 @@ App.store = (function () {
       id: uid('item'),
       productId: text(input.productId),
       serialNo: text(input.serialNo),
-      arrivalMonth: text(input.arrivalMonth),
+      arrivalDate: text(input.arrivalDate),
       projectNo: text(input.projectNo),
+      stockType: 'filter',
       status: 'in_stock',
       registeredAt: new Date().toISOString()
     };
@@ -350,10 +495,10 @@ App.store = (function () {
     return { ok: true, item: decorate(item) };
   }
 
-  /* --- 出荷 ------------------------------------------------------------ */
+  /* --- 出庫 ------------------------------------------------------------ */
 
   /**
-   * 選択した商品を出荷する。必須項目が1つでも欠けていれば実行しない。
+   * 選択した商品（行単位）を出庫する。必須項目が1つでも欠けていれば実行しない。
    * 戻り値: { ok: true, count } / { ok: false, errors }
    */
   function ship(itemIds, info) {
@@ -371,7 +516,7 @@ App.store = (function () {
       .filter(function (item) { return item && item.status === 'in_stock'; });
 
     if (targets.length === 0) {
-      errors._items = '出荷する商品を選択してください。';
+      errors._items = '出庫する商品を選択してください。';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -385,9 +530,8 @@ App.store = (function () {
         id: uid('ship'),
         itemId: item.id,
         shippedBy: text(input.shippedBy),
-        destination: text(input.destination),
-        addressee: text(input.addressee),
-        projectNo: text(input.projectNo),
+        orderTo: text(input.orderTo),
+        endUser: text(input.endUser),
         shippedAt: shippedAt,
         status: 'shipped',
         cancelledAt: null
@@ -397,7 +541,7 @@ App.store = (function () {
     return { ok: true, count: targets.length };
   }
 
-  /* --- 出荷履歴・キャンセル -------------------------------------------- */
+  /* --- 出庫履歴・キャンセル -------------------------------------------- */
 
   function matchesShipmentRow(row, filter) {
     var f = filter || {};
@@ -405,13 +549,13 @@ App.store = (function () {
     var keyword = text(f.keyword);
     if (!keyword) return true;
     return [
-      row.modelName, row.dimensions, row.drawingNo, row.serialNo,
-      row.arrivalMonth, row.projectNo, row.shippedBy, row.destination, row.addressee
+      row.productCode, row.productName, row.orderNo, row.serialNo, row.projectNo,
+      row.shippedBy, row.orderTo, row.endUser
     ].some(function (value) { return includes(value, keyword); });
   }
 
-  /** 出荷履歴を商品情報と結合して、出荷日時の新しい順に返す。 */
-  function listShipments(filter) {
+  /** 出庫履歴を商品情報と結合して、出庫日時の新しい順に返す。stockType を指定すると絞り込む。 */
+  function listShipments(filter, stockType) {
     return shipments
       .map(function (shipment) {
         var item = findItem(shipment.itemId);
@@ -419,22 +563,31 @@ App.store = (function () {
         return {
           id: shipment.id,
           itemId: shipment.itemId,
-          modelName: row.modelName || '(削除済み)',
-          dimensions: row.dimensions || '',
-          drawingNo: row.drawingNo || '',
+          stockType: row.stockType || 'normal',
+          productCode: row.productCode || '(削除済み)',
+          productName: row.productName || '',
+          quantity: row.quantity,
+          orderNo: row.orderNo || '',
           serialNo: row.serialNo || '',
-          arrivalMonth: row.arrivalMonth || '',
-          projectNo: shipment.projectNo,
+          projectNo: row.projectNo || '',
+          arrivalDate: row.arrivalDate || '',
+          remarks: row.remarks || '',
           shippedBy: shipment.shippedBy,
-          destination: shipment.destination,
-          addressee: shipment.addressee,
+          orderTo: shipment.orderTo,
+          endUser: shipment.endUser,
           shippedAt: shipment.shippedAt,
           status: shipment.status,
           cancelledAt: shipment.cancelledAt
         };
       })
+      .filter(function (row) { return !stockType || row.stockType === stockType; })
       .filter(function (row) { return matchesShipmentRow(row, filter); })
       .sort(function (a, b) { return a.shippedAt < b.shippedAt ? 1 : a.shippedAt > b.shippedAt ? -1 : 0; });
+  }
+
+  /** フィルター商品の出庫履歴だけを返す。 */
+  function listFilterShipments(filter) {
+    return listShipments(filter, 'filter');
   }
 
   function getShipment(id) {
@@ -444,11 +597,11 @@ App.store = (function () {
     return null;
   }
 
-  /** 出荷をキャンセルし、商品を在庫に戻す。履歴自体は残して状態だけ変える。 */
+  /** 出庫をキャンセルし、商品を在庫に戻す。履歴自体は残して状態だけ変える。 */
   function cancelShipment(shipmentId) {
     var shipment = getShipment(shipmentId);
     if (!shipment || shipment.status !== 'shipped') {
-      return { ok: false, message: 'この出荷はキャンセルできません。' };
+      return { ok: false, message: 'この出庫はキャンセルできません。' };
     }
     shipment.status = 'cancelled';
     shipment.cancelledAt = new Date().toISOString();
@@ -476,22 +629,26 @@ App.store = (function () {
 
   return {
     PRODUCT_FIELDS: PRODUCT_FIELDS,
-    ITEM_FIELDS: ITEM_FIELDS,
     SHIPMENT_FIELDS: SHIPMENT_FIELDS,
     load: load,
     listProducts: listProducts,
     getProduct: getProduct,
+    getProductByCode: getProductByCode,
     productUsage: productUsage,
     addProduct: addProduct,
     updateProduct: updateProduct,
     deleteProduct: deleteProduct,
+    findOrCreateProduct: findOrCreateProduct,
     listInStock: listInStock,
+    listFilterInStock: listFilterInStock,
     groupInStock: groupInStock,
     getItem: getItem,
     getItems: getItems,
     addItem: addItem,
+    addFilterItem: addFilterItem,
     ship: ship,
     listShipments: listShipments,
+    listFilterShipments: listFilterShipments,
     cancelShipment: cancelShipment,
     isSeeded: isSeeded,
     replaceAll: replaceAll

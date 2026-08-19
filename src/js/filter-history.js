@@ -1,8 +1,8 @@
-/* 出庫履歴：出庫実績の一覧と、出庫済み商品のキャンセル（在庫へ戻す）。 */
+/* フィルター出庫履歴：フィルター商品の出庫実績の一覧と、出庫済み商品のキャンセル（在庫へ戻す）。 */
 window.App = window.App || {};
 App.views = App.views || {};
 
-App.history = (function () {
+App.filterHistory = (function () {
   'use strict';
 
   var COLUMNS = 11;
@@ -29,7 +29,7 @@ App.history = (function () {
   function onCancel(row) {
     App.ui.confirm({
       title: '出庫のキャンセル',
-      message: '「' + row.productCode + ' / 受注番号 ' + row.orderNo + '」の出庫をキャンセルし、在庫に戻します。よろしいですか？',
+      message: '「' + row.productCode + ' / 製造番号 ' + row.serialNo + '」の出庫をキャンセルし、在庫に戻します。よろしいですか？',
       okLabel: 'キャンセルする',
       danger: true
     }).then(function (approved) {
@@ -42,13 +42,13 @@ App.history = (function () {
       }
 
       render();
-      App.inventory.render();
+      App.filterShipping.render();
       App.ui.toast('出庫をキャンセルし、在庫に戻しました。', 'success');
     });
   }
 
   function render() {
-    var rows = App.store.listShipments(currentFilter(), 'normal');
+    var rows = App.store.listFilterShipments(currentFilter());
     App.ui.clear(body);
     countLabel.textContent = rows.length + ' 件';
 
@@ -62,9 +62,9 @@ App.history = (function () {
       [
         row.productCode,
         row.productName,
-        row.quantity + ' 個',
-        row.orderNo,
+        row.serialNo,
         row.arrivalDate || '—',
+        row.projectNo,
         row.shippedBy,
         row.orderTo,
         row.endUser,
@@ -93,9 +93,9 @@ App.history = (function () {
   }
 
   function init() {
-    searchForm = document.getElementById('history-search');
-    body = document.getElementById('history-body');
-    countLabel = document.getElementById('history-count');
+    searchForm = document.getElementById('filter-history-search');
+    body = document.getElementById('filter-history-body');
+    countLabel = document.getElementById('filter-history-count');
 
     var onInput = App.ui.debounce(render, 200);
     searchForm.addEventListener('input', onInput);
@@ -103,7 +103,7 @@ App.history = (function () {
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); render(); });
   }
 
-  App.views.history = { onShow: render };
+  App.views['filter-history'] = { onShow: render };
 
   return { init: init, render: render };
 })();

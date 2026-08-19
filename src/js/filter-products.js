@@ -1,11 +1,11 @@
-/* 商品管理：入庫時に選ぶ商品マスタ（通常品）の登録・編集・削除。 */
+/* フィルター商品管理：フィルター入庫・フィルター出庫で使う商品マスタの登録・編集・削除。 */
 window.App = window.App || {};
 App.views = App.views || {};
 
-App.products = (function () {
+App.filterProducts = (function () {
   'use strict';
 
-  var CATEGORY = 'normal';
+  var CATEGORY = 'filter';
   var COLUMNS = 5;
   var FIELD_NAMES = ['productCode', 'productName'];
   var form, body, countLabel, formTitle, submitButton, cancelEditButton;
@@ -26,7 +26,7 @@ App.products = (function () {
 
   function setEditMode(product) {
     editingId = product ? product.id : null;
-    formTitle.textContent = product ? '商品を編集' : '商品を登録';
+    formTitle.textContent = product ? 'フィルター商品を編集' : 'フィルター商品を登録';
     submitButton.textContent = product ? '更新する' : '登録する';
     cancelEditButton.hidden = !product;
     setValues(product);
@@ -40,7 +40,7 @@ App.products = (function () {
 
   function onDelete(product) {
     App.ui.confirm({
-      title: '商品の削除',
+      title: 'フィルター商品の削除',
       message: '「' + product.productCode + ' ' + product.productName + '」を削除します。よろしいですか？',
       okLabel: '削除する',
       danger: true
@@ -56,7 +56,7 @@ App.products = (function () {
 
       if (editingId === product.id) setEditMode(null);
       render();
-      App.inbound.refreshProducts();
+      App.filterInbound.refreshProducts();
       App.ui.toast('「' + product.productCode + '」を削除しました。', 'success');
     });
   }
@@ -67,7 +67,7 @@ App.products = (function () {
     countLabel.textContent = products.length + ' 件';
 
     if (products.length === 0) {
-      body.appendChild(App.ui.emptyRow(COLUMNS, '商品がまだ登録されていません。上のフォームから登録してください。'));
+      body.appendChild(App.ui.emptyRow(COLUMNS, 'フィルター商品がまだ登録されていません。上のフォームから登録してください。'));
       return;
     }
 
@@ -90,7 +90,6 @@ App.products = (function () {
       var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', '削除');
       deleteButton.type = 'button';
       if (usage.total > 0) {
-        /* 在庫や履歴から参照されている商品は消せない。理由をその場で伝える。 */
         deleteButton.disabled = true;
         deleteButton.title = '在庫 ' + usage.inStock + ' 個・出庫済み ' + usage.shipped + ' 個で使われているため削除できません';
       } else {
@@ -119,7 +118,7 @@ App.products = (function () {
     var wasEditing = editingId !== null;
     setEditMode(null);
     render();
-    App.inbound.refreshProducts();
+    App.filterInbound.refreshProducts();
     App.ui.toast(
       wasEditing
         ? '「' + result.product.productCode + '」を更新しました。'
@@ -129,12 +128,12 @@ App.products = (function () {
   }
 
   function init() {
-    form = document.getElementById('products-form');
-    body = document.getElementById('products-body');
-    countLabel = document.getElementById('products-count');
-    formTitle = document.getElementById('products-form-title');
-    submitButton = document.getElementById('products-submit');
-    cancelEditButton = document.getElementById('products-cancel-edit');
+    form = document.getElementById('filter-products-form');
+    body = document.getElementById('filter-products-body');
+    countLabel = document.getElementById('filter-products-count');
+    formTitle = document.getElementById('filter-products-form-title');
+    submitButton = document.getElementById('filter-products-submit');
+    cancelEditButton = document.getElementById('filter-products-cancel-edit');
 
     form.addEventListener('submit', onSubmit);
     form.addEventListener('input', function (event) {
@@ -152,7 +151,7 @@ App.products = (function () {
     setEditMode(null);
   }
 
-  App.views.products = { onShow: render };
+  App.views['filter-products'] = { onShow: render };
 
   return { init: init, render: render };
 })();

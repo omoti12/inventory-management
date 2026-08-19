@@ -1,6 +1,6 @@
 # 設計メモ（モック）
 
-最終更新: 2026-08-07
+最終更新: 2026-08-19
 
 このドキュメントは「どう作ったか」を記録する。何を作るかは [requirements.md](requirements.md)、
 動かし方は [../README.md](../README.md) を参照。
@@ -15,82 +15,114 @@ HTML / CSS / 素の JavaScript のみで構成し、データはブラウザの 
 - 外部 CDN・Web フォント・画像を使わず、オフラインで開ける。
 - 見た目はモダン（白基調・アクセント1色・余白多め・薄い影）。
 - 製造番号のバーコード読み取り（カメラ）を使う場合のみ、`http://localhost` などのセキュアなコンテキストが必要。
+- 通常品とフィルター品は、商品マスタ・在庫ともに `category` / `stockType` で分離した別ラインとして扱う。
 
 ## ファイル構成
 
 ```
-src/index.html          5画面ぶんの section とタブナビ
-src/css/style.css       デザイントークン（CSS変数）＋レイアウト＋コンポーネント
-src/js/store.js         データモデル（商品マスタ／個体／出荷）/ localStorage 永続化 / 検索・集計・バリデーション・旧データ移行
-src/js/seed.js          デモ用初期データ（商品マスタ＋在庫＋出荷履歴）
-src/js/ui.js            タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形
-src/js/inventory.js     在庫一覧（明細 / 型名まとめ）＋検索＋選択
-src/js/products.js      商品管理（商品マスタの登録・編集・削除）
-src/js/inbound.js       入庫（型名選択・コピー登録・連続登録）
-src/js/scanner.js       製造番号のバーコード読み取り（カメラ、BarcodeDetector API）
-src/js/shipping.js      出荷（必須項目チェック）
-src/js/history.js       出荷履歴・キャンセル
-src/js/app.js           起動処理
+src/index.html            9画面ぶんの section とタブナビ
+src/css/style.css         デザイントークン（CSS変数）＋レイアウト＋コンポーネント
+src/js/store.js           データモデル（商品マスタ／在庫／出庫）/ localStorage 永続化 / 検索・集計・バリデーション・旧データ移行
+src/js/seed.js            デモ用初期データ（通常品・フィルター品の商品マスタ＋在庫＋出庫履歴）
+src/js/ui.js              タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形
+src/js/inventory.js       在庫一覧（通常品、明細 / 商品まとめ）＋検索＋選択
+src/js/products.js        商品管理（通常品の商品マスタの登録・編集・削除）
+src/js/inbound.js         入庫（通常品、商品コード/製品名の自由入力＋数量・受注番号・入庫した人など）
+src/js/scanner.js         バーコード読み取り（カメラ、BarcodeDetector API）
+src/js/shipping.js        出庫（通常品、必須項目チェック）
+src/js/history.js         出庫履歴（通常品）・キャンセル
+src/js/filter-products.js フィルター商品管理（フィルター品の商品マスタの登録・編集・削除）
+src/js/filter-inbound.js  フィルター入庫（フィルター品、製造番号・入荷日付・案件番号）
+src/js/filter-shipping.js フィルター出庫（在庫の選択＋出庫フォームを1画面に統合）
+src/js/filter-history.js  フィルター出庫履歴・キャンセル
+src/js/app.js             起動処理
 ```
 
-読み込み順は `store → seed → ui → inventory → products → inbound → shipping → history → app`。
-`src/js/scanner.js` は `src/js/inbound.js` より前に読み込む。`src/js/app.js` が `DOMContentLoaded` で初期化する。
+読み込み順は
+`store → seed → ui → inventory → products → filter-products → scanner → inbound → filter-inbound → shipping → filter-shipping → history → filter-history → app`。
+`src/js/scanner.js` は `inbound.js` より前に読み込む。`src/js/app.js` が `DOMContentLoaded` で初期化する。
 
 ## データモデル
 
 localStorage キー：`inv.products` / `inv.items` / `inv.shipments` / `inv.seeded`
 
 ```js
-// 商品マスタ（型名は一意。寸法・図番は型名に1対1で紐づく）
+// 商品マスタ（商品コードは種別内で一意）
 product = {
-  id, modelName, dimensions, drawingNo, createdAt
+  id, productCode, productName,
+  category,              // 'normal' | 'filter'
+  createdAt
 }
 
-// 個体（1レコード = 製造番号1個 = 在庫1個。型名・寸法・図番は持たず productId で商品マスタを参照する）
+// 在庫（通常品）：受注番号・数量のバッチ単位
 item = {
-  id, productId, serialNo,
-  arrivalMonth,          // "YYYY-MM"
-  projectNo,
-  status,                // 'in_stock' | 'shipped'
+  id, productId,
+  quantity,               // 入庫数量（1以上）
+  orderNo,                // 受注番号
+  arrivalDate,            // "YYYY-MM-DD"、任意
+  receivedBy,              // 入庫した人
+  remarks,                // 備考、任意
+  stockType: 'normal',
+  status,                 // 'in_stock' | 'shipped'
   registeredAt
 }
 
-// 出荷（履歴の実体）
+// 在庫（フィルター品）：個体単位（フィルター入庫は現状の運用を維持）
+item = {
+  id, productId,
+  serialNo,               // 製造番号
+  arrivalDate,             // "YYYY-MM-DD"、必須
+  projectNo,               // 案件番号
+  stockType: 'filter',
+  status,                  // 'in_stock' | 'shipped'
+  registeredAt
+}
+
+// 出庫（履歴の実体。通常品・フィルター品で共通の形）
 shipment = {
   id, itemId,
-  shippedBy, destination, addressee, projectNo,
+  shippedBy, orderTo, endUser,
   shippedAt,
-  status,                // 'shipped' | 'cancelled'
+  status,                  // 'shipped' | 'cancelled'
   cancelledAt
 }
 ```
 
-画面に渡す行は `store.js` の `decorate()` が item に商品マスタの `modelName` / `dimensions` / `drawingNo` を合成して作る。
-商品マスタを削除できるのは未使用のときだけなので通常は起きないが、参照先の商品が見つからない場合は `modelName` に `(削除済み商品)` と表示する。
+同じ `items` 配列に通常品・フィルター品を混在させ、`stockType` で扱う項目が異なる
+（数量・受注番号・入庫した人・備考 vs 製造番号・案件番号）。`store.js` の `decorate()` は
+item が持つ項目をそのまま商品情報に合成して返すため、画面側は自分が使う項目だけを参照すればよい。
+
+画面に渡す行は `store.js` の `decorate()` が item に商品マスタの `productCode` / `productName` を合成して作る。
+商品マスタを削除できるのは未使用のときだけなので通常は起きないが、参照先の商品が見つからない場合は
+`productCode` に `(削除済み商品)` と表示する。
 
 ### 状態遷移
 
 ```
 入庫 → item.status = 'in_stock'（在庫一覧に表示）
-出荷 → item.status = 'shipped'  ＋ shipment を作成（status='shipped'）
+出庫 → item.status = 'shipped'  ＋ shipment を作成（status='shipped'）。行（ロット）単位で丸ごと出庫する（部分出庫は無し）
 キャンセル → shipment.status = 'cancelled' ＋ item.status = 'in_stock' に戻す
 ```
 
-出荷履歴は削除しない。キャンセルしても行は残り、状態表示だけが変わる。
+出庫履歴は削除しない。キャンセルしても行は残り、状態表示だけが変わる。
 
 ### 商品マスタの削除制約
 
 商品マスタは在庫・履歴から参照されている間は削除できない。
-`productUsage()` が `items` を走査して使用数（在庫数・出荷済み数・合計）を数え、
+`productUsage()` が `items` を走査して使用数（在庫数・出庫済み数・合計）を数え、
 合計が0件のときだけ `deleteProduct()` が成功する。
 この制約により、`decorate()` の参照先が消えて履歴が壊れることを防いでいる。
 
 ### 旧データの移行
 
-`store.js` の `migrateLegacyItems()` が `load()` のたびに実行される。
-`item.productId` を持たない旧形式（型名・寸法・図番を item が直接持っていた）のデータを見つけると、
-型名ごとに商品マスタを1件起こし（同じ型名が既にあれば流用、なければ新規作成）、item 側の型名・寸法・図番を削除して `productId` を持たせる。
-変更があった場合のみ保存する。利用者側の操作は不要。
+`store.js` の `load()` が以下を毎回実行する（変更があった場合のみ保存）。利用者側の操作は不要。
+
+- `migrateLegacyProducts()`：型名・寸法・図番ベースの商品マスタを `productCode` / `productName` に変換する
+  （`productCode = 旧型名`、`category = 'normal'`）。
+- `migrateLegacyItems()`：商品マスタを持たない最古形式の item を商品マスタ参照に変換したうえで、
+  製造番号・入荷月・案件番号ベースの item を 数量・受注番号・入庫した人・入荷日ベースに変換する
+  （`orderNo = 旧案件番号`、`quantity = 1`、`arrivalDate = 旧入荷月 + '-01'`、`serialNo` は破棄）。
+- `migrateLegacyShipments()`：出荷先・宛先ベースの出荷を `orderTo` / `endUser` に変換する。
 
 ## store.js の公開関数
 
@@ -98,83 +130,93 @@ shipment = {
 
 | 関数 | 役割 |
 | --- | --- |
-| `load()` | localStorage から読み込み、旧データの移行（`migrateLegacyItems`）を行う |
-| `listProducts()` | 商品マスタを型名順で返す |
-| `getProduct(id)` | 商品マスタ1件を取得 |
-| `productUsage(id)` | 指定した商品の使用状況（在庫数・出荷済み数・合計）を返す。削除可否の判定に使う |
-| `addProduct(data)` | 型名・寸法・図番を検証（型名の重複チェックを含む）して商品マスタを登録。`{ok, product}` または `{ok:false, errors}` |
-| `updateProduct(id, data)` | 商品マスタを更新する。在庫・履歴の表示にもそのまま反映される |
-| `deleteProduct(id)` | 未使用の商品だけ削除する。使用中は `{ok:false, message}` |
-| `listInStock(filter)` | 在庫中の明細を返す（型名/図番/製造番号/案件番号は部分一致、入荷月は完全一致） |
-| `groupInStock(filter)` | 商品（型名＋寸法＋図番）単位でまとめ、`count`（在庫数）を付けて返す |
-| `getItem(id)` / `getItems(ids)` | 個体の取得（商品マスタと合成した表示用オブジェクト） |
-| `addItem(data)` | 型名の選択と必須3項目、製造番号の重複を検証して入庫登録。`{ok, item}` または `{ok:false, errors}` |
-| `ship(itemIds, info)` | 必須3項目を検証して出荷。`{ok, count}` または `{ok:false, errors}` |
-| `listShipments(filter)` | 履歴を商品情報と結合し、出荷日時の降順で返す |
-| `cancelShipment(id)` | 出荷をキャンセルし、商品を在庫に戻す |
+| `load()` | localStorage から読み込み、旧データの移行を行う |
+| `listProducts(category)` | 商品マスタを商品コード順で返す。`category`（'normal'/'filter'）で絞り込み可 |
+| `getProduct(id)` / `getProductByCode(code, category)` | 商品マスタ1件を取得 |
+| `productUsage(id)` | 指定した商品の使用状況（在庫数・出庫済み数・合計）を返す。削除可否の判定に使う |
+| `addProduct(data)` | 商品コード・製品名を検証（重複チェックを含む）して商品マスタを登録 |
+| `updateProduct(id, data)` | 商品マスタを更新する |
+| `deleteProduct(id)` | 未使用の商品だけ削除する |
+| `findOrCreateProduct(code, name, category)` | 商品コードから商品を探し、無ければ自動登録する（入庫の自由入力用） |
+| `listInStock(filter)` / `listFilterInStock(filter)` | 在庫中の通常品／フィルター品を返す |
+| `groupInStock(filter)` | 通常品を商品単位でまとめ、`count`（在庫数量の合計）を付けて返す |
+| `getItem(id)` / `getItems(ids)` | 在庫の取得（商品マスタと合成した表示用オブジェクト） |
+| `addItem(data)` | 通常品を入庫登録する（商品コード自由入力・数量・受注番号・入庫した人を検証） |
+| `addFilterItem(data)` | フィルター品を入庫登録する（商品選択・製造番号・入荷日付・案件番号を検証） |
+| `ship(itemIds, info)` | 選択した行を出庫する（出庫した人・受注先・エンドユーザーを検証） |
+| `listShipments(filter, stockType)` / `listFilterShipments(filter)` | 履歴を商品情報と結合し、出庫日時の降順で返す |
+| `cancelShipment(id)` | 出庫をキャンセルし、商品を在庫に戻す |
 | `isSeeded()` / `replaceAll()` | デモデータの管理 |
 
 バリデーションは `store.js` に集約している（画面側では二重に持たない）。
-`PRODUCT_FIELDS` / `ITEM_FIELDS` / `SHIPMENT_FIELDS` に必須項目とラベルを定義し、エラーメッセージにも使う。
+`PRODUCT_FIELDS` / `SHIPMENT_FIELDS` に必須項目とラベルを定義し、エラーメッセージにも使う
+（通常品の入庫・フィルター品の入庫はそれぞれ項目が異なるため、`addItem` / `addFilterItem` 内で個別に検証する）。
 
 ## 画面
 
 | 画面 | 主な操作 |
 | --- | --- |
-| 在庫一覧 | 検索、明細/型名まとめの切替、行の選択、コピー、選択した商品を出荷へ |
-| 入庫 | 型名の選択（寸法・図番は自動表示・読み取り専用）、製造番号・入荷月・案件番号の入力、コピー登録、連続登録モード |
-| 出荷 | 対象商品の確認・除外、出荷情報の入力、出荷 |
-| 出荷履歴 | 状態・キーワードでの絞り込み、キャンセル |
-| 商品管理 | 商品マスタの登録・編集・削除、使用状況（在庫数・出荷済み数）の確認 |
+| 在庫一覧 | 検索、明細/商品まとめの切替、行の選択、コピー、選択した商品を出庫へ（起動時に最初に表示） |
+| 入庫 | 商品コード・製品名の選択/自由入力、数量・受注番号・入庫した人・入荷日・備考の入力、コピー登録 |
+| 出庫 | 対象商品の確認・除外、出庫情報の入力、出庫 |
+| 出庫履歴 | 状態・キーワードでの絞り込み、キャンセル |
+| 商品管理 | 商品マスタ（商品コード・製品名）の登録・編集・削除、使用状況の確認 |
+| フィルター入庫 | フィルター商品の選択、製造番号・入荷日付・案件番号の入力、バーコード読み取り |
+| フィルター出庫 | フィルター在庫の選択と出庫フォームを1画面に統合 |
+| フィルター出庫履歴 | フィルター品の出庫実績の一覧・キャンセル |
+| フィルター商品管理 | フィルター品の商品マスタの登録・編集・削除 |
 
-### 出荷ボタンの制御
+### 出庫ボタンの制御
 
-`shipping.js` の `updateSubmitState()` が入力のたびに走り、
+`shipping.js`（フィルター出庫は `filter-shipping.js`）の `updateSubmitState()` が入力のたびに走り、
 
-- 必須3項目（出荷した人・出荷先・案件番号）のいずれかが空、または対象商品が0個 → ボタンを `disabled`
-- 未入力があるときは「未入力：出荷した人、出荷先」のように項目名を表示
+- 必須3項目（出庫した人・受注先・エンドユーザー）のいずれかが空、または対象商品が0個 → ボタンを `disabled`
+- 未入力があるときは「未入力：出庫した人、受注先」のように項目名を表示
 - 入力欄から離れた時点で、その項目が空ならエラーを表示
 
-### 入庫画面：型名プルダウンと自動表示
+### 入庫画面：商品コード・製品名の自由入力
 
-`inbound.js` の `refreshProducts()` が商品マスタの登録・更新・削除に追従してプルダウンを作り直す。
-商品が0件のときは警告表示・プルダウン・登録ボタンを無効化する。
-型名を選ぶと `syncProductFields()` が寸法・図番の読み取り専用欄に値を反映する（編集不可）。
+`inbound.js` の `refreshProducts()` が商品マスタの登録・更新・削除に追従して `<datalist>` の候補を作り直す。
+商品コード欄の `change` イベントで `syncProductName()` が一致する商品の製品名を自動補完する（上書き修正可）。
+一致する商品コードが無い状態で送信すると、`store.js` の `addItem()` が `findOrCreateProduct()` で新しい商品を自動登録する。
 
-### コピー登録の連番
+### フィルター入庫：商品プルダウン
 
-`inbound.js` の `nextSerial()` が末尾の数字を1つ進める。桁数は維持する。
+`filter-inbound.js` の `refreshProducts()` が `App.store.listProducts('filter')` を選択肢にする
+（フィルター商品管理の登録・更新・削除に追従）。製造番号欄にはバーコード読み取りボタンがあり、
+`inbound.js` と同じ `App.scanner.open()` を使う。
 
-| 元 | 次 |
-| --- | --- |
-| `0001` | `0002` |
-| `S-003` | `S-004` |
-| `0099` | `0100` |
-| 末尾が数字でない | 空文字（手入力してもらう） |
+### フィルター出庫：1画面での在庫選択
 
-### 商品管理：削除ボタンの制御
+在庫一覧に相当する専用タブが無いため、`filter-shipping.js` はフィルター在庫の一覧（チェックボックス選択）と
+出庫フォームを1画面にまとめている。選択状態は画面内のモジュール変数で保持し、出庫完了後にクリアする。
 
-`products.js` の `render()` が `App.store.productUsage(id)` を見て、使用数（`total`）が1以上なら削除ボタンを `disabled` にし、
-`title` 属性に「在庫 N 個・出荷済み M 個で使われているため削除できません」を設定する。
-商品マスタの登録・更新・削除のたびに `App.inbound.refreshProducts()` を呼び、入庫画面のプルダウンを同期させる。
+### コピー登録
+
+`inbound.js` の `startCopy()` が、在庫一覧の「コピー」から商品コード・製品名・数量・受注番号・入荷日・備考を
+入庫フォームへそのまま引き継ぐ。
 
 ## デモデータ
 
 `src/js/seed.js`。初回起動時と「デモデータを初期状態に戻す」操作のときだけ投入する。
 
-| 型名 | 寸法 | 図番 | 入荷月 | 案件番号 | 個体数 |
-| --- | --- | --- | --- | --- | --- |
-| ABC-100 | 100×200 | A-001 | 2026-06 | PJ-2026-001 | 12個登録（うち2個出荷済み、在庫10個） |
-| DEF-200 | 150×300 | B-014 | 2026-07 | PJ-2026-004 | 5個（在庫5個） |
-| GH-3000 | 80×80 | C-220 | 2026-05 | PJ-2026-002 | 3個（在庫3個。うち1個は出荷後キャンセルで在庫に戻っている） |
-| XYZ-500 | 60×120 | D-330 | - | - | 0個（在庫・履歴とも未使用。商品削除機能の確認用） |
+| 種別 | 商品コード | 製品名 | 在庫 |
+| --- | --- | --- | --- |
+| 通常品 | ABC-100 | アングルブラケット ABC-100 | 受注番号 PJ-2026-001、数量10（別途2個出庫済み） |
+| 通常品 | DEF-200 | フランジ DEF-200 | 受注番号 PJ-2026-004、数量5 |
+| 通常品 | GH-3000 | ステー GH-3000 | 受注番号 PJ-2026-002、数量3（うち1個は出庫後キャンセルで在庫に戻っている） |
+| 通常品 | XYZ-500 | カバー XYZ-500 | 在庫・履歴とも未使用（商品削除機能の確認用） |
+| フィルター品 | F-100 | エアフィルター F-100 | 製造番号 FS-0001（出庫済み） |
+| フィルター品 | F-200 | オイルフィルター F-200 | 製造番号 FS-0002（在庫中、入荷日未確定） |
 
-出荷履歴には「出荷済み2件」「キャンセル1件」が入っている。
+出庫履歴には通常品「出庫済み1件」「キャンセル1件」、フィルター品「出庫済み1件」が入っている。
 
 ## 本実装に進む場合の申し送り
 
-- **製造番号のバーコード読み取り**：`BarcodeDetector` API と `getUserMedia` で実装済み。macOS の Chrome では実バーコードの読み取りを確認済みだが、**スマートフォン実機での読み取り精度・対応形式は本実装時に改めて検証する**（`BarcodeDetector` は Windows / Linux の Chrome では利用できないため、その環境では手入力にフォールバックする）。
-- **型名・寸法・図番のQR・写真読み取り**：QRに何がどの形式で入っているかを実物で確認してから設計する。本モックでは引き続きスコープ外。カメラを使うため、スマートフォンのブラウザから開ける Web アプリ構成が前提になる。
+- **製造番号のバーコード読み取り**：`BarcodeDetector` API と `getUserMedia` で実装済み（フィルター入庫）。macOS の Chrome では実バーコードの読み取りを確認済みだが、**スマートフォン実機での読み取り精度・対応形式は本実装時に改めて検証する**（`BarcodeDetector` は Windows / Linux の Chrome では利用できないため、その環境では手入力にフォールバックする）。
+- **商品コード・製品名のQR・写真読み取り**：QRに何がどの形式で入っているかを実物で確認してから設計する。本モックでは引き続きスコープ外。カメラを使うため、スマートフォンのブラウザから開ける Web アプリ構成が前提になる。
 - **データの共有**：localStorage は端末ごとに独立している。複数人で使うにはサーバー＋DBが必要。
-- **同時実行**：本実装では、同じ商品を2人が同時に出荷しないよう排他制御を検討する。
+- **同時実行**：本実装では、同じ在庫を2人が同時に出庫しないよう排他制御を検討する。
+- **部分出庫**：本モックでは行（ロット）単位の出庫のみ対応。数量の一部だけを出庫するニーズがあれば、
+  在庫数量の消費管理（出庫のたびに残数を計算する等）を本実装時に設計する。
 - **担当者名**：現状は自由入力。表記ゆれが問題になるなら候補リストからの選択を検討する。
