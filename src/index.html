@@ -44,14 +44,22 @@
         <div class="search__grid">
           <div class="form-field">
             <label for="search-code">商品コード</label>
-            <div class="field-row">
-              <input type="text" id="search-code" name="productCode" placeholder="例：ABC-100">
-              <button type="button" class="btn btn--ghost btn--sm" id="inventory-scan-btn">バーコードを読み取る</button>
-            </div>
+            <input type="text" id="search-code" name="productCode" placeholder="例：ABC-100">
           </div>
           <div class="form-field">
             <label for="search-name">製品名</label>
             <input type="text" id="search-name" name="productName" placeholder="例：アングルブラケット">
+          </div>
+          <div class="form-field">
+            <label for="search-serial">製造番号</label>
+            <div class="field-row">
+              <input type="text" id="search-serial" name="serialNo" placeholder="例：0001">
+              <button type="button" class="btn btn--ghost btn--sm" id="inventory-scan-btn">バーコードを読み取る</button>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="search-order">受注番号</label>
+            <input type="text" id="search-order" name="orderNo" placeholder="例：PJ-2026-001">
           </div>
           <div class="form-field">
             <label for="search-date">入荷日</label>
@@ -81,6 +89,8 @@
               <th>商品コード</th>
               <th>製品名</th>
               <th class="col-num">数量</th>
+              <th>製造番号</th>
+              <th>受注番号</th>
               <th>入荷日</th>
               <th>備考</th>
               <th class="col-action">操作</th>
@@ -148,6 +158,19 @@
             <p class="form-error" data-error-for="quantity"></p>
           </div>
           <div class="form-field">
+            <label for="inbound-serial">製造番号 <span class="optional">任意</span></label>
+            <div class="field-row">
+              <input type="text" id="inbound-serial" name="serialNo" placeholder="例：0001">
+              <button type="button" class="btn btn--ghost btn--sm" id="inbound-scan-btn">バーコードを読み取る</button>
+            </div>
+            <p class="form-error" data-error-for="serialNo"></p>
+          </div>
+          <div class="form-field">
+            <label for="inbound-order">受注番号 <span class="req">必須</span></label>
+            <input type="text" id="inbound-order" name="orderNo" placeholder="例：PJ-2026-001">
+            <p class="form-error" data-error-for="orderNo"></p>
+          </div>
+          <div class="form-field">
             <label for="inbound-received-by">入庫した人 <span class="req">必須</span></label>
             <input type="text" id="inbound-received-by" name="receivedBy" placeholder="例：丸山">
             <p class="form-error" data-error-for="receivedBy"></p>
@@ -193,6 +216,8 @@
               <th>商品コード</th>
               <th>製品名</th>
               <th class="col-num">数量</th>
+              <th>製造番号</th>
+              <th>受注番号</th>
               <th>入荷日</th>
               <th>備考</th>
               <th class="col-action">操作</th>
@@ -256,7 +281,7 @@
           </div>
           <div class="form-field form-field--wide">
             <label for="history-keyword">キーワード</label>
-            <input type="text" id="history-keyword" name="keyword" placeholder="商品コード・製品名・受注先・担当者など">
+            <input type="text" id="history-keyword" name="keyword" placeholder="商品コード・製品名・製造番号・受注番号・受注先・担当者など">
           </div>
         </form>
         <p class="count" id="history-count">0 件</p>
@@ -269,6 +294,8 @@
               <th>商品コード</th>
               <th>製品名</th>
               <th class="col-num">数量</th>
+              <th>製造番号</th>
+              <th>受注番号</th>
               <th>入荷日</th>
               <th>出庫した人</th>
               <th>受注先</th>
