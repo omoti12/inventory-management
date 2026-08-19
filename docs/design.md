@@ -12,7 +12,7 @@ HTML / CSS / 素の JavaScript のみで構成し、データはブラウザの 
 
 - ES Modules は `file://` で動かないため、classic script ＋ グローバル名前空間 `App` を使う。
   `src/index.html` をそのままダブルクリックしても動作する。
-- 外部 CDN・Web フォント・画像を使わず、オフラインで開ける。
+- 外部 CDN・Web フォント・画像を使わず、オフラインで開ける（バーコード読み取りライブラリのみ `src/js/vendor/` に取り込み済みで、実行時に外部へアクセスしない）。
 - 見た目はモダン（白基調・アクセント1色・余白多め・薄い影）。
 - 製造番号のバーコード読み取り（カメラ）を使う場合のみ、`http://localhost` などのセキュアなコンテキストが必要。
 - 通常品とフィルター品は、商品マスタ・在庫ともに `category` / `stockType` で分離した別ラインとして扱う。
@@ -28,7 +28,8 @@ src/js/ui.js              タブ切替・テーブル生成・トースト・確
 src/js/inventory.js       在庫一覧（通常品、明細 / 商品まとめ）＋検索＋選択
 src/js/products.js        商品管理（通常品の商品マスタの登録・編集・削除）
 src/js/inbound.js         入庫（通常品、商品コード/製品名の自由入力＋数量・受注番号・入庫した人など）
-src/js/scanner.js         バーコード読み取り（カメラ、BarcodeDetector API）
+src/js/scanner.js         バーコード読み取り（カメラ。BarcodeDetector API、無ければ vendor/zxing.min.js にフォールバック）
+src/js/vendor/            CDNを使わず取り込んだ外部ライブラリ（zxing.min.js など。詳細は vendor/README.md）
 src/js/shipping.js        出庫（通常品、必須項目チェック）
 src/js/history.js         出庫履歴（通常品）・キャンセル
 src/js/filter-products.js フィルター商品管理（フィルター品の商品マスタの登録・編集・削除）
@@ -213,7 +214,7 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 
 ## 本実装に進む場合の申し送り
 
-- **製造番号のバーコード読み取り**：`BarcodeDetector` API と `getUserMedia` で実装済み（フィルター入庫）。macOS の Chrome では実バーコードの読み取りを確認済みだが、**スマートフォン実機での読み取り精度・対応形式は本実装時に改めて検証する**（`BarcodeDetector` は Windows / Linux の Chrome では利用できないため、その環境では手入力にフォールバックする）。
+- **製造番号のバーコード読み取り**：`BarcodeDetector` API と `getUserMedia` で実装済み（フィルター入庫）。`BarcodeDetector` が使えない環境（Windows/Mac の Chrome など）では `src/js/vendor/zxing.min.js`（[zxing-js](https://github.com/zxing-js/library)、Apache-2.0）にフォールバックする。**スマートフォン実機・各種ブラウザでの読み取り精度は本実装時に改めて検証する**。
 - **商品コード・製品名のQR・写真読み取り**：QRに何がどの形式で入っているかを実物で確認してから設計する。本モックでは引き続きスコープ外。カメラを使うため、スマートフォンのブラウザから開ける Web アプリ構成が前提になる。
 - **データの共有**：localStorage は端末ごとに独立している。複数人で使うにはサーバー＋DBが必要。
 - **同時実行**：本実装では、同じ在庫を2人が同時に出庫しないよう排他制御を検討する。

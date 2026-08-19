@@ -1,5 +1,8 @@
 /* バーコードスキャナー：カメラ映像から製造番号などのバーコードを読み取るモーダル。
-   BarcodeDetector / getUserMedia が使えない環境では、理由を表示して手入力に誘導する。 */
+   ブラウザ標準の BarcodeDetector API があればそれを使い、無ければ vendor/zxing.min.js
+  （window.ZXing）にフォールバックする。Windows/Mac の Chrome など BarcodeDetector 未対応の
+   環境でも、これでカメラ読み取りができる。getUserMedia 自体が使えない環境では、理由を表示して
+   手入力に誘導する。 */
 window.App = window.App || {};
 
 App.scanner = (function () {
@@ -11,6 +14,7 @@ App.scanner = (function () {
   var dialog, viewport, video, hint, errorBox, manualButton, closeButton;
   var stream = null;
   var detector = null;
+  var zxingReader = null;
   var timerId = null;
   var resolvePromise = null;
   var initialized = false;
@@ -45,6 +49,10 @@ App.scanner = (function () {
     if (timerId !== null) {
       clearInterval(timerId);
       timerId = null;
+    }
+    if (zxingReader) {
+      try { zxingReader.reset(); } catch (e) { /* 既に停止済みなら無視 */ }
+      zxingReader = null;
     }
     if (stream) {
       stream.getTracks().forEach(function (track) { track.stop(); });
@@ -103,6 +111,17 @@ App.scanner = (function () {
     });
   }
 
+  /** BarcodeDetector が使えない環境向けのフォールバック（vendor/zxing.min.js）。 */
+  function startZXingDecode() {
+    zxingReader = new window.ZXing.BrowserMultiFormatReader();
+    zxingReader.decodeFromStream(stream, video, function (result) {
+      /* 検出できないフレームでは result が空のまま毎回呼ばれるので、値がある時だけ確定する。 */
+      if (result) finish(result.getText());
+    }).catch(function () {
+      /* ストリームが途中で閉じられた場合など。finish() 済みなら何もしない。 */
+    });
+  }
+
   /**
    * カメラ起動モーダルを開く。読み取れた値（キャンセル時は null）で解決する Promise を返す。
    * options.onDetect が渡されていれば、値が読み取れたときにそれも呼び出す。
@@ -130,20 +149,27 @@ App.scanner = (function () {
       showError(describeError(null));
       return promise;
     }
-    if (!window.BarcodeDetector) {
-      showError('このブラウザはバーコード読み取り（BarcodeDetector API）に対応していません。手入力してください。');
+
+    var useNative = !!window.BarcodeDetector;
+    var useZXing = !useNative && window.ZXing && typeof window.ZXing.BrowserMultiFormatReader === 'function';
+
+    if (!useNative && !useZXing) {
+      showError('このブラウザはバーコード読み取りに対応していません。手入力してください。');
       return promise;
     }
 
-    var formatsPromise = typeof BarcodeDetector.getSupportedFormats === 'function'
-      ? BarcodeDetector.getSupportedFormats()
-      : Promise.resolve(FORMATS);
+    var setupPromise = useNative
+      ? (typeof BarcodeDetector.getSupportedFormats === 'function'
+          ? BarcodeDetector.getSupportedFormats()
+          : Promise.resolve(FORMATS)
+        ).then(function (supported) {
+          var formats = FORMATS.filter(function (f) { return supported.indexOf(f) !== -1; });
+          if (formats.length === 0) formats = supported.length ? supported : FORMATS;
+          detector = new BarcodeDetector({ formats: formats });
+        })
+      : Promise.resolve();
 
-    formatsPromise.then(function (supported) {
-      var formats = FORMATS.filter(function (f) { return supported.indexOf(f) !== -1; });
-      if (formats.length === 0) formats = supported.length ? supported : FORMATS;
-      detector = new BarcodeDetector({ formats: formats });
-
+    setupPromise.then(function () {
       return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     }).then(function (mediaStream) {
       if (!dialog.open) {
@@ -154,7 +180,11 @@ App.scanner = (function () {
       stream = mediaStream;
       video.srcObject = stream;
       return video.play().then(function () {
-        timerId = setInterval(detectLoop, DETECT_INTERVAL);
+        if (useNative) {
+          timerId = setInterval(detectLoop, DETECT_INTERVAL);
+        } else {
+          startZXingDecode();
+        }
       });
     }).catch(function (err) {
       showError(describeError(err));
