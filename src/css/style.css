@@ -619,23 +619,31 @@ select:disabled {
   .form__foot { flex-wrap: wrap; }
 }
 
-/* --- 入力欄とボタンの横並び（製造番号のバーコード読み取りなど） -------- */
+/* --- 入力欄とボタンの横並び（商品コード・製造番号のバーコード読み取りなど） -------- */
 
-/* 入力欄と補助ボタンを横並びにする。列幅が足りないときはボタンを下へ折り返す。 */
+/* 入力欄と補助ボタンを常に横並びにする。列幅が狭いときは入力欄側を縮めて対応する。 */
 .field-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-2);
   align-items: stretch;
 }
 
 .field-row input {
-  flex: 1 1 120px;
+  flex: 1 1 80px;
   min-width: 0;
 }
 
 .field-row .btn {
   flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* スマホ幅など本当に狭いときだけ、ボタンを入力欄の下へ折り返す。 */
+@media (max-width: 480px) {
+  .field-row {
+    flex-wrap: wrap;
+  }
 }
 
 /* --- バーコードスキャナー ---------------------------------------------- */
