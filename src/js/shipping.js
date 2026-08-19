@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.shipping = (function () {
   'use strict';
 
-  var TARGET_COLUMNS = 6;
+  var TARGET_COLUMNS = 8;
 
   var targetIds = [];
   var form, itemsBody, countLabel, submitButton, hint;
@@ -67,6 +67,8 @@ App.shipping = (function () {
         item.productCode,
         item.productName,
         item.quantity + ' 個',
+        item.serialNo || '',
+        item.orderNo || '',
         item.arrivalDate || '—',
         item.remarks || ''
       ].forEach(function (value) {

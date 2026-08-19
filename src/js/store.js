@@ -132,10 +132,10 @@ App.store = (function () {
         item.remarks = text(item.remarks);
         item.arrivalDate = text(item.arrivalDate) || (text(item.arrivalMonth) ? text(item.arrivalMonth) + '-01' : '');
         delete item.arrivalMonth;
-        delete item.serialNo;
         changed = true;
       }
-      if (item.orderNo !== undefined) {
+      if (item.stockType === 'filter' && item.orderNo !== undefined) {
+        /* 受注番号はフィルター品では扱わない項目。 */
         delete item.orderNo;
         changed = true;
       }
@@ -308,8 +308,8 @@ App.store = (function () {
 
   /**
    * 保存用の item に商品マスタの商品コード・製品名を足した表示用オブジェクトを作る。
-   * 通常品（数量・入庫した人・備考）とフィルター品（製造番号）で持つ項目が異なるため、
-   * item が持つ項目をそのまま引き継いだ上で商品情報を合成する。
+   * 通常品（数量・製造番号・受注番号・入庫した人・備考）とフィルター品（製造番号のみ）で
+   * 持つ項目が異なるため、item が持つ項目をそのまま引き継いだ上で商品情報を合成する。
    */
   function decorate(item) {
     var product = findProduct(item.productId) || {};
@@ -322,6 +322,7 @@ App.store = (function () {
       receivedBy: item.receivedBy,
       remarks: item.remarks,
       serialNo: item.serialNo,
+      orderNo: item.orderNo,
       arrivalDate: item.arrivalDate,
       stockType: item.stockType,
       status: item.status,
@@ -340,6 +341,8 @@ App.store = (function () {
     var f = filter || {};
     if (text(f.productCode) && !includes(row.productCode, f.productCode)) return false;
     if (text(f.productName) && !includes(row.productName, f.productName)) return false;
+    if (text(f.serialNo) && !includes(row.serialNo, f.serialNo)) return false;
+    if (text(f.orderNo) && !includes(row.orderNo, f.orderNo)) return false;
     if (text(f.arrivalDate) && row.arrivalDate !== text(f.arrivalDate)) return false;
     return true;
   }
@@ -402,6 +405,7 @@ App.store = (function () {
 
   /**
    * 通常品を入庫登録する（商品コード・製品名は自由入力可。数量・入庫した人が必須）。
+   * 製造番号・受注番号は入庫画面では扱わない（在庫一覧の表示・検索用の項目）。
    * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
    */
   function addItem(data) {
@@ -441,6 +445,8 @@ App.store = (function () {
       id: uid('item'),
       productId: productId,
       quantity: toQuantity(input.quantity),
+      serialNo: text(input.serialNo),
+      orderNo: text(input.orderNo),
       arrivalDate: text(input.arrivalDate),
       receivedBy: text(input.receivedBy),
       remarks: text(input.remarks),
@@ -545,7 +551,7 @@ App.store = (function () {
     var keyword = text(f.keyword);
     if (!keyword) return true;
     return [
-      row.productCode, row.productName, row.serialNo,
+      row.productCode, row.productName, row.serialNo, row.orderNo,
       row.shippedBy, row.orderTo, row.endUser
     ].some(function (value) { return includes(value, keyword); });
   }
@@ -564,6 +570,7 @@ App.store = (function () {
           productName: row.productName || '',
           quantity: row.quantity,
           serialNo: row.serialNo || '',
+          orderNo: row.orderNo || '',
           arrivalDate: row.arrivalDate || '',
           remarks: row.remarks || '',
           shippedBy: shipment.shippedBy,

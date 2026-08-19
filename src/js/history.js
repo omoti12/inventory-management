@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.history = (function () {
   'use strict';
 
-  var COLUMNS = 10;
+  var COLUMNS = 12;
 
   var searchForm, body, countLabel;
 
@@ -63,6 +63,8 @@ App.history = (function () {
         row.productCode,
         row.productName,
         row.quantity + ' 個',
+        row.serialNo || '',
+        row.orderNo || '',
         row.arrivalDate || '—',
         row.shippedBy,
         row.orderTo,

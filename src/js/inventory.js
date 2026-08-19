@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.inventory = (function () {
   'use strict';
 
-  var DETAIL_COLUMNS = 7;
+  var DETAIL_COLUMNS = 9;
   var GROUP_COLUMNS = 3;
 
   var mode = 'detail';
@@ -19,6 +19,8 @@ App.inventory = (function () {
     return {
       productCode: data.get('productCode') || '',
       productName: data.get('productName') || '',
+      serialNo: data.get('serialNo') || '',
+      orderNo: data.get('orderNo') || '',
       arrivalDate: data.get('arrivalDate') || ''
     };
   }
@@ -80,6 +82,8 @@ App.inventory = (function () {
         item.productCode,
         item.productName,
         item.quantity + ' 個',
+        item.serialNo || '',
+        item.orderNo || '',
         item.arrivalDate || '—',
         item.remarks || ''
       ].forEach(function (value) {
@@ -178,8 +182,8 @@ App.inventory = (function () {
       scanButton.addEventListener('click', function () {
         App.scanner.open().then(function (value) {
           if (!value) return;
-          searchForm.elements.productCode.value = value;
-          App.ui.toast('商品コードを読み取りました：' + value, 'success');
+          searchForm.elements.serialNo.value = value;
+          App.ui.toast('製造番号を読み取りました：' + value, 'success');
           render();
         });
       });

@@ -20,14 +20,14 @@ App.seed = (function () {
   ];
 
   var STOCKS = [
-    { productId: 'seed-prod-1', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 10, remarks: '' },
-    { productId: 'seed-prod-2', arrivalDate: '2026-07-02', receivedBy: '田中', quantity: 5, remarks: '' },
-    { productId: 'seed-prod-3', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 3, remarks: 'キャンセル後に在庫へ戻った分を含む' },
-    { productId: 'seed-prod-4', arrivalDate: '', receivedBy: '田中', quantity: 20, remarks: '入荷日未確定' }
+    { productId: 'seed-prod-1', serialNo: 'SN-0001', orderNo: 'PJ-2026-001', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 10, remarks: '' },
+    { productId: 'seed-prod-2', serialNo: 'SN-0002', orderNo: 'PJ-2026-004', arrivalDate: '2026-07-02', receivedBy: '田中', quantity: 5, remarks: '' },
+    { productId: 'seed-prod-3', serialNo: 'SN-0003', orderNo: 'PJ-2026-002', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 3, remarks: 'キャンセル後に在庫へ戻った分を含む' },
+    { productId: 'seed-prod-4', serialNo: '', orderNo: 'PJ-2026-005', arrivalDate: '', receivedBy: '田中', quantity: 20, remarks: '入荷日未確定' }
   ];
 
   var SHIPPED_STOCKS = [
-    { productId: 'seed-prod-1', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 2, remarks: '' }
+    { productId: 'seed-prod-1', serialNo: 'SN-0004', orderNo: 'PJ-2026-001', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 2, remarks: '' }
   ];
 
   var FILTER_STOCKS = [
@@ -68,6 +68,8 @@ App.seed = (function () {
         id: 'seed-item-' + index,
         productId: stock.productId,
         quantity: stock.quantity,
+        serialNo: stock.serialNo || '',
+        orderNo: stock.orderNo || '',
         arrivalDate: stock.arrivalDate,
         receivedBy: stock.receivedBy,
         remarks: stock.remarks,
@@ -114,7 +116,7 @@ App.seed = (function () {
 
     /* キャンセル済み1件（通常品、履歴には残り、商品は在庫に戻っている） */
     var cancelledStock = {
-      productId: 'seed-prod-3', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 1, remarks: ''
+      productId: 'seed-prod-3', serialNo: 'SN-0005', orderNo: 'PJ-2026-002', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 1, remarks: ''
     };
     var cancelledItem = pushNormalItem(cancelledStock, 'in_stock');
     shipments.push({
