@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.inventory = (function () {
   'use strict';
 
-  var DETAIL_COLUMNS = 8;
+  var DETAIL_COLUMNS = 7;
   var GROUP_COLUMNS = 3;
 
   var mode = 'detail';
@@ -19,7 +19,6 @@ App.inventory = (function () {
     return {
       productCode: data.get('productCode') || '',
       productName: data.get('productName') || '',
-      orderNo: data.get('orderNo') || '',
       arrivalDate: data.get('arrivalDate') || ''
     };
   }
@@ -69,7 +68,7 @@ App.inventory = (function () {
       var checkbox = App.ui.el('input');
       checkbox.type = 'checkbox';
       checkbox.checked = isSelected(item.id);
-      checkbox.setAttribute('aria-label', item.productCode + ' ' + item.orderNo + ' を選択');
+      checkbox.setAttribute('aria-label', item.productCode + ' を選択');
       checkbox.addEventListener('change', function () {
         toggleSelection(item.id, checkbox.checked);
         syncSelectAll(items);
@@ -81,7 +80,6 @@ App.inventory = (function () {
         item.productCode,
         item.productName,
         item.quantity + ' 個',
-        item.orderNo,
         item.arrivalDate || '—',
         item.remarks || ''
       ].forEach(function (value) {
@@ -174,6 +172,18 @@ App.inventory = (function () {
     searchForm.addEventListener('input', onSearchInput);
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); render(); });
     searchForm.addEventListener('reset', function () { setTimeout(render, 0); });
+
+    var scanButton = document.getElementById('inventory-scan-btn');
+    if (scanButton) {
+      scanButton.addEventListener('click', function () {
+        App.scanner.open().then(function (value) {
+          if (!value) return;
+          searchForm.elements.productCode.value = value;
+          App.ui.toast('商品コードを読み取りました：' + value, 'success');
+          render();
+        });
+      });
+    }
 
     document.querySelectorAll('#inventory-modes .tab').forEach(function (tab) {
       tab.addEventListener('click', function () {

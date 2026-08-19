@@ -1,4 +1,4 @@
-/* 入庫：商品コード・製品名（自由入力可）と数量・受注番号・入庫した人などを入力して在庫に登録する。 */
+/* 入庫：商品コード・製品名（自由入力可）と数量・入庫した人などを入力して在庫に登録する。 */
 window.App = window.App || {};
 App.views = App.views || {};
 
@@ -6,7 +6,7 @@ App.inbound = (function () {
   'use strict';
 
   var CATEGORY = 'normal';
-  var INPUT_NAMES = ['productCode', 'productName', 'quantity', 'orderNo', 'receivedBy', 'arrivalDate', 'remarks'];
+  var INPUT_NAMES = ['productCode', 'productName', 'quantity', 'receivedBy', 'arrivalDate', 'remarks'];
 
   var form, codeField, nameField, codeList, nameList;
   var notice, noticeText;
@@ -46,7 +46,7 @@ App.inbound = (function () {
 
   function showCopyNotice(row) {
     notice.hidden = false;
-    noticeText.textContent = '「' + row.productCode + ' / 受注番号 ' + row.orderNo + '」をコピーしました。内容を確認して登録してください。';
+    noticeText.textContent = '「' + row.productCode + '」をコピーしました。内容を確認して登録してください。';
   }
 
   function hideCopyNotice() {
@@ -59,7 +59,6 @@ App.inbound = (function () {
     form.elements.productCode.value = row.productCode;
     form.elements.productName.value = row.productName;
     form.elements.quantity.value = row.quantity;
-    form.elements.orderNo.value = row.orderNo;
     form.elements.arrivalDate.value = row.arrivalDate || '';
     form.elements.remarks.value = row.remarks || '';
 

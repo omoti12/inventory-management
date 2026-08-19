@@ -5,8 +5,8 @@ App.views = App.views || {};
 App.filterShipping = (function () {
   'use strict';
 
-  var STOCK_COLUMNS = 6;
-  var TARGET_COLUMNS = 6;
+  var STOCK_COLUMNS = 5;
+  var TARGET_COLUMNS = 5;
 
   var selectedIds = [];
   var stockBody, stockCountLabel, selectAll;
@@ -95,8 +95,7 @@ App.filterShipping = (function () {
         item.productCode,
         item.productName,
         item.serialNo,
-        item.arrivalDate || '—',
-        item.projectNo
+        item.arrivalDate || '—'
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
@@ -131,8 +130,7 @@ App.filterShipping = (function () {
         item.productCode,
         item.productName,
         item.serialNo,
-        item.arrivalDate || '—',
-        item.projectNo
+        item.arrivalDate || '—'
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
