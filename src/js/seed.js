@@ -157,10 +157,42 @@ App.seed = (function () {
     return { products: products, items: items, shipments: shipments };
   }
 
-  /** 未投入なら初期データを入れる。 */
+  /**
+   * フィルター品のデモデータを追加する（既存の通常品データはそのまま）。
+   * 過去のバージョンで一度デモデータを投入済みのブラウザは、後からフィルター品の
+   * デモデータを追加してもそのままでは反映されない（初回だけ投入する仕組みのため）ので、
+   * フィルター商品が1件も無い場合に限りここで補充する。
+   */
+  function ensureFilterDemo() {
+    if (App.store.listProducts('filter').length > 0) return;
+
+    var f1 = App.store.addProduct({ productCode: 'F-100', productName: 'エアフィルター F-100', category: 'filter' }).product;
+    var f2 = App.store.addProduct({ productCode: 'F-200', productName: 'オイルフィルター F-200', category: 'filter' }).product;
+    var f3 = App.store.addProduct({ productCode: 'F-300', productName: '燃料フィルター F-300', category: 'filter' }).product;
+
+    /* フィルター入庫は入荷日付が必須のため、通常品のデモと違い空にはできない。 */
+    App.store.addFilterItem({ productId: f1.id, serialNo: 'FS-0001', arrivalDate: '2026-06-15' });
+    App.store.addFilterItem({ productId: f2.id, serialNo: 'FS-0002', arrivalDate: '2026-06-20' });
+    App.store.addFilterItem({ productId: f3.id, serialNo: 'FS-0003', arrivalDate: '2026-07-01' });
+
+    /* 出庫済み1件 */
+    var shippedItem = App.store.addFilterItem({ productId: f1.id, serialNo: 'FS-0004', arrivalDate: '2026-06-16' }).item;
+    App.store.ship([shippedItem.id], { shippedBy: 'テスト太郎', orderTo: '株式会社フィルター商事', endUser: '製造部　鈴木様' });
+
+    /* キャンセル済み1件（履歴に残し、在庫に戻す） */
+    var cancelledItem = App.store.addFilterItem({ productId: f3.id, serialNo: 'FS-0005', arrivalDate: '2026-07-02' }).item;
+    App.store.ship([cancelledItem.id], { shippedBy: '丸山', orderTo: '株式会社中村精機', endUser: '品質管理課　伊藤様' });
+    var justShipped = App.store.listFilterShipments().filter(function (s) { return s.itemId === cancelledItem.id; })[0];
+    if (justShipped) App.store.cancelShipment(justShipped.id);
+  }
+
+  /** 未投入なら初期データを入れる。投入済みのブラウザでも、フィルター品のデモが無ければ補充する。 */
   function ensure() {
-    if (App.store.isSeeded()) return;
-    reset();
+    if (!App.store.isSeeded()) {
+      reset();
+      return;
+    }
+    ensureFilterDemo();
   }
 
   /** デモデータを初期状態に戻す（既存データは破棄）。 */
