@@ -5,7 +5,17 @@ App.views = App.views || {};
 App.ui = (function () {
   'use strict';
 
-  var VIEWS = ['inventory', 'inbound', 'shipping', 'history', 'products'];
+  var VIEWS = [
+  'inventory',
+  'inbound',
+  'shipping',
+  'history',
+  'products',
+  'filter-inbound',
+  'filter-shipping',
+  'filter-history',
+  'filter-products'
+  ];
   var currentView = null;
 
   /* --- DOM ヘルパー ---------------------------------------------------- */

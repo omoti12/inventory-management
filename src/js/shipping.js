@@ -1,4 +1,4 @@
-/* 出荷：在庫一覧で選んだ商品に出荷情報を入力する。必須4項目が揃うまで出荷できない。 */
+/* 出庫：在庫一覧で選んだ商品に出庫情報を入力する。必須3項目が揃うまで出庫できない。 */
 window.App = window.App || {};
 App.views = App.views || {};
 
@@ -18,9 +18,8 @@ App.shipping = (function () {
     var data = new FormData(form);
     return {
       shippedBy: data.get('shippedBy') || '',
-      destination: data.get('destination') || '',
-      addressee: data.get('addressee') || '',
-      projectNo: data.get('projectNo') || ''
+      orderTo: data.get('orderTo') || '',
+      endUser: data.get('endUser') || ''
     };
   }
 
@@ -31,7 +30,7 @@ App.shipping = (function () {
     });
   }
 
-  /** 必須項目の充足状況を見て、出荷ボタンの活性と案内文を更新する。 */
+  /** 必須項目の充足状況を見て、出庫ボタンの活性と案内文を更新する。 */
   function updateSubmitState() {
     var missing = missingFields();
     var count = targets().length;
@@ -39,7 +38,7 @@ App.shipping = (function () {
     submitButton.disabled = missing.length > 0 || count === 0;
 
     if (count === 0) {
-      hint.textContent = '在庫一覧から出荷する商品を選択してください。';
+      hint.textContent = '在庫一覧から出庫する商品を選択してください。';
     } else if (missing.length > 0) {
       hint.textContent = '未入力：' + missing.map(function (f) { return f.label; }).join('、');
     } else {
@@ -58,19 +57,19 @@ App.shipping = (function () {
     countLabel.textContent = items.length + ' 個';
 
     if (items.length === 0) {
-      itemsBody.appendChild(App.ui.emptyRow(TARGET_COLUMNS, '出荷する商品が選択されていません。在庫一覧から選択してください。'));
+      itemsBody.appendChild(App.ui.emptyRow(TARGET_COLUMNS, '出庫する商品が選択されていません。在庫一覧から選択してください。'));
       return;
     }
 
     items.forEach(function (item) {
       var tr = App.ui.el('tr');
       [
-        item.modelName,
-        item.dimensions,
-        item.drawingNo,
-        item.serialNo,
-        App.ui.formatMonth(item.arrivalMonth),
-        item.projectNo
+        item.productCode,
+        item.productName,
+        item.quantity + ' 個',
+        item.orderNo,
+        item.arrivalDate || '—',
+        item.remarks || ''
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
@@ -91,18 +90,11 @@ App.shipping = (function () {
     updateSubmitState();
   }
 
-  /** 在庫一覧から呼ばれる。案件番号が1種類に定まるときだけ初期値を入れる。 */
+  /** 在庫一覧から呼ばれる。 */
   function start(ids) {
     targetIds = ids.slice();
     form.reset();
     App.ui.clearFieldErrors(form);
-
-    var projectNumbers = targets().map(function (item) { return item.projectNo; });
-    var unique = projectNumbers.filter(function (value, index) {
-      return projectNumbers.indexOf(value) === index;
-    });
-    if (unique.length === 1) form.elements.projectNo.value = unique[0];
-
     render();
   }
 
@@ -119,15 +111,11 @@ App.shipping = (function () {
     }
 
     var items = targets();
-    /* 宛先は任意入力なので、入力されているときだけ確認文に添える。 */
-    var to = input.addressee.trim()
-      ? input.destination + '／' + input.addressee
-      : input.destination;
 
     App.ui.confirm({
-      title: '出荷の確認',
-      message: items.length + ' 個の商品を「' + to + '」宛に出荷します。よろしいですか？',
-      okLabel: '出荷する'
+      title: '出庫の確認',
+      message: items.length + ' 個の商品を「' + input.orderTo + '／' + input.endUser + '」宛に出庫します。よろしいですか？',
+      okLabel: '出庫する'
     }).then(function (approved) {
       if (!approved) return;
 
@@ -143,7 +131,7 @@ App.shipping = (function () {
       App.inventory.clearSelection();
       App.inventory.render();
       App.history.render();
-      App.ui.toast(result.count + ' 個を出荷しました。出荷履歴に登録されています。', 'success');
+      App.ui.toast(result.count + ' 個を出庫しました。出庫履歴に登録されています。', 'success');
       App.ui.showView('inventory');
     });
   }

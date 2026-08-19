@@ -5,26 +5,29 @@ App.seed = (function () {
   'use strict';
 
   var PRODUCTS = [
-    { id: 'seed-prod-1', modelName: 'ABC-100', dimensions: '100×200', drawingNo: 'A-001' },
-    { id: 'seed-prod-2', modelName: 'DEF-200', dimensions: '150×300', drawingNo: 'B-014' },
-    { id: 'seed-prod-3', modelName: 'GH-3000', dimensions: '80×80', drawingNo: 'C-220' },
+    { id: 'seed-prod-1', productCode: 'ABC-100', productName: 'アングルブラケット ABC-100', category: 'normal' },
+    { id: 'seed-prod-2', productCode: 'DEF-200', productName: 'フランジ DEF-200', category: 'normal' },
+    { id: 'seed-prod-3', productCode: 'GH-3000', productName: 'ステー GH-3000', category: 'normal' },
     /* 在庫も履歴もないので削除できる商品（削除機能の確認用） */
-    { id: 'seed-prod-4', modelName: 'XYZ-500', dimensions: '60×120', drawingNo: 'D-330' }
+    { id: 'seed-prod-4', productCode: 'XYZ-500', productName: 'カバー XYZ-500', category: 'normal' },
+
+    { id: 'seed-fprod-1', productCode: 'F-100', productName: 'エアフィルター F-100', category: 'filter' },
+    { id: 'seed-fprod-2', productCode: 'F-200', productName: 'オイルフィルター F-200', category: 'filter' }
   ];
 
   var STOCKS = [
-    {
-      productId: 'seed-prod-1', arrivalMonth: '2026-06', projectNo: 'PJ-2026-001',
-      serials: ['0001', '0002', '0003', '0004', '0005', '0006', '0007', '0008', '0009', '0010', '0011', '0012']
-    },
-    {
-      productId: 'seed-prod-2', arrivalMonth: '2026-07', projectNo: 'PJ-2026-004',
-      serials: ['0101', '0102', '0103', '0104', '0105']
-    },
-    {
-      productId: 'seed-prod-3', arrivalMonth: '2026-05', projectNo: 'PJ-2026-002',
-      serials: ['S-001', 'S-002', 'S-003']
-    }
+    { productId: 'seed-prod-1', orderNo: 'PJ-2026-001', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 10, remarks: '' },
+    { productId: 'seed-prod-2', orderNo: 'PJ-2026-004', arrivalDate: '2026-07-02', receivedBy: '田中', quantity: 5, remarks: '' },
+    { productId: 'seed-prod-3', orderNo: 'PJ-2026-002', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 3, remarks: 'キャンセル後に在庫へ戻った分を含む' }
+  ];
+
+  var SHIPPED_STOCKS = [
+    { productId: 'seed-prod-1', orderNo: 'PJ-2026-001', arrivalDate: '2026-06-10', receivedBy: '丸山', quantity: 2, remarks: '' }
+  ];
+
+  var FILTER_STOCKS = [
+    { productId: 'seed-fprod-1', serialNo: 'FS-0001', arrivalDate: '2026-06-15', projectNo: 'PJ-F-2026-001' },
+    { productId: 'seed-fprod-2', serialNo: 'FS-0002', arrivalDate: '', projectNo: 'PJ-F-2026-002' }
   ];
 
   function daysAgo(days) {
@@ -35,9 +38,9 @@ App.seed = (function () {
     var products = PRODUCTS.map(function (product, index) {
       return {
         id: product.id,
-        modelName: product.modelName,
-        dimensions: product.dimensions,
-        drawingNo: product.drawingNo,
+        productCode: product.productCode,
+        productName: product.productName,
+        category: product.category,
         createdAt: daysAgo(60 - index)
       };
     });
@@ -45,56 +48,69 @@ App.seed = (function () {
     var items = [];
     var index = 0;
 
-    STOCKS.forEach(function (stock) {
-      stock.serials.forEach(function (serial) {
-        index += 1;
-        items.push({
-          id: 'seed-item-' + index,
-          productId: stock.productId,
-          serialNo: serial,
-          arrivalMonth: stock.arrivalMonth,
-          projectNo: stock.projectNo,
-          status: 'in_stock',
-          registeredAt: daysAgo(30 - (index % 20))
-        });
-      });
-    });
-
-    function find(productId, serialNo) {
-      for (var i = 0; i < items.length; i++) {
-        if (items[i].productId === productId && items[i].serialNo === serialNo) return items[i];
-      }
-      return null;
+    function pushNormalItem(stock, status) {
+      index += 1;
+      var item = {
+        id: 'seed-item-' + index,
+        productId: stock.productId,
+        quantity: stock.quantity,
+        orderNo: stock.orderNo,
+        arrivalDate: stock.arrivalDate,
+        receivedBy: stock.receivedBy,
+        remarks: stock.remarks,
+        stockType: 'normal',
+        status: status,
+        registeredAt: daysAgo(30 - (index % 20))
+      };
+      items.push(item);
+      return item;
     }
+
+    function pushFilterItem(stock, status) {
+      index += 1;
+      var item = {
+        id: 'seed-item-' + index,
+        productId: stock.productId,
+        serialNo: stock.serialNo,
+        arrivalDate: stock.arrivalDate,
+        projectNo: stock.projectNo,
+        stockType: 'filter',
+        status: status,
+        registeredAt: daysAgo(30 - (index % 20))
+      };
+      items.push(item);
+      return item;
+    }
+
+    STOCKS.forEach(function (stock) { pushNormalItem(stock, 'in_stock'); });
+    FILTER_STOCKS.forEach(function (stock) { pushFilterItem(stock, 'in_stock'); });
 
     var shipments = [];
 
-    /* 出荷済み2件（在庫からは外れる） */
-    ['0011', '0012'].forEach(function (serial, i) {
-      var item = find('seed-prod-1', serial);
-      item.status = 'shipped';
-      shipments.push({
-        id: 'seed-ship-' + (i + 1),
-        itemId: item.id,
-        shippedBy: '丸山',
-        destination: '株式会社山田製作所 東京営業所',
-        addressee: '営業部　佐藤様',
-        projectNo: 'PJ-2026-001',
-        shippedAt: daysAgo(3),
-        status: 'shipped',
-        cancelledAt: null
-      });
+    /* 出庫済み1件（在庫からは外れる） */
+    var shippedItem = pushNormalItem(SHIPPED_STOCKS[0], 'shipped');
+    shipments.push({
+      id: 'seed-ship-1',
+      itemId: shippedItem.id,
+      shippedBy: '丸山',
+      orderTo: '株式会社山田製作所 東京営業所',
+      endUser: '営業部　佐藤様',
+      shippedAt: daysAgo(3),
+      status: 'shipped',
+      cancelledAt: null
     });
 
     /* キャンセル済み1件（履歴には残り、商品は在庫に戻っている） */
-    var cancelledItem = find('seed-prod-3', 'S-003');
+    var cancelledStock = {
+      productId: 'seed-prod-3', orderNo: 'PJ-2026-002', arrivalDate: '2026-05-20', receivedBy: '丸山', quantity: 1, remarks: ''
+    };
+    var cancelledItem = pushNormalItem(cancelledStock, 'in_stock');
     shipments.push({
-      id: 'seed-ship-3',
+      id: 'seed-ship-2',
       itemId: cancelledItem.id,
       shippedBy: '田中',
-      destination: '株式会社鈴木工業 大阪工場',
-      addressee: '資材課　高橋様',
-      projectNo: 'PJ-2026-002',
+      orderTo: '株式会社鈴木工業 大阪工場',
+      endUser: '資材課　高橋様',
       shippedAt: daysAgo(6),
       status: 'cancelled',
       cancelledAt: daysAgo(5)

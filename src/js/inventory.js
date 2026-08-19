@@ -1,4 +1,4 @@
-/* 在庫一覧：検索・明細/型名まとめの切替・選択して出荷・コピー登録への受け渡し。 */
+/* 在庫一覧：検索・明細/商品まとめの切替・選択して出庫・コピー登録への受け渡し。 */
 window.App = window.App || {};
 App.views = App.views || {};
 
@@ -6,7 +6,7 @@ App.inventory = (function () {
   'use strict';
 
   var DETAIL_COLUMNS = 8;
-  var GROUP_COLUMNS = 4;
+  var GROUP_COLUMNS = 3;
 
   var mode = 'detail';
   var selectedIds = [];
@@ -17,15 +17,14 @@ App.inventory = (function () {
   function currentFilter() {
     var data = new FormData(searchForm);
     return {
-      modelName: data.get('modelName') || '',
-      drawingNo: data.get('drawingNo') || '',
-      serialNo: data.get('serialNo') || '',
-      projectNo: data.get('projectNo') || '',
-      arrivalMonth: data.get('arrivalMonth') || ''
+      productCode: data.get('productCode') || '',
+      productName: data.get('productName') || '',
+      orderNo: data.get('orderNo') || '',
+      arrivalDate: data.get('arrivalDate') || ''
     };
   }
 
-  /* 出荷やキャンセルで在庫状態が変わった商品を選択から外す。 */
+  /* 出庫やキャンセルで在庫状態が変わった商品を選択から外す。 */
   function pruneSelection() {
     selectedIds = selectedIds.filter(function (id) {
       var item = App.store.getItem(id);
@@ -70,7 +69,7 @@ App.inventory = (function () {
       var checkbox = App.ui.el('input');
       checkbox.type = 'checkbox';
       checkbox.checked = isSelected(item.id);
-      checkbox.setAttribute('aria-label', item.modelName + ' ' + item.serialNo + ' を選択');
+      checkbox.setAttribute('aria-label', item.productCode + ' ' + item.orderNo + ' を選択');
       checkbox.addEventListener('change', function () {
         toggleSelection(item.id, checkbox.checked);
         syncSelectAll(items);
@@ -79,12 +78,12 @@ App.inventory = (function () {
       tr.appendChild(checkCell);
 
       [
-        item.modelName,
-        item.dimensions,
-        item.drawingNo,
-        item.serialNo,
-        App.ui.formatMonth(item.arrivalMonth),
-        item.projectNo
+        item.productCode,
+        item.productName,
+        item.quantity + ' 個',
+        item.orderNo,
+        item.arrivalDate || '—',
+        item.remarks || ''
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
@@ -122,13 +121,12 @@ App.inventory = (function () {
 
     groups.forEach(function (group) {
       var tr = App.ui.el('tr', 'row-clickable');
-      tr.appendChild(App.ui.el('td', null, group.modelName));
-      tr.appendChild(App.ui.el('td', null, group.dimensions));
-      tr.appendChild(App.ui.el('td', null, group.drawingNo));
+      tr.appendChild(App.ui.el('td', null, group.productCode));
+      tr.appendChild(App.ui.el('td', null, group.productName));
       tr.appendChild(App.ui.el('td', 'col-num', group.count + ' 個'));
-      tr.title = 'クリックすると、この型名で明細を表示します';
+      tr.title = 'クリックすると、この商品コードで明細を表示します';
       tr.addEventListener('click', function () {
-        searchForm.elements.modelName.value = group.modelName;
+        searchForm.elements.productCode.value = group.productCode;
         setMode('detail');
         render();
       });
@@ -144,7 +142,7 @@ App.inventory = (function () {
     var groups = App.store.groupInStock(filter);
 
     countLabel.textContent = mode === 'group'
-      ? '該当 ' + items.length + ' 個 / ' + groups.length + ' 型名'
+      ? '該当 ' + items.length + ' 個 / ' + groups.length + ' 商品'
       : '該当 ' + items.length + ' 個';
 
     renderDetail(items);
@@ -204,7 +202,7 @@ App.inventory = (function () {
     setMode('detail');
   }
 
-  /** 出荷やキャンセル後に呼ばれ、選択を解除して再描画する。 */
+  /** 出庫やキャンセル後に呼ばれ、選択を解除して再描画する。 */
   function clearSelection() {
     selectedIds = [];
   }
