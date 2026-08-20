@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.filterHistory = (function () {
   'use strict';
 
-  var COLUMNS = 10;
+  var COLUMNS = 11;
 
   var searchForm, body, countLabel;
 
@@ -67,6 +67,7 @@ App.filterHistory = (function () {
         row.shippedBy,
         row.orderTo,
         row.endUser,
+        row.remarks || '',
         App.ui.formatDateTime(row.shippedAt)
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));

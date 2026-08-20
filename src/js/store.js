@@ -490,6 +490,7 @@ App.store = (function () {
       productId: text(input.productId),
       serialNo: text(input.serialNo),
       arrivalDate: text(input.arrivalDate),
+      remarks: text(input.remarks),
       stockType: 'filter',
       status: 'in_stock',
       registeredAt: new Date().toISOString()
@@ -536,6 +537,7 @@ App.store = (function () {
         shippedBy: text(input.shippedBy),
         orderTo: text(input.orderTo),
         endUser: text(input.endUser),
+        remarks: text(input.remarks),
         shippedAt: shippedAt,
         status: 'shipped',
         cancelledAt: null
@@ -554,7 +556,7 @@ App.store = (function () {
     if (!keyword) return true;
     return [
       row.productCode, row.productName, row.serialNo, row.orderNo,
-      row.shippedBy, row.orderTo, row.endUser
+      row.shippedBy, row.orderTo, row.endUser, row.remarks
     ].some(function (value) { return includes(value, keyword); });
   }
 
@@ -574,7 +576,8 @@ App.store = (function () {
           serialNo: row.serialNo || '',
           orderNo: row.orderNo || '',
           arrivalDate: row.arrivalDate || '',
-          remarks: row.remarks || '',
+          itemRemarks: row.remarks || '',
+          remarks: shipment.remarks || '',
           shippedBy: shipment.shippedBy,
           orderTo: shipment.orderTo,
           endUser: shipment.endUser,

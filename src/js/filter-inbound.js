@@ -6,7 +6,7 @@ App.filterInbound = (function () {
   'use strict';
 
   var CATEGORY = 'filter';
-  var INPUT_NAMES = ['productId', 'serialNo', 'arrivalDate'];
+  var INPUT_NAMES = ['productId', 'serialNo', 'arrivalDate', 'remarks'];
 
   var form, select, emptyNotice, submitButton;
 

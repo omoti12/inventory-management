@@ -19,7 +19,8 @@ App.shipping = (function () {
     return {
       shippedBy: data.get('shippedBy') || '',
       orderTo: data.get('orderTo') || '',
-      endUser: data.get('endUser') || ''
+      endUser: data.get('endUser') || '',
+      remarks: data.get('remarks') || ''
     };
   }
 
