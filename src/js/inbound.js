@@ -76,6 +76,16 @@ App.inbound = (function () {
     hideCopyNotice();
   }
 
+  /** Enterキーで送信してしまわず、次の項目に移動する。備考欄（複数行）は改行を優先する。 */
+  function onKeydown(event) {
+    if (event.key !== 'Enter' || event.target.tagName === 'TEXTAREA') return;
+    event.preventDefault();
+    var index = INPUT_NAMES.indexOf(event.target.name);
+    if (index === -1 || index === INPUT_NAMES.length - 1) return;
+    var nextField = form.elements[INPUT_NAMES[index + 1]];
+    if (nextField) nextField.focus();
+  }
+
   function onSubmit(event) {
     event.preventDefault();
 
@@ -104,6 +114,7 @@ App.inbound = (function () {
     noticeText = document.getElementById('inbound-copy-text');
 
     form.addEventListener('submit', onSubmit);
+    form.addEventListener('keydown', onKeydown);
     form.addEventListener('input', function (event) {
       /* 入力し直したらその項目のエラー表示を消す。 */
       var name = event.target.name;
