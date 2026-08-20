@@ -224,9 +224,11 @@ App.store = (function () {
     var usage = { total: 0, inStock: 0, shipped: 0 };
     items.forEach(function (item) {
       if (item.productId !== productId) return;
-      usage.total += 1;
-      if (item.status === 'in_stock') usage.inStock += 1;
-      else usage.shipped += 1;
+      /* フィルター品は数量の概念が無く1行＝1個。通常品は quantity を合計する。 */
+      var qty = item.stockType === 'filter' ? 1 : toQuantity(item.quantity);
+      usage.total += qty;
+      if (item.status === 'in_stock') usage.inStock += qty;
+      else usage.shipped += qty;
     });
     return usage;
   }
