@@ -236,6 +236,11 @@
             <input type="text" id="shipping-end-user" name="endUser" placeholder="例：営業部　○○様">
             <p class="form-error" data-error-for="endUser"></p>
           </div>
+          <div class="form-field form-field--wide">
+            <label for="shipping-remarks">備考 <span class="optional">任意</span></label>
+            <textarea id="shipping-remarks" name="remarks" rows="2" placeholder="申し送りがあれば入力してください"></textarea>
+            <p class="form-error" data-error-for="remarks"></p>
+          </div>
         </div>
 
         <div class="form__foot">
@@ -287,6 +292,7 @@
               <th>出庫した人</th>
               <th>受注先</th>
               <th>エンドユーザー</th>
+              <th>備考</th>
               <th>出庫日時</th>
               <th>状態</th>
               <th class="col-action">操作</th>
@@ -409,6 +415,12 @@
             <p class="form-error" data-error-for="arrivalDate"></p>
           </div>
 
+          <div class="form-field form-field--wide">
+            <label for="filter-inbound-remarks">備考 <span class="optional">任意</span></label>
+            <textarea id="filter-inbound-remarks" name="remarks" rows="2" placeholder="申し送りがあれば入力してください"></textarea>
+            <p class="form-error" data-error-for="remarks"></p>
+          </div>
+
         </div>
 
         <div class="form__foot">
@@ -455,6 +467,7 @@
               <th>製品名</th>
               <th>製造番号</th>
               <th>入荷日</th>
+              <th>備考</th>
             </tr>
           </thead>
           <tbody id="filter-shipping-stock-body"></tbody>
@@ -475,6 +488,7 @@
               <th>製品名</th>
               <th>製造番号</th>
               <th>入荷日</th>
+              <th>備考</th>
               <th class="col-action">操作</th>
             </tr>
           </thead>
@@ -503,6 +517,11 @@
             <label for="filter-shipping-end-user">エンドユーザー <span class="req">必須</span></label>
             <input type="text" id="filter-shipping-end-user" name="endUser" placeholder="例：営業部　○○様">
             <p class="form-error" data-error-for="endUser"></p>
+          </div>
+          <div class="form-field form-field--wide">
+            <label for="filter-shipping-remarks">備考 <span class="optional">任意</span></label>
+            <textarea id="filter-shipping-remarks" name="remarks" rows="2" placeholder="申し送りがあれば入力してください"></textarea>
+            <p class="form-error" data-error-for="remarks"></p>
           </div>
         </div>
 
@@ -553,6 +572,7 @@
               <th>出庫した人</th>
               <th>受注先</th>
               <th>エンドユーザー</th>
+              <th>備考</th>
               <th>出庫日時</th>
               <th>状態</th>
               <th class="col-action">操作</th>

@@ -5,8 +5,8 @@ App.views = App.views || {};
 App.filterShipping = (function () {
   'use strict';
 
-  var STOCK_COLUMNS = 5;
-  var TARGET_COLUMNS = 5;
+  var STOCK_COLUMNS = 6;
+  var TARGET_COLUMNS = 6;
 
   var selectedIds = [];
   var stockBody, stockCountLabel, selectAll;
@@ -37,7 +37,8 @@ App.filterShipping = (function () {
     return {
       shippedBy: data.get('shippedBy') || '',
       orderTo: data.get('orderTo') || '',
-      endUser: data.get('endUser') || ''
+      endUser: data.get('endUser') || '',
+      remarks: data.get('remarks') || ''
     };
   }
 
@@ -95,7 +96,8 @@ App.filterShipping = (function () {
         item.productCode,
         item.productName,
         item.serialNo,
-        item.arrivalDate || '—'
+        item.arrivalDate || '—',
+        item.remarks || ''
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
@@ -130,7 +132,8 @@ App.filterShipping = (function () {
         item.productCode,
         item.productName,
         item.serialNo,
-        item.arrivalDate || '—'
+        item.arrivalDate || '—',
+        item.remarks || ''
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
