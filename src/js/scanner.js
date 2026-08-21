@@ -2,22 +2,41 @@
    ブラウザ標準の BarcodeDetector API があればそれを使い、無ければ vendor/zxing.min.js
   （window.ZXing）にフォールバックする。Windows/Mac の Chrome など BarcodeDetector 未対応の
    環境でも、これでカメラ読み取りができる。getUserMedia 自体が使えない環境では、理由を表示して
-   手入力に誘導する。 */
+   手入力に誘導する。複数カメラがある端末（PCの内蔵/外付けWebカメラなど）では、
+   「カメラを切り替える」ボタンで別のカメラに切り替えられる。 */
 window.App = window.App || {};
 
 App.scanner = (function () {
   'use strict';
 
   var FORMATS = ['code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'codabar', 'upc_a', 'upc_e', 'qr_code'];
-  var DETECT_INTERVAL = 200;
+  /** ZXing（zxing-js）側のフォーマット名。POSSIBLE_FORMATS で絞り込み、探索を速くするために使う。 */
+  var ZXING_FORMAT_KEYS = {
+    code_128: 'CODE_128', code_39: 'CODE_39', ean_13: 'EAN_13', ean_8: 'EAN_8',
+    itf: 'ITF', codabar: 'CODABAR', upc_a: 'UPC_A', upc_e: 'UPC_E', qr_code: 'QR_CODE'
+  };
+  var DETECT_INTERVAL = 150;
+  var ZXING_SCAN_INTERVAL = 150;
+  var NATIVE_FAIL_LIMIT = 5;
+  var NATIVE_TIMEOUT_MS = 4000;
+  var CONFIRM_COUNT = 2;
+  /* バーコード読み取りには高解像度は不要。抑えることで1フレームの処理を軽くし、体感速度を上げる。 */
+  var VIDEO_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 } };
 
-  var dialog, viewport, video, hint, errorBox, manualButton, closeButton;
+  var dialog, viewport, video, hint, statusBox, errorBox, manualButton, closeButton, switchButton;
   var stream = null;
   var detector = null;
   var zxingReader = null;
   var timerId = null;
+  var nativeTimeoutId = null;
+  var nativeFailCount = 0;
   var resolvePromise = null;
   var initialized = false;
+  var useNative = false;
+  var videoDevices = [];
+  var currentDeviceIndex = -1;
+  var lastCandidate = null;
+  var candidateCount = 0;
 
   function ensureInit() {
     if (initialized) return;
@@ -26,12 +45,15 @@ App.scanner = (function () {
     viewport = document.getElementById('scanner-viewport');
     video = document.getElementById('scanner-video');
     hint = document.getElementById('scanner-hint');
+    statusBox = document.getElementById('scanner-status');
     errorBox = document.getElementById('scanner-error');
     manualButton = document.getElementById('scanner-manual');
     closeButton = document.getElementById('scanner-close');
+    switchButton = document.getElementById('scanner-switch-camera');
 
     closeButton.addEventListener('click', function () { finish(null); });
     manualButton.addEventListener('click', function () { finish(null); });
+    switchButton.addEventListener('click', switchCamera);
 
     /* Escキーや背景クリックで閉じられた場合も、確実にカメラを止めてから閉じる。 */
     dialog.addEventListener('cancel', function (event) {
@@ -47,9 +69,16 @@ App.scanner = (function () {
 
   function stopCamera() {
     if (timerId !== null) {
-      clearInterval(timerId);
+      clearTimeout(timerId);
       timerId = null;
     }
+    if (nativeTimeoutId !== null) {
+      clearTimeout(nativeTimeoutId);
+      nativeTimeoutId = null;
+    }
+    nativeFailCount = 0;
+    lastCandidate = null;
+    candidateCount = 0;
     if (zxingReader) {
       try { zxingReader.reset(); } catch (e) { /* 既に停止済みなら無視 */ }
       zxingReader = null;
@@ -64,6 +93,8 @@ App.scanner = (function () {
 
   function finish(value) {
     stopCamera();
+    videoDevices = [];
+    currentDeviceIndex = -1;
     if (dialog.open) dialog.close();
     var resolve = resolvePromise;
     resolvePromise = null;
@@ -76,6 +107,53 @@ App.scanner = (function () {
     errorBox.hidden = true;
     errorBox.textContent = '';
     manualButton.hidden = true;
+    switchButton.hidden = true;
+    updateStatus('');
+  }
+
+  /** 今どの方式・どのカメラで検出しようとしているかを、実機での切り分け用に画面へ出す。 */
+  function updateStatus(text) {
+    statusBox.textContent = text;
+    statusBox.hidden = !text;
+  }
+
+  function currentCameraLabel() {
+    if (currentDeviceIndex < 0 || !videoDevices[currentDeviceIndex]) return '';
+    var label = videoDevices[currentDeviceIndex].label;
+    return label || 'カメラ' + (currentDeviceIndex + 1);
+  }
+
+  function renderStatus() {
+    var mode = useNative ? 'ネイティブ(BarcodeDetector)' : 'ZXing(フォールバック)';
+    var text = '検出方式: ' + mode;
+    var camera = currentCameraLabel();
+    if (camera) text += ' / カメラ: ' + camera;
+    if (useNative && nativeFailCount > 0) {
+      text += ' / 連続失敗 ' + nativeFailCount + '/' + NATIVE_FAIL_LIMIT;
+    }
+    if (candidateCount > 0) {
+      text += ' / 確認中 ' + candidateCount + '/' + CONFIRM_COUNT;
+    }
+    updateStatus(text);
+  }
+
+  /**
+   * 1フレームだけの誤読（別のバーコードとして誤認識してしまう等）で確定しないよう、
+   * 同じ値が連続で読めたときだけ finish() する。バーコードを枠に収めたまま少し待てば、
+   * 正しい値であればすぐ連続一致するはず。
+   */
+  function handleCandidate(value) {
+    if (!value) return;
+    if (value === lastCandidate) {
+      candidateCount += 1;
+    } else {
+      lastCandidate = value;
+      candidateCount = 1;
+    }
+    renderStatus();
+    if (candidateCount >= CONFIRM_COUNT) {
+      finish(value);
+    }
   }
 
   /** 理由をモーダル内に表示し、カメラ映像の代わりに「手入力する」導線を出す。 */
@@ -113,25 +191,149 @@ App.scanner = (function () {
     return 'カメラを利用できませんでした。手入力してください。';
   }
 
+  /**
+   * 端末によっては BarcodeDetector 自体は存在するのに、内部実装（Android の場合は
+   * Google Play 開発者サービス側のモデル）が正しく動かず detect() が失敗し続けたり、
+   * 一度も検出できないまま固まって見えることがある。そうした端末でも読み取れるよう、
+   * 一定回数の連続失敗、または一定時間検出できなければ ZXing（純JS実装）に切り替える。
+   */
+  function switchToZXing(reason) {
+    if (timerId !== null) {
+      clearTimeout(timerId);
+      timerId = null;
+    }
+    if (nativeTimeoutId !== null) {
+      clearTimeout(nativeTimeoutId);
+      nativeTimeoutId = null;
+    }
+    detector = null;
+
+    if (!stream || zxingReader) return;
+
+    if (window.ZXing && typeof window.ZXing.BrowserMultiFormatReader === 'function') {
+      useNative = false;
+      lastCandidate = null;
+      candidateCount = 0;
+      startZXingDecode();
+      renderStatus();
+    } else {
+      showError(reason || 'この端末のカメラ読み取りがうまく機能しませんでした。手入力してください。');
+    }
+  }
+
+  /**
+   * detect() の完了を待たずに次の setInterval が積み重なると、処理が重い端末では
+   * 検出が渋滞してかえって遅くなる（体感の「読み込みが遅い」の主な原因）。
+   * そのため setInterval ではなく、1回終わってから次を予約する自走式にする。
+   */
   function detectLoop() {
-    if (!detector || video.readyState < 2) return;
+    timerId = null;
+    if (!detector || video.readyState < 2) {
+      if (detector) timerId = setTimeout(detectLoop, DETECT_INTERVAL);
+      return;
+    }
     detector.detect(video).then(function (codes) {
-      if (codes && codes.length > 0 && codes[0].rawValue) {
-        finish(codes[0].rawValue);
+      if (nativeFailCount !== 0) {
+        nativeFailCount = 0;
+        renderStatus();
       }
+      if (codes && codes.length > 0 && codes[0].rawValue) {
+        handleCandidate(codes[0].rawValue);
+      }
+      if (detector) timerId = setTimeout(detectLoop, DETECT_INTERVAL);
     }).catch(function () {
-      /* 1フレームの検出失敗は無視して次のフレームを待つ。 */
+      /* 1フレームだけの検出失敗は無視するが、連続で失敗し続ける場合は端末側の問題とみなす。 */
+      nativeFailCount += 1;
+      renderStatus();
+      if (nativeFailCount >= NATIVE_FAIL_LIMIT) {
+        switchToZXing();
+        return;
+      }
+      if (detector) timerId = setTimeout(detectLoop, DETECT_INTERVAL);
     });
   }
 
-  /** BarcodeDetector が使えない環境向けのフォールバック（vendor/zxing.min.js）。 */
+  function buildZXingHints() {
+    if (!window.ZXing || !window.ZXing.DecodeHintType || !window.ZXing.BarcodeFormat) return undefined;
+    var formats = [];
+    FORMATS.forEach(function (f) {
+      var key = ZXING_FORMAT_KEYS[f];
+      var value = key && window.ZXing.BarcodeFormat[key];
+      if (value !== undefined) formats.push(value);
+    });
+    if (formats.length === 0) return undefined;
+    var hints = new Map();
+    hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+    return hints;
+  }
+
+  /** BarcodeDetector が使えない環境向けのフォールバック（vendor/zxing.min.js）。
+   *  対応フォーマットを絞ることと、内部スキャン間隔を詰めることで速くする。 */
   function startZXingDecode() {
-    zxingReader = new window.ZXing.BrowserMultiFormatReader();
+    zxingReader = new window.ZXing.BrowserMultiFormatReader(buildZXingHints(), ZXING_SCAN_INTERVAL);
     zxingReader.decodeFromStream(stream, video, function (result) {
-      /* 検出できないフレームでは result が空のまま毎回呼ばれるので、値がある時だけ確定する。 */
-      if (result) finish(result.getText());
+      /* 検出できないフレームでは result が空のまま毎回呼ばれるので、値がある時だけ処理する。 */
+      if (result) handleCandidate(result.getText());
     }).catch(function () {
       /* ストリームが途中で閉じられた場合など。finish() 済みなら何もしない。 */
+    });
+  }
+
+  function beginDetection() {
+    lastCandidate = null;
+    candidateCount = 0;
+    if (useNative) {
+      nativeFailCount = 0;
+      timerId = setTimeout(detectLoop, 0);
+      /* エラーにはならず単に見つからない端末向けに、時間切れでもZXingへ切り替える。 */
+      nativeTimeoutId = setTimeout(function () { switchToZXing(); }, NATIVE_TIMEOUT_MS);
+    } else {
+      startZXingDecode();
+    }
+  }
+
+  /** 複数カメラがある場合に「カメラを切り替える」ボタンを出す。1台だけなら出さない。 */
+  function refreshDeviceList() {
+    if (!navigator.mediaDevices.enumerateDevices) return Promise.resolve();
+    return navigator.mediaDevices.enumerateDevices().then(function (devices) {
+      videoDevices = devices.filter(function (d) { return d.kind === 'videoinput'; });
+
+      var activeTrack = stream && stream.getVideoTracks()[0];
+      var activeId = activeTrack && activeTrack.getSettings && activeTrack.getSettings().deviceId;
+      currentDeviceIndex = videoDevices.findIndex(function (d) { return d.deviceId === activeId; });
+
+      switchButton.hidden = videoDevices.length < 2;
+    });
+  }
+
+  /** 今の映像・検出だけ止めて、新しいカメラに繋ぎ直す（ダイアログは開いたまま）。 */
+  function switchCamera() {
+    if (videoDevices.length < 2) return;
+    var nextIndex = (currentDeviceIndex + 1) % videoDevices.length;
+    var nextDeviceId = videoDevices[nextIndex].deviceId;
+
+    stopCamera();
+    hint.hidden = false;
+    errorBox.hidden = true;
+
+    var constraints = Object.assign({}, VIDEO_CONSTRAINTS, { deviceId: { exact: nextDeviceId } });
+    navigator.mediaDevices.getUserMedia({ video: constraints })
+      .then(function (mediaStream) { return attachAndDetect(mediaStream); })
+      .catch(function (err) { showError(describeError(err)); });
+  }
+
+  function attachAndDetect(mediaStream) {
+    if (!dialog.open) {
+      mediaStream.getTracks().forEach(function (track) { track.stop(); });
+      return Promise.resolve();
+    }
+    stream = mediaStream;
+    video.srcObject = stream;
+    return video.play().then(function () {
+      beginDetection();
+      return refreshDeviceList();
+    }).then(function () {
+      renderStatus();
     });
   }
 
@@ -163,7 +365,7 @@ App.scanner = (function () {
       return promise;
     }
 
-    var useNative = !!window.BarcodeDetector;
+    useNative = !!window.BarcodeDetector;
     var useZXing = !useNative && window.ZXing && typeof window.ZXing.BrowserMultiFormatReader === 'function';
 
     if (!useNative && !useZXing) {
@@ -183,22 +385,10 @@ App.scanner = (function () {
       : Promise.resolve();
 
     setupPromise.then(function () {
-      return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      var constraints = Object.assign({}, VIDEO_CONSTRAINTS, { facingMode: 'environment' });
+      return navigator.mediaDevices.getUserMedia({ video: constraints });
     }).then(function (mediaStream) {
-      if (!dialog.open) {
-        /* カメラ起動待ちの間にユーザーが閉じていた場合は、そのまま停止する。 */
-        mediaStream.getTracks().forEach(function (track) { track.stop(); });
-        return;
-      }
-      stream = mediaStream;
-      video.srcObject = stream;
-      return video.play().then(function () {
-        if (useNative) {
-          timerId = setInterval(detectLoop, DETECT_INTERVAL);
-        } else {
-          startZXingDecode();
-        }
-      });
+      return attachAndDetect(mediaStream);
     }).catch(function (err) {
       showError(describeError(err));
     });

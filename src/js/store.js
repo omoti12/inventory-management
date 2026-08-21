@@ -375,7 +375,7 @@ App.store = (function () {
     return listByStockType('filter', filter);
   }
 
-  /** 在庫中の商品を商品マスタ単位でまとめ、数量合計を付けて返す。 */
+  /** 在庫中の商品を商品マスタ単位でまとめ、数量合計と該当する在庫のIDを付けて返す。 */
   function groupInStock(filter) {
     var map = {};
     var order = [];
@@ -385,11 +385,13 @@ App.store = (function () {
           productId: row.productId,
           productCode: row.productCode,
           productName: row.productName,
-          count: 0
+          count: 0,
+          itemIds: []
         };
         order.push(row.productId);
       }
       map[row.productId].count += toQuantity(row.quantity) || 0;
+      map[row.productId].itemIds.push(row.id);
     });
     return order.map(function (key) { return map[key]; });
   }

@@ -1,35 +1,26 @@
-/* フィルター出庫：フィルター在庫から出庫する商品を選び、出庫情報を入力する（元の出庫を参考に作成）。 */
+/* フィルター出庫：フィルター在庫一覧で選んだ商品に出庫情報を入力する（通常の出庫を参考に作成）。 */
 window.App = window.App || {};
 App.views = App.views || {};
 
 App.filterShipping = (function () {
   'use strict';
 
-  var STOCK_COLUMNS = 6;
   var TARGET_COLUMNS = 6;
 
-  var selectedIds = [];
-  var stockBody, stockCountLabel, selectAll;
+  var targetIds = [];
   var form, itemsBody, countLabel, submitButton, hint;
 
-  function stockItems() {
-    return App.store.listFilterInStock();
+  /** 入荷日が古いものから先に出庫する（入荷日不明のものは後ろに回す）。 */
+  function byArrivalDateAsc(a, b) {
+    var da = a.arrivalDate || '9999-99-99';
+    var db = b.arrivalDate || '9999-99-99';
+    return da < db ? -1 : da > db ? 1 : 0;
   }
 
   function targets() {
-    return App.store.getItems(selectedIds).filter(function (item) { return item.status === 'in_stock'; });
-  }
-
-  function isSelected(id) {
-    return selectedIds.indexOf(id) !== -1;
-  }
-
-  function toggleSelection(id, checked) {
-    if (checked && !isSelected(id)) {
-      selectedIds.push(id);
-    } else if (!checked) {
-      selectedIds = selectedIds.filter(function (value) { return value !== id; });
-    }
+    return App.store.getItems(targetIds)
+      .filter(function (item) { return item.status === 'in_stock'; })
+      .sort(byArrivalDateAsc);
   }
 
   function values() {
@@ -49,6 +40,7 @@ App.filterShipping = (function () {
     });
   }
 
+  /** 必須項目の充足状況を見て、出庫ボタンの活性と案内文を更新する。 */
   function updateSubmitState() {
     var missing = missingFields();
     var count = targets().length;
@@ -56,7 +48,7 @@ App.filterShipping = (function () {
     submitButton.disabled = missing.length > 0 || count === 0;
 
     if (count === 0) {
-      hint.textContent = '上のフィルター在庫から出庫する商品を選択してください。';
+      hint.textContent = 'フィルター在庫一覧から出庫する商品を選択してください。';
     } else if (missing.length > 0) {
       hint.textContent = '未入力：' + missing.map(function (f) { return f.label; }).join('、');
     } else {
@@ -64,55 +56,8 @@ App.filterShipping = (function () {
     }
   }
 
-  function renderStock() {
-    var items = stockItems();
-    App.ui.clear(stockBody);
-    stockCountLabel.textContent = '該当 ' + items.length + ' 個';
-
-    if (items.length === 0) {
-      stockBody.appendChild(App.ui.emptyRow(STOCK_COLUMNS, 'フィルター在庫がありません。'));
-      selectAll.checked = false;
-      selectAll.disabled = true;
-      return;
-    }
-
-    selectAll.disabled = false;
-    items.forEach(function (item) {
-      var tr = App.ui.el('tr');
-
-      var checkCell = App.ui.el('td', 'col-check');
-      var checkbox = App.ui.el('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = isSelected(item.id);
-      checkbox.setAttribute('aria-label', item.productCode + ' ' + item.serialNo + ' を選択');
-      checkbox.addEventListener('change', function () {
-        toggleSelection(item.id, checkbox.checked);
-        render();
-      });
-      checkCell.appendChild(checkbox);
-      tr.appendChild(checkCell);
-
-      [
-        item.productCode,
-        item.productName,
-        item.serialNo,
-        item.arrivalDate || '—',
-        item.remarks || ''
-      ].forEach(function (value) {
-        tr.appendChild(App.ui.el('td', null, value));
-      });
-
-      stockBody.appendChild(tr);
-    });
-
-    var visible = items.length;
-    var checked = items.filter(function (item) { return isSelected(item.id); }).length;
-    selectAll.checked = visible > 0 && checked === visible;
-    selectAll.indeterminate = checked > 0 && checked < visible;
-  }
-
   function removeTarget(id) {
-    toggleSelection(id, false);
+    targetIds = targetIds.filter(function (value) { return value !== id; });
     render();
   }
 
@@ -122,7 +67,7 @@ App.filterShipping = (function () {
     countLabel.textContent = items.length + ' 個';
 
     if (items.length === 0) {
-      itemsBody.appendChild(App.ui.emptyRow(TARGET_COLUMNS, '出庫する商品が選択されていません。上のフィルター在庫から選択してください。'));
+      itemsBody.appendChild(App.ui.emptyRow(TARGET_COLUMNS, '出庫する商品が選択されていません。フィルター在庫一覧から選択してください。'));
       return;
     }
 
@@ -149,19 +94,17 @@ App.filterShipping = (function () {
     });
   }
 
-  /* 出庫やキャンセルで在庫状態が変わった商品を選択から外す。 */
-  function pruneSelection() {
-    selectedIds = selectedIds.filter(function (id) {
-      var item = App.store.getItem(id);
-      return item && item.status === 'in_stock';
-    });
-  }
-
   function render() {
-    pruneSelection();
-    renderStock();
     renderTargets();
     updateSubmitState();
+  }
+
+  /** フィルター在庫一覧から呼ばれる。 */
+  function start(ids) {
+    targetIds = ids.slice();
+    form.reset();
+    App.ui.clearFieldErrors(form);
+    render();
   }
 
   function onSubmit(event) {
@@ -185,35 +128,29 @@ App.filterShipping = (function () {
     }).then(function (approved) {
       if (!approved) return;
 
-      var result = App.store.ship(selectedIds, input);
+      var result = App.store.ship(targetIds, input);
       if (!result.ok) {
         App.ui.showFieldErrors(form, result.errors);
         return;
       }
 
-      selectedIds = [];
+      targetIds = [];
       form.reset();
       App.ui.clearFieldErrors(form);
-      render();
+      App.filterInventory.clearSelection();
+      App.filterInventory.render();
       App.filterHistory.render();
       App.ui.toast(result.count + ' 個を出庫しました。フィルター出庫履歴に登録されています。', 'success');
+      App.ui.showView('filter-inventory');
     });
   }
 
   function init() {
-    stockBody = document.getElementById('filter-shipping-stock-body');
-    stockCountLabel = document.getElementById('filter-shipping-stock-count');
-    selectAll = document.getElementById('filter-shipping-select-all');
     form = document.getElementById('filter-shipping-form');
     itemsBody = document.getElementById('filter-shipping-items-body');
     countLabel = document.getElementById('filter-shipping-count');
     submitButton = document.getElementById('filter-shipping-submit');
     hint = document.getElementById('filter-shipping-hint');
-
-    selectAll.addEventListener('change', function () {
-      stockItems().forEach(function (item) { toggleSelection(item.id, selectAll.checked); });
-      render();
-    });
 
     form.addEventListener('submit', onSubmit);
     form.addEventListener('input', function (event) {
@@ -241,5 +178,5 @@ App.filterShipping = (function () {
 
   App.views['filter-shipping'] = { onShow: render };
 
-  return { init: init, render: render };
+  return { init: init, start: start, render: render };
 })();

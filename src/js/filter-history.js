@@ -42,7 +42,7 @@ App.filterHistory = (function () {
       }
 
       render();
-      App.filterShipping.render();
+      App.filterInventory.render();
       App.ui.toast('出庫をキャンセルし、在庫に戻しました。', 'success');
     });
   }
