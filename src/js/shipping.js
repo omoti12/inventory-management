@@ -5,13 +5,24 @@ App.views = App.views || {};
 App.shipping = (function () {
   'use strict';
 
-  var TARGET_COLUMNS = 8;
+  var TARGET_COLUMNS = 6;
+  var SEARCH_COLUMNS = 6;
 
   var targetIds = [];
   var form, itemsBody, countLabel, submitButton, hint;
+  var searchForm, searchBody;
+
+  /** 入荷日が古いものから先に出庫する（入荷日不明のものは後ろに回す）。 */
+  function byArrivalDateAsc(a, b) {
+    var da = a.arrivalDate || '9999-99-99';
+    var db = b.arrivalDate || '9999-99-99';
+    return da < db ? -1 : da > db ? 1 : 0;
+  }
 
   function targets() {
-    return App.store.getItems(targetIds).filter(function (item) { return item.status === 'in_stock'; });
+    return App.store.getItems(targetIds)
+      .filter(function (item) { return item.status === 'in_stock'; })
+      .sort(byArrivalDateAsc);
   }
 
   function values() {
@@ -52,13 +63,18 @@ App.shipping = (function () {
     render();
   }
 
+  function addTarget(id) {
+    if (targetIds.indexOf(id) === -1) targetIds.push(id);
+    render();
+  }
+
   function renderTargets() {
     var items = targets();
     App.ui.clear(itemsBody);
     countLabel.textContent = items.length + ' 個';
 
     if (items.length === 0) {
-      itemsBody.appendChild(App.ui.emptyRow(TARGET_COLUMNS, '出庫する商品が選択されていません。在庫一覧から選択してください。'));
+      itemsBody.appendChild(App.ui.emptyRow(TARGET_COLUMNS, '出庫する商品が選択されていません。上の検索から追加するか、在庫一覧から選択してください。'));
       return;
     }
 
@@ -67,11 +83,9 @@ App.shipping = (function () {
       [
         item.productCode,
         item.productName,
-        item.quantity + ' 個',
-        item.serialNo || '',
-        item.orderNo || '',
         item.arrivalDate || '—',
-        item.remarks || ''
+        item.remarks || '',
+        item.quantity + ' 個'
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
@@ -87,8 +101,52 @@ App.shipping = (function () {
     });
   }
 
+  function searchFilter() {
+    var data = new FormData(searchForm);
+    return {
+      productCode: data.get('productCode') || '',
+      productName: data.get('productName') || ''
+    };
+  }
+
+  /** まだ出庫リストに入れていない在庫を検索結果として表示する。 */
+  function renderSearch() {
+    var items = App.store.listInStock(searchFilter())
+      .filter(function (item) { return targetIds.indexOf(item.id) === -1; });
+
+    App.ui.clear(searchBody);
+
+    if (items.length === 0) {
+      searchBody.appendChild(App.ui.emptyRow(SEARCH_COLUMNS, '該当する在庫がありません。'));
+      return;
+    }
+
+    items.forEach(function (item) {
+      var tr = App.ui.el('tr');
+      [
+        item.productCode,
+        item.productName,
+        item.arrivalDate || '—',
+        item.remarks || '',
+        item.quantity + ' 個'
+      ].forEach(function (value) {
+        tr.appendChild(App.ui.el('td', null, value));
+      });
+
+      var actionCell = App.ui.el('td', 'col-action');
+      var addButton = App.ui.el('button', 'btn btn--ghost btn--sm', '追加');
+      addButton.type = 'button';
+      addButton.addEventListener('click', function () { addTarget(item.id); });
+      actionCell.appendChild(addButton);
+      tr.appendChild(actionCell);
+
+      searchBody.appendChild(tr);
+    });
+  }
+
   function render() {
     renderTargets();
+    renderSearch();
     updateSubmitState();
   }
 
@@ -144,6 +202,13 @@ App.shipping = (function () {
     countLabel = document.getElementById('shipping-count');
     submitButton = document.getElementById('shipping-submit');
     hint = document.getElementById('shipping-hint');
+    searchForm = document.getElementById('shipping-search');
+    searchBody = document.getElementById('shipping-search-body');
+
+    var onSearchInput = App.ui.debounce(renderSearch, 200);
+    searchForm.addEventListener('input', onSearchInput);
+    searchForm.addEventListener('submit', function (event) { event.preventDefault(); renderSearch(); });
+    searchForm.addEventListener('reset', function () { setTimeout(renderSearch, 0); });
 
     form.addEventListener('submit', onSubmit);
     form.addEventListener('input', function (event) {

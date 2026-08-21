@@ -11,6 +11,7 @@ App.init = function () {
   App.inventory.init();
   App.products.init();
   App.filterProducts.init();
+  App.filterInventory.init();
   App.inbound.init();
   App.filterInbound.init();
   App.shipping.init();
@@ -35,6 +36,8 @@ App.init = function () {
       App.filterInbound.refreshProducts();
       App.history.render();
       App.filterHistory.render();
+      App.filterInventory.clearSelection();
+      App.filterInventory.render();
       App.filterShipping.render();
       App.ui.showView('inventory');
       App.ui.toast('デモデータを初期状態に戻しました。', 'success');

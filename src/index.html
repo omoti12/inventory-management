@@ -20,6 +20,7 @@
       <button type="button" class="tab" data-view="shipping">出庫</button>
       <button type="button" class="tab" data-view="history">出庫履歴</button>
       <button type="button" class="tab" data-view="products">商品管理</button>
+      <button type="button" class="tab" data-view="filter-inventory">フィルター在庫一覧</button>
       <button type="button" class="tab" data-view="filter-inbound">フィルター入庫</button>
       <button type="button" class="tab" data-view="filter-shipping">フィルター出庫</button>
       <button type="button" class="tab" data-view="filter-history">フィルター出庫履歴</button>
@@ -51,17 +52,6 @@
             <input type="text" id="search-name" name="productName" placeholder="例：アングルブラケット">
           </div>
           <div class="form-field">
-            <label for="search-serial">製造番号</label>
-            <div class="field-row">
-              <input type="text" id="search-serial" name="serialNo" placeholder="例：0001">
-              <button type="button" class="btn btn--ghost btn--sm" id="inventory-scan-btn">バーコードを読み取る</button>
-            </div>
-          </div>
-          <div class="form-field">
-            <label for="search-order">受注番号</label>
-            <input type="text" id="search-order" name="orderNo" placeholder="例：PJ-2026-001">
-          </div>
-          <div class="form-field">
             <label for="search-date">入荷日</label>
             <input type="date" id="search-date" name="arrivalDate">
           </div>
@@ -75,24 +65,22 @@
     <div class="card">
       <div class="card__head">
         <div class="tabs tabs--sub" id="inventory-modes">
-          <button type="button" class="tab" data-mode="detail">明細</button>
           <button type="button" class="tab" data-mode="group">商品まとめ</button>
+          <button type="button" class="tab" data-mode="detail">明細</button>
         </div>
         <p class="count" id="inventory-count">該当 0 個</p>
       </div>
 
-      <div class="table-wrap" id="inventory-detail-wrap">
+      <div class="table-wrap" id="inventory-detail-wrap" hidden>
         <table class="table">
           <thead>
             <tr>
               <th class="col-check"><input type="checkbox" id="inventory-select-all" aria-label="すべて選択"></th>
               <th>商品コード</th>
               <th>製品名</th>
-              <th class="col-num">数量</th>
-              <th>製造番号</th>
-              <th>受注番号</th>
               <th>入荷日</th>
               <th>備考</th>
+              <th class="col-num">数量</th>
               <th class="col-action">操作</th>
             </tr>
           </thead>
@@ -100,13 +88,15 @@
         </table>
       </div>
 
-      <div class="table-wrap" id="inventory-group-wrap" hidden>
+      <div class="table-wrap" id="inventory-group-wrap">
         <table class="table">
           <thead>
             <tr>
+              <th class="col-check"><input type="checkbox" id="inventory-group-select-all" aria-label="すべて選択"></th>
               <th>商品コード</th>
               <th>製品名</th>
               <th class="col-num">在庫数量</th>
+              <th class="col-action">操作</th>
             </tr>
           </thead>
           <tbody id="inventory-group-body"></tbody>
@@ -193,6 +183,42 @@
 
     <div class="card">
       <div class="card__head">
+        <h3 class="card__title">在庫を検索して追加</h3>
+      </div>
+      <form class="search" id="shipping-search" autocomplete="off">
+        <div class="search__grid">
+          <div class="form-field">
+            <label for="shipping-search-code">商品コード</label>
+            <input type="text" id="shipping-search-code" name="productCode" placeholder="例：ABC-100">
+          </div>
+          <div class="form-field">
+            <label for="shipping-search-name">製品名</label>
+            <input type="text" id="shipping-search-name" name="productName" placeholder="例：アングルブラケット">
+          </div>
+        </div>
+        <div class="search__foot">
+          <button type="reset" class="btn btn--ghost">条件をクリア</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th>入荷日</th>
+              <th>備考</th>
+              <th class="col-num">数量</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="shipping-search-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
         <h3 class="card__title">出庫する商品</h3>
         <p class="count" id="shipping-count">0 個</p>
       </div>
@@ -202,11 +228,9 @@
             <tr>
               <th>商品コード</th>
               <th>製品名</th>
-              <th class="col-num">数量</th>
-              <th>製造番号</th>
-              <th>受注番号</th>
               <th>入荷日</th>
               <th>備考</th>
+              <th class="col-num">数量</th>
               <th class="col-action">操作</th>
             </tr>
           </thead>
@@ -273,7 +297,7 @@
           </div>
           <div class="form-field form-field--wide">
             <label for="history-keyword">キーワード</label>
-            <input type="text" id="history-keyword" name="keyword" placeholder="商品コード・製品名・製造番号・受注番号・受注先・担当者など">
+            <input type="text" id="history-keyword" name="keyword" placeholder="商品コード・製品名・受注先・担当者など">
           </div>
         </form>
         <p class="count" id="history-count">0 件</p>
@@ -286,8 +310,6 @@
               <th>商品コード</th>
               <th>製品名</th>
               <th class="col-num">数量</th>
-              <th>製造番号</th>
-              <th>受注番号</th>
               <th>入荷日</th>
               <th>出庫した人</th>
               <th>受注先</th>
@@ -356,6 +378,75 @@
           </thead>
           <tbody id="products-body"></tbody>
         </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ フィルター在庫一覧 ============ -->
+  <section class="view" id="view-filter-inventory" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">フィルター在庫一覧</h2>
+        <p class="view__desc">出庫されていないフィルター商品を表示します。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <form class="search" id="filter-inventory-search" autocomplete="off">
+        <div class="search__grid">
+          <div class="form-field">
+            <label for="filter-inventory-search-code">商品コード</label>
+            <input type="text" id="filter-inventory-search-code" name="productCode" placeholder="例：F-100">
+          </div>
+          <div class="form-field">
+            <label for="filter-inventory-search-name">製品名</label>
+            <input type="text" id="filter-inventory-search-name" name="productName" placeholder="例：エアフィルター">
+          </div>
+          <div class="form-field">
+            <label for="filter-inventory-search-serial">製造番号</label>
+            <div class="field-row">
+              <input type="text" id="filter-inventory-search-serial" name="serialNo" placeholder="例：0001">
+              <button type="button" class="btn btn--ghost btn--sm" id="filter-inventory-scan-btn">バーコードを読み取る</button>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="filter-inventory-search-date">入荷日</label>
+            <input type="date" id="filter-inventory-search-date" name="arrivalDate">
+          </div>
+        </div>
+        <div class="search__foot">
+          <button type="reset" class="btn btn--ghost">条件をクリア</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <p class="count" id="filter-inventory-count">該当 0 個</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="filter-inventory-select-all" aria-label="すべて選択"></th>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th>製造番号</th>
+              <th>入荷日</th>
+              <th>備考</th>
+            </tr>
+          </thead>
+          <tbody id="filter-inventory-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="action-bar" id="filter-inventory-action-bar" hidden>
+      <span class="action-bar__text" id="filter-inventory-selected-text">0 個を選択中</span>
+      <div class="action-bar__buttons">
+        <button type="button" class="btn btn--ghost" id="filter-inventory-clear-selection">選択を解除</button>
+        <button type="button" class="btn btn--primary" id="filter-inventory-to-shipping">選択した商品をフィルター出庫</button>
       </div>
     </div>
   </section>
@@ -449,29 +540,7 @@
     <div class="view__head">
       <div>
         <h2 class="view__title">フィルター出庫</h2>
-        <p class="view__desc">フィルター在庫から出庫する商品を選び、出庫情報を入力します。</p>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card__head">
-        <h3 class="card__title">フィルター在庫</h3>
-        <p class="count" id="filter-shipping-stock-count">該当 0 個</p>
-      </div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th class="col-check"><input type="checkbox" id="filter-shipping-select-all" aria-label="すべて選択"></th>
-              <th>商品コード</th>
-              <th>製品名</th>
-              <th>製造番号</th>
-              <th>入荷日</th>
-              <th>備考</th>
-            </tr>
-          </thead>
-          <tbody id="filter-shipping-stock-body"></tbody>
-        </table>
+        <p class="view__desc">フィルター在庫一覧で選んだ商品に出庫情報を入力します。</p>
       </div>
     </div>
 
@@ -698,8 +767,10 @@
     <div class="scanner__guide" aria-hidden="true"></div>
   </div>
   <p class="scanner__hint" id="scanner-hint">バーコードを枠内に収めてください。</p>
+  <p class="scanner__status" id="scanner-status" hidden></p>
   <p class="scanner__error" id="scanner-error" hidden></p>
   <div class="dialog__foot">
+    <button type="button" class="btn btn--ghost" id="scanner-switch-camera" hidden>カメラを切り替える</button>
     <button type="button" class="btn btn--ghost" id="scanner-manual" hidden>手入力する</button>
     <button type="button" class="btn btn--ghost" id="scanner-close">閉じる</button>
   </div>
@@ -711,6 +782,7 @@
 <script src="js/inventory.js"></script>
 <script src="js/products.js"></script>
 <script src="js/filter-products.js"></script>
+<script src="js/filter-inventory.js"></script>
 <script src="js/vendor/zxing.min.js"></script>
 <script src="js/scanner.js"></script>
 <script src="js/inbound.js"></script>
