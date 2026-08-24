@@ -79,12 +79,12 @@ App.inventory = (function () {
       [
         item.productCode,
         item.productName,
-        item.arrivalDate || '—',
-        item.remarks || '',
-        item.quantity + ' 個'
+        item.arrivalDate || '—'
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
+      tr.appendChild(App.ui.el('td', 'col-remarks', item.remarks || ''));
+      tr.appendChild(App.ui.el('td', null, item.quantity + ' 個'));
 
       var actionCell = App.ui.el('td', 'col-action');
       var copyButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'コピー');

@@ -1,4 +1,4 @@
-/* バーコードスキャナー：カメラ映像から製造番号などのバーコードを読み取るモーダル。
+/* QRコードスキャナー：カメラ映像から製造番号などのQRコードを読み取るモーダル。
    ブラウザ標準の BarcodeDetector API があればそれを使い、無ければ vendor/zxing.min.js
   （window.ZXing）にフォールバックする。Windows/Mac の Chrome など BarcodeDetector 未対応の
    環境でも、これでカメラ読み取りができる。getUserMedia 自体が使えない環境では、理由を表示して
@@ -9,18 +9,18 @@ window.App = window.App || {};
 App.scanner = (function () {
   'use strict';
 
-  var FORMATS = ['code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'codabar', 'upc_a', 'upc_e', 'qr_code'];
+  /* QRコードのみを読み取る（1Dバーコードは対象外）。 */
+  var FORMATS = ['qr_code'];
   /** ZXing（zxing-js）側のフォーマット名。POSSIBLE_FORMATS で絞り込み、探索を速くするために使う。 */
   var ZXING_FORMAT_KEYS = {
-    code_128: 'CODE_128', code_39: 'CODE_39', ean_13: 'EAN_13', ean_8: 'EAN_8',
-    itf: 'ITF', codabar: 'CODABAR', upc_a: 'UPC_A', upc_e: 'UPC_E', qr_code: 'QR_CODE'
+    qr_code: 'QR_CODE'
   };
   var DETECT_INTERVAL = 150;
   var ZXING_SCAN_INTERVAL = 150;
   var NATIVE_FAIL_LIMIT = 5;
   var NATIVE_TIMEOUT_MS = 4000;
   var CONFIRM_COUNT = 2;
-  /* バーコード読み取りには高解像度は不要。抑えることで1フレームの処理を軽くし、体感速度を上げる。 */
+  /* QRコード読み取りには高解像度は不要。抑えることで1フレームの処理を軽くし、体感速度を上げる。 */
   var VIDEO_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 } };
 
   var dialog, viewport, video, hint, statusBox, errorBox, manualButton, closeButton, switchButton;
@@ -138,8 +138,8 @@ App.scanner = (function () {
   }
 
   /**
-   * 1フレームだけの誤読（別のバーコードとして誤認識してしまう等）で確定しないよう、
-   * 同じ値が連続で読めたときだけ finish() する。バーコードを枠に収めたまま少し待てば、
+   * 1フレームだけの誤読（別のQRコードとして誤認識してしまう等）で確定しないよう、
+   * 同じ値が連続で読めたときだけ finish() する。QRコードを枠に収めたまま少し待てば、
    * 正しい値であればすぐ連続一致するはず。
    */
   function handleCandidate(value) {
@@ -369,7 +369,7 @@ App.scanner = (function () {
     var useZXing = !useNative && window.ZXing && typeof window.ZXing.BrowserMultiFormatReader === 'function';
 
     if (!useNative && !useZXing) {
-      showError('このブラウザはバーコード読み取りに対応していません。手入力してください。');
+      showError('このブラウザはQRコード読み取りに対応していません。手入力してください。');
       return promise;
     }
 
@@ -397,7 +397,7 @@ App.scanner = (function () {
   }
 
   function showFallbackAlert() {
-    window.alert('この画面ではバーコード読み取り機能を利用できません。手入力してください。');
+    window.alert('この画面ではQRコード読み取り機能を利用できません。手入力してください。');
   }
 
   return {

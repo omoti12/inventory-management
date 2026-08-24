@@ -77,11 +77,11 @@ App.filterShipping = (function () {
         item.productCode,
         item.productName,
         item.serialNo,
-        item.arrivalDate || '—',
-        item.remarks || ''
+        item.arrivalDate || '—'
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
+      tr.appendChild(App.ui.el('td', 'col-remarks', item.remarks || ''));
 
       var actionCell = App.ui.el('td', 'col-action');
       var removeButton = App.ui.el('button', 'btn btn--ghost btn--sm', '外す');

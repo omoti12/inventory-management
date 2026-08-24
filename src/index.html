@@ -149,7 +149,7 @@
           </div>
           <div class="form-field">
             <label for="inbound-received-by">入庫した人 <span class="req">必須</span></label>
-            <input type="text" id="inbound-received-by" name="receivedBy" placeholder="例：丸山">
+            <input type="text" id="inbound-received-by" name="receivedBy" placeholder="例：日東太郎">
             <p class="form-error" data-error-for="receivedBy"></p>
           </div>
           <div class="form-field">
@@ -183,71 +183,13 @@
 
     <div class="card">
       <div class="card__head">
-        <h3 class="card__title">在庫を検索して追加</h3>
-      </div>
-      <form class="search" id="shipping-search" autocomplete="off">
-        <div class="search__grid">
-          <div class="form-field">
-            <label for="shipping-search-code">商品コード</label>
-            <input type="text" id="shipping-search-code" name="productCode" placeholder="例：ABC-100">
-          </div>
-          <div class="form-field">
-            <label for="shipping-search-name">製品名</label>
-            <input type="text" id="shipping-search-name" name="productName" placeholder="例：アングルブラケット">
-          </div>
-        </div>
-        <div class="search__foot">
-          <button type="reset" class="btn btn--ghost">条件をクリア</button>
-        </div>
-      </form>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>商品コード</th>
-              <th>製品名</th>
-              <th>入荷日</th>
-              <th>備考</th>
-              <th class="col-num">数量</th>
-              <th class="col-action">操作</th>
-            </tr>
-          </thead>
-          <tbody id="shipping-search-body"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card__head">
-        <h3 class="card__title">出庫する商品</h3>
-        <p class="count" id="shipping-count">0 個</p>
-      </div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>商品コード</th>
-              <th>製品名</th>
-              <th>入荷日</th>
-              <th>備考</th>
-              <th class="col-num">数量</th>
-              <th class="col-action">操作</th>
-            </tr>
-          </thead>
-          <tbody id="shipping-items-body"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card__head">
         <h3 class="card__title">出庫情報</h3>
       </div>
       <form class="form" id="shipping-form" autocomplete="off" novalidate>
         <div class="form__grid">
           <div class="form-field">
             <label for="shipping-person">出庫した人 <span class="req">必須</span></label>
-            <input type="text" id="shipping-person" name="shippedBy" placeholder="例：丸山">
+            <input type="text" id="shipping-person" name="shippedBy" placeholder="例：日東太郎">
             <p class="form-error" data-error-for="shippedBy"></p>
           </div>
           <div class="form-field">
@@ -272,6 +214,61 @@
           <button type="submit" class="btn btn--primary" id="shipping-submit" disabled>出庫する</button>
         </div>
       </form>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">出庫する商品</h3>
+        <p class="count" id="shipping-count">0 個</p>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th class="col-num">数量</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="shipping-items-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">在庫を検索して追加</h3>
+      </div>
+      <form class="search" id="shipping-search" autocomplete="off">
+        <div class="search__grid">
+          <div class="form-field">
+            <label for="shipping-search-code">商品コード</label>
+            <input type="text" id="shipping-search-code" name="productCode" placeholder="例：ABC-100">
+          </div>
+          <div class="form-field">
+            <label for="shipping-search-name">製品名</label>
+            <input type="text" id="shipping-search-name" name="productName" placeholder="例：アングルブラケット">
+          </div>
+        </div>
+        <div class="search__foot">
+          <button type="reset" class="btn btn--ghost">条件をクリア</button>
+        </div>
+      </form>
+      <div class="table-wrap table-wrap--scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th class="col-num">在庫数量</th>
+              <th class="col-num">出荷したい数</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="shipping-search-body"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -406,7 +403,7 @@
             <label for="filter-inventory-search-serial">製造番号</label>
             <div class="field-row">
               <input type="text" id="filter-inventory-search-serial" name="serialNo" placeholder="例：0001">
-              <button type="button" class="btn btn--ghost btn--sm" id="filter-inventory-scan-btn">バーコードを読み取る</button>
+              <button type="button" class="btn btn--ghost btn--sm" id="filter-inventory-scan-btn">QRコードを読み取る</button>
             </div>
           </div>
           <div class="form-field">
@@ -489,7 +486,7 @@
             </label>
             <div class="field-row">
               <input type="text" id="filter-inbound-serial" name="serialNo" placeholder="例：0001">
-              <button type="button" class="btn btn--ghost btn--sm" id="filter-inbound-scan-btn">バーコードを読み取る</button>
+              <button type="button" class="btn btn--ghost btn--sm" id="filter-inbound-scan-btn">QRコードを読み取る</button>
             </div>
             <p class="form-error" data-error-for="serialNo"></p>
           </div>
@@ -574,7 +571,7 @@
         <div class="form__grid">
           <div class="form-field">
             <label for="filter-shipping-person">出庫した人 <span class="req">必須</span></label>
-            <input type="text" id="filter-shipping-person" name="shippedBy" placeholder="例：丸山">
+            <input type="text" id="filter-shipping-person" name="shippedBy" placeholder="例：日東太郎">
             <p class="form-error" data-error-for="shippedBy"></p>
           </div>
           <div class="form-field">
@@ -761,12 +758,12 @@
 </dialog>
 
 <dialog class="dialog dialog--scanner" id="scanner-dialog">
-  <h3 class="dialog__title">バーコードを読み取る</h3>
+  <h3 class="dialog__title">QRコードを読み取る</h3>
   <div class="scanner__viewport" id="scanner-viewport">
     <video id="scanner-video" class="scanner__video" playsinline muted></video>
     <div class="scanner__guide" aria-hidden="true"></div>
   </div>
-  <p class="scanner__hint" id="scanner-hint">バーコードを枠内に収めてください。</p>
+  <p class="scanner__hint" id="scanner-hint">QRコードを枠内に収めてください。</p>
   <p class="scanner__status" id="scanner-status" hidden></p>
   <p class="scanner__error" id="scanner-error" hidden></p>
   <div class="dialog__foot">

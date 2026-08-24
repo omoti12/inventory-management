@@ -5,8 +5,8 @@ App.views = App.views || {};
 App.shipping = (function () {
   'use strict';
 
-  var TARGET_COLUMNS = 6;
-  var SEARCH_COLUMNS = 6;
+  var TARGET_COLUMNS = 4;
+  var SEARCH_COLUMNS = 5;
 
   var targetIds = [];
   var form, itemsBody, countLabel, submitButton, hint;
@@ -58,42 +58,60 @@ App.shipping = (function () {
     }
   }
 
-  function removeTarget(id) {
-    targetIds = targetIds.filter(function (value) { return value !== id; });
+  /** 出庫対象を商品コード単位でまとめ、数量を合算する（バッチ違いは区別しない）。 */
+  function targetGroups() {
+    var map = {};
+    var order = [];
+    targets().forEach(function (item) {
+      if (!map[item.productId]) {
+        map[item.productId] = {
+          productId: item.productId,
+          productCode: item.productCode,
+          productName: item.productName,
+          count: 0,
+          itemIds: []
+        };
+        order.push(item.productId);
+      }
+      map[item.productId].count += parseInt(item.quantity, 10) || 0;
+      map[item.productId].itemIds.push(item.id);
+    });
+    return order.map(function (key) { return map[key]; });
+  }
+
+  function removeTargetGroup(itemIds) {
+    targetIds = targetIds.filter(function (id) { return itemIds.indexOf(id) === -1; });
     render();
   }
 
-  function addTarget(id) {
-    if (targetIds.indexOf(id) === -1) targetIds.push(id);
+  /** 指定商品コードの在庫から、古いバッチ順に数量ぶんを確保して出庫対象に加える（必要ならバッチを分割する）。 */
+  function addGroupToTargets(productId, quantity) {
+    var ids = App.store.allocateForShipment(productId, quantity);
+    ids.forEach(function (id) { if (targetIds.indexOf(id) === -1) targetIds.push(id); });
     render();
   }
 
   function renderTargets() {
-    var items = targets();
+    var groups = targetGroups();
     App.ui.clear(itemsBody);
-    countLabel.textContent = items.length + ' 個';
+    var totalCount = groups.reduce(function (sum, group) { return sum + group.count; }, 0);
+    countLabel.textContent = totalCount + ' 個';
 
-    if (items.length === 0) {
+    if (groups.length === 0) {
       itemsBody.appendChild(App.ui.emptyRow(TARGET_COLUMNS, '出庫する商品が選択されていません。上の検索から追加するか、在庫一覧から選択してください。'));
       return;
     }
 
-    items.forEach(function (item) {
+    groups.forEach(function (group) {
       var tr = App.ui.el('tr');
-      [
-        item.productCode,
-        item.productName,
-        item.arrivalDate || '—',
-        item.remarks || '',
-        item.quantity + ' 個'
-      ].forEach(function (value) {
-        tr.appendChild(App.ui.el('td', null, value));
-      });
+      tr.appendChild(App.ui.el('td', null, group.productCode));
+      tr.appendChild(App.ui.el('td', null, group.productName));
+      tr.appendChild(App.ui.el('td', 'col-num', group.count + ' 個'));
 
       var actionCell = App.ui.el('td', 'col-action');
       var removeButton = App.ui.el('button', 'btn btn--ghost btn--sm', '外す');
       removeButton.type = 'button';
-      removeButton.addEventListener('click', function () { removeTarget(item.id); });
+      removeButton.addEventListener('click', function () { removeTargetGroup(group.itemIds); });
       actionCell.appendChild(removeButton);
       tr.appendChild(actionCell);
 
@@ -109,34 +127,66 @@ App.shipping = (function () {
     };
   }
 
-  /** まだ出庫リストに入れていない在庫を検索結果として表示する。 */
-  function renderSearch() {
-    var items = App.store.listInStock(searchFilter())
+  /** まだ出庫リストに入れていない在庫を、商品コード単位でまとめて集計する。 */
+  function searchGroups() {
+    var available = App.store.listInStock(searchFilter())
       .filter(function (item) { return targetIds.indexOf(item.id) === -1; });
+
+    var map = {};
+    var order = [];
+    available.forEach(function (item) {
+      if (!map[item.productId]) {
+        map[item.productId] = {
+          productId: item.productId,
+          productCode: item.productCode,
+          productName: item.productName,
+          count: 0
+        };
+        order.push(item.productId);
+      }
+      map[item.productId].count += parseInt(item.quantity, 10) || 0;
+    });
+    return order.map(function (key) { return map[key]; }).filter(function (g) { return g.count > 0; });
+  }
+
+  /** 商品まとめの一覧として検索結果を表示し、出荷したい数を指定して追加できるようにする。 */
+  function renderSearch() {
+    var groups = searchGroups();
 
     App.ui.clear(searchBody);
 
-    if (items.length === 0) {
+    if (groups.length === 0) {
       searchBody.appendChild(App.ui.emptyRow(SEARCH_COLUMNS, '該当する在庫がありません。'));
       return;
     }
 
-    items.forEach(function (item) {
+    groups.forEach(function (group) {
       var tr = App.ui.el('tr');
-      [
-        item.productCode,
-        item.productName,
-        item.arrivalDate || '—',
-        item.remarks || '',
-        item.quantity + ' 個'
-      ].forEach(function (value) {
-        tr.appendChild(App.ui.el('td', null, value));
-      });
+      tr.appendChild(App.ui.el('td', null, group.productCode));
+      tr.appendChild(App.ui.el('td', null, group.productName));
+      tr.appendChild(App.ui.el('td', 'col-num', group.count + ' 個'));
+
+      var qtyCell = App.ui.el('td', 'col-num');
+      var qtyInput = App.ui.el('input');
+      qtyInput.type = 'number';
+      qtyInput.min = '0';
+      qtyInput.max = String(group.count);
+      qtyInput.step = '1';
+      qtyInput.value = '0';
+      qtyInput.style.width = '80px';
+      qtyInput.setAttribute('aria-label', group.productCode + ' の出荷したい数');
+      qtyCell.appendChild(qtyInput);
+      tr.appendChild(qtyCell);
 
       var actionCell = App.ui.el('td', 'col-action');
       var addButton = App.ui.el('button', 'btn btn--ghost btn--sm', '追加');
       addButton.type = 'button';
-      addButton.addEventListener('click', function () { addTarget(item.id); });
+      addButton.addEventListener('click', function () {
+        var qty = parseInt(qtyInput.value, 10);
+        if (!qty || qty < 1) return;
+        if (qty > group.count) qty = group.count;
+        addGroupToTargets(group.productId, qty);
+      });
       actionCell.appendChild(addButton);
       tr.appendChild(actionCell);
 
@@ -171,10 +221,11 @@ App.shipping = (function () {
     }
 
     var items = targets();
+    var totalQty = items.reduce(function (sum, item) { return sum + (parseInt(item.quantity, 10) || 0); }, 0);
 
     App.ui.confirm({
       title: '出庫の確認',
-      message: items.length + ' 個の商品を「' + input.orderTo + '／' + input.endUser + '」宛に出庫します。よろしいですか？',
+      message: totalQty + ' 個の商品を「' + input.orderTo + '／' + input.endUser + '」宛に出庫します。よろしいですか？',
       okLabel: '出庫する'
     }).then(function (approved) {
       if (!approved) return;
@@ -191,7 +242,7 @@ App.shipping = (function () {
       App.inventory.clearSelection();
       App.inventory.render();
       App.history.render();
-      App.ui.toast(result.count + ' 個を出庫しました。出庫履歴に登録されています。', 'success');
+      App.ui.toast(totalQty + ' 個を出庫しました。出庫履歴に登録されています。', 'success');
       App.ui.showView('inventory');
     });
   }
