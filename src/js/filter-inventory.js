@@ -93,11 +93,11 @@ App.filterInventory = (function () {
         item.productCode,
         item.productName,
         item.serialNo,
-        item.arrivalDate || '—',
-        item.remarks || ''
+        item.arrivalDate || '—'
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
+      tr.appendChild(App.ui.el('td', 'col-remarks', item.remarks || ''));
 
       body.appendChild(tr);
     });

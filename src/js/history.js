@@ -66,12 +66,12 @@ App.history = (function () {
         row.arrivalDate || '—',
         row.shippedBy,
         row.orderTo,
-        row.endUser,
-        row.remarks || '',
-        App.ui.formatDateTime(row.shippedAt)
+        row.endUser
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });
+      tr.appendChild(App.ui.el('td', 'col-remarks', row.remarks || ''));
+      tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(row.shippedAt)));
 
       var statusCell = App.ui.el('td');
       statusCell.appendChild(statusBadge(row.status));

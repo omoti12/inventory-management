@@ -250,6 +250,12 @@ h1, h2, h3, p { margin: 0; }
 .search--inline .form-field { min-width: 160px; }
 .form-field--wide { min-width: 320px; flex: 1; }
 
+/* form__grid（入庫・出庫などのフォーム）の中では、320pxの最小幅がグリッドの列幅と
+   噛み合わず画面外にはみ出すことがあるため、行全体に跨がせて幅を確保する。 */
+.form__grid .form-field--wide {
+  grid-column: 1 / -1;
+}
+
 .form { padding: var(--space-5); }
 
 .form__foot {
@@ -436,6 +442,12 @@ select:disabled {
 
 .table-wrap[hidden] { display: none; }
 
+/* 検索結果が多くても枠内でスクロールさせ、ページ全体が間延びしないようにする。 */
+.table-wrap--scroll {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -462,6 +474,14 @@ select:disabled {
 .table .col-check { width: 44px; }
 .table .col-num { text-align: right; }
 .table .col-action { text-align: right; width: 1%; }
+
+/* 備考は自由記述で長くなりがちなので、この列だけ折り返して全文が見えるようにする。
+   width を指定しないと、他の nowrap 列に押されてこの列だけ極端に狭くなり、
+   （特に区切りのない日本語で）1文字ずつ改行されてしまう。 */
+.table .col-remarks {
+  white-space: normal;
+  min-width: 200px;
+}
 
 .row-empty td {
   text-align: center;
@@ -619,7 +639,7 @@ select:disabled {
   .form__foot { flex-wrap: wrap; }
 }
 
-/* --- 入力欄とボタンの横並び（商品コード・製造番号のバーコード読み取りなど） -------- */
+/* --- 入力欄とボタンの横並び（商品コード・製造番号のQRコード読み取りなど） -------- */
 
 /* 入力欄と補助ボタンを常に横並びにする。列幅が狭いときは入力欄側を縮めて対応する。 */
 .field-row {
@@ -646,7 +666,7 @@ select:disabled {
   }
 }
 
-/* --- バーコードスキャナー ---------------------------------------------- */
+/* --- QRコードスキャナー ---------------------------------------------- */
 
 .dialog--scanner {
   max-width: 420px;

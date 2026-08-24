@@ -405,6 +405,59 @@ App.store = (function () {
     return (ids || []).map(getItem).filter(Boolean);
   }
 
+  /**
+   * 指定した商品の在庫から、入荷日が古いバッチから順に指定数量ぶんを確保し、
+   * 出庫対象にできる item の id 配列を返す。ちょうど数量が合わないバッチは分割し、
+   * 端数は元のバッチに残したまま在庫として残す（通常品のみ。フィルター品は数量の
+   * 概念が無く1行＝1個のため対象外）。要求数量が在庫合計を超える場合は、
+   * 確保できるところまでの id を返す。
+   */
+  function allocateForShipment(productId, quantity) {
+    var need = toQuantity(quantity);
+    if (!productId || need <= 0) return [];
+
+    var candidates = items
+      .filter(function (item) {
+        return item.productId === productId && item.status === 'in_stock' && item.stockType !== 'filter';
+      })
+      .sort(function (a, b) {
+        var da = a.arrivalDate || '9999-99-99';
+        var db = b.arrivalDate || '9999-99-99';
+        return da < db ? -1 : da > db ? 1 : 0;
+      });
+
+    var resultIds = [];
+    for (var i = 0; i < candidates.length && need > 0; i++) {
+      var item = candidates[i];
+      var qty = toQuantity(item.quantity);
+      if (qty <= need) {
+        resultIds.push(item.id);
+        need -= qty;
+      } else {
+        var splitItem = {
+          id: uid('item'),
+          productId: item.productId,
+          quantity: need,
+          serialNo: item.serialNo,
+          orderNo: item.orderNo,
+          arrivalDate: item.arrivalDate,
+          receivedBy: item.receivedBy,
+          remarks: item.remarks,
+          stockType: item.stockType,
+          status: 'in_stock',
+          registeredAt: item.registeredAt
+        };
+        item.quantity = qty - need;
+        items.push(splitItem);
+        resultIds.push(splitItem.id);
+        need = 0;
+      }
+    }
+
+    save();
+    return resultIds;
+  }
+
   /* --- 入庫登録 --------------------------------------------------------- */
 
   /**
@@ -652,6 +705,7 @@ App.store = (function () {
     groupInStock: groupInStock,
     getItem: getItem,
     getItems: getItems,
+    allocateForShipment: allocateForShipment,
     addItem: addItem,
     addFilterItem: addFilterItem,
     ship: ship,

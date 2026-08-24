@@ -8,6 +8,6 @@
   （`https://unpkg.com/@zxing/library@0.23.0/umd/index.min.js` から取得）
 - ライセンス: Apache License 2.0（[zxing.LICENSE.txt](zxing.LICENSE.txt) を参照）
 - 用途: `BarcodeDetector` API に対応していないブラウザ（Windows/Mac の Chrome など）でも
-  カメラ映像からバーコードを読み取れるようにするためのフォールバック。`src/js/scanner.js` から
+  カメラ映像からQRコードを読み取れるようにするためのフォールバック。`src/js/scanner.js` から
   `window.ZXing` として参照する。
 - 変更は加えていない（配布されたビルドをそのまま配置）。
