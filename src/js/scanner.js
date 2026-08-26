@@ -41,6 +41,7 @@ App.scanner = (function () {
   var currentDeviceIndex = -1;
   var lastCandidate = null;
   var candidateCount = 0;
+  var attemptCount = 0;
 
   function ensureInit() {
     if (initialized) return;
@@ -129,7 +130,7 @@ App.scanner = (function () {
 
   function renderStatus() {
     var mode = useNative ? 'ネイティブ(BarcodeDetector)' : 'ZXing(フォールバック)';
-    var text = '検出方式: ' + mode;
+    var text = '検出方式: ' + mode + ' / 試行 ' + attemptCount + '回';
     var camera = currentCameraLabel();
     if (camera) text += ' / カメラ: ' + camera;
     if (useNative && nativeFailCount > 0) {
@@ -218,6 +219,7 @@ App.scanner = (function () {
       useNative = false;
       lastCandidate = null;
       candidateCount = 0;
+      attemptCount = 0;
       startZXingDecode();
       renderStatus();
     } else {
@@ -237,16 +239,16 @@ App.scanner = (function () {
       return;
     }
     detector.detect(video).then(function (codes) {
-      if (nativeFailCount !== 0) {
-        nativeFailCount = 0;
-        renderStatus();
-      }
+      attemptCount += 1;
+      nativeFailCount = 0;
+      renderStatus();
       if (codes && codes.length > 0 && codes[0].rawValue) {
         handleCandidate(codes[0].rawValue);
       }
       if (detector) timerId = setTimeout(detectLoop, DETECT_INTERVAL);
     }).catch(function () {
       /* 1フレームだけの検出失敗は無視するが、連続で失敗し続ける場合は端末側の問題とみなす。 */
+      attemptCount += 1;
       nativeFailCount += 1;
       renderStatus();
       if (nativeFailCount >= NATIVE_FAIL_LIMIT) {
@@ -276,7 +278,10 @@ App.scanner = (function () {
   function startZXingDecode() {
     zxingReader = new window.ZXing.BrowserMultiFormatReader(buildZXingHints(), ZXING_SCAN_INTERVAL);
     zxingReader.decodeFromStream(stream, video, function (result) {
-      /* 検出できないフレームでは result が空のまま毎回呼ばれるので、値がある時だけ処理する。 */
+      /* 検出できないフレームでは result が空のまま毎回呼ばれる。試行回数は毎回数え、
+         結果があるときだけ handleCandidate() に渡す。 */
+      attemptCount += 1;
+      renderStatus();
       if (result) handleCandidate(result.getText());
     }).catch(function () {
       /* ストリームが途中で閉じられた場合など。finish() 済みなら何もしない。 */
@@ -286,6 +291,7 @@ App.scanner = (function () {
   function beginDetection() {
     lastCandidate = null;
     candidateCount = 0;
+    attemptCount = 0;
     if (useNative) {
       nativeFailCount = 0;
       timerId = setTimeout(detectLoop, 0);
