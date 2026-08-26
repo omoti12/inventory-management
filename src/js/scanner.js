@@ -22,8 +22,10 @@ App.scanner = (function () {
   var NATIVE_FAIL_LIMIT = 5;
   var NATIVE_TIMEOUT_MS = 4000;
   var CONFIRM_COUNT = 2;
-  /* バーコード読み取りには高解像度は不要。抑えることで1フレームの処理を軽くし、体感速度を上げる。 */
-  var VIDEO_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 } };
+  /* 長いバーコードは1本1本のバーが細くなるため、720pだと潰れて読み取れないことがある。
+     解像度を上げて、細かいバーでも解像できるようにする（対応していないカメラでは
+     ideal なので自動的に出せる範囲に収まる）。 */
+  var VIDEO_CONSTRAINTS = { width: { ideal: 1920 }, height: { ideal: 1080 } };
 
   var dialog, viewport, video, hint, statusBox, errorBox, manualButton, closeButton, switchButton;
   var stream = null;
