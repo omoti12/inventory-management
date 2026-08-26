@@ -275,18 +275,15 @@ App.store = (function () {
     });
   }
 
-  /** 在庫にも履歴にも使われていない商品だけ削除できる。Promise を返す。 */
+  /**
+   * 商品マスタを削除する。在庫・出庫履歴で使われていても削除できる（誤って登録・使用した
+   * 商品を消せるようにするため）。使用中に削除すると、参照していた在庫・履歴の表示は
+   * `decorate()` により「(削除済み商品)」に変わる。呼び出し側で使用状況を見せた上で
+   * 確認を取ることを想定している。Promise を返す。
+   */
   function deleteProduct(id) {
     var product = findProduct(id);
     if (!product) return Promise.resolve({ ok: false, message: '対象の商品が見つかりません。' });
-
-    var usage = productUsage(id);
-    if (usage.total > 0) {
-      return Promise.resolve({
-        ok: false,
-        message: 'この商品は在庫 ' + usage.inStock + ' 個・出庫済み ' + usage.shipped + ' 個で使われているため削除できません。'
-      });
-    }
 
     return App.graph.deleteItem('Products', id).then(function () {
       products = products.filter(function (p) { return p.id !== id; });
