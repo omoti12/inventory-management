@@ -89,19 +89,19 @@ App.inbound = (function () {
   function onSubmit(event) {
     event.preventDefault();
 
-    var result = App.store.addItem(values());
+    App.store.addItem(values()).then(function (result) {
+      if (!result.ok) {
+        App.ui.showFieldErrors(form, result.errors);
+        return;
+      }
 
-    if (!result.ok) {
-      App.ui.showFieldErrors(form, result.errors);
-      return;
-    }
-
-    App.ui.clearFieldErrors(form);
-    App.ui.toast('入庫しました：' + result.item.productCode + ' / 数量 ' + result.item.quantity, 'success');
-    App.inventory.render();
-    App.products.render();
-    refreshProducts();
-    resetForm();
+      App.ui.clearFieldErrors(form);
+      App.ui.toast('入庫しました：' + result.item.productCode + ' / 数量 ' + result.item.quantity, 'success');
+      App.inventory.render();
+      App.products.render();
+      refreshProducts();
+      resetForm();
+    });
   }
 
   function init() {

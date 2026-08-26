@@ -4,10 +4,10 @@ window.App = window.App || {};
 App.store = (function () {
   'use strict';
 
-  var KEY_PRODUCTS = 'inv.products';
+  /* 商品マスタ(Products)は Microsoft Graph 経由で SharePoint リストに保存する（App.graph）。
+     在庫(Items)・出庫履歴(Shipments)は今のフェーズではまだ localStorage のまま。 */
   var KEY_ITEMS = 'inv.items';
   var KEY_SHIPMENTS = 'inv.shipments';
-  var KEY_SEEDED = 'inv.seeded';
 
   var products = [];
   var items = [];
@@ -37,8 +37,8 @@ App.store = (function () {
     }
   }
 
-  function save() {
-    localStorage.setItem(KEY_PRODUCTS, JSON.stringify(products));
+  /** 在庫・出庫履歴だけをlocalStorageに保存する（商品マスタはGraph経由でSharePointに保存済み）。 */
+  function saveLocal() {
     localStorage.setItem(KEY_ITEMS, JSON.stringify(items));
     localStorage.setItem(KEY_SHIPMENTS, JSON.stringify(shipments));
   }
@@ -66,65 +66,53 @@ App.store = (function () {
 
   /* --- 読み込みと移行 --------------------------------------------------- */
 
+  /**
+   * 起動時に一度呼ぶ。商品マスタ(Products)はSharePointから読み込むため非同期になる。
+   * 在庫(Items)・出庫履歴(Shipments)は引き続きlocalStorageから同期的に読み込む。
+   */
   function load() {
-    products = readJson(KEY_PRODUCTS, []);
     items = readJson(KEY_ITEMS, []);
     shipments = readJson(KEY_SHIPMENTS, []);
 
-    migrateLegacyProducts();
-    migrateLegacyItems();
-    migrateLegacyShipments();
+    return App.graph.listItems('Products').then(function (graphItems) {
+      products = graphItems.map(productFromGraphItem);
 
-    items.forEach(function (item) {
-      if (!item.stockType) item.stockType = 'normal';
+      /* 商品マスタが揃ってから、それに依存するItemsの移行処理を行う。 */
+      migrateLegacyItems();
+      migrateLegacyShipments();
+
+      items.forEach(function (item) {
+        if (!item.stockType) item.stockType = 'normal';
+      });
+
+      saveLocal();
     });
-
-    save();
   }
 
-  /**
-   * 旧・型名ベースの商品マスタ（modelName / dimensions / drawingNo）を
-   * 商品コード・製品名ベースに移行する。
-   */
-  function migrateLegacyProducts() {
-    var changed = false;
-    products.forEach(function (product) {
-      if (product.productCode === undefined) {
-        product.productCode = text(product.modelName) || product.id;
-        product.productName = text(product.modelName) || '(旧データ)';
-        product.category = product.category || 'normal';
-        delete product.modelName;
-        delete product.dimensions;
-        delete product.drawingNo;
-        changed = true;
-      }
-      if (!product.category) {
-        product.category = 'normal';
-        changed = true;
-      }
-    });
-    return changed;
+  /** GraphのリストアイテムをこのアプリのProduct形状に変換する。 */
+  function productFromGraphItem(graphItem) {
+    var f = graphItem.fields || {};
+    return {
+      id: String(graphItem.id),
+      productCode: f.ProductCode || '',
+      productName: f.ProductName || '',
+      category: f.Category === 'filter' ? 'filter' : 'normal',
+      createdAt: f.CreatedAt || ''
+    };
   }
 
   /**
    * 旧・個体ベース（製造番号1本＝在庫1個、入荷月）のデータを数量ベースに移行する。
-   * 商品マスタが無い旧データ（modelName直持ち）にも対応する。受注番号・案件番号は
-   * 廃止したフィールドなので、残っていれば無条件に取り除く。
+   * 受注番号・案件番号は廃止したフィールドなので、残っていれば無条件に取り除く。
+   * 注意: productId が無い（商品マスタと紐付いていない）ごく古いローカルデータについては、
+   * ここでSharePointに商品を新規作成する非同期処理まではまだ対応していない
+   * （発生頻度が極めて低いための割り切り。該当データがあれば手動で商品コードを設定し直す）。
    */
   function migrateLegacyItems() {
     var changed = false;
     items.forEach(function (item) {
       if (!item.productId) {
-        var product = findProductByCode(item.modelName);
-        if (!product) {
-          product = buildProduct(item.modelName || '(不明)', item.modelName || '(不明)', 'normal');
-          products.push(product);
-        }
-        item.productId = product.id;
-        delete item.modelName;
-        delete item.dimensions;
-        delete item.drawingNo;
-        changed = true;
+        return;
       }
       if (item.stockType !== 'filter' && item.quantity === undefined) {
         item.quantity = toQuantity(item.quantity) || 1;
@@ -165,13 +153,12 @@ App.store = (function () {
 
   /* --- 商品マスタ ------------------------------------------------------- */
 
-  function buildProduct(productCode, productName, category) {
+  function productToFields(productCode, productName, category, createdAt) {
     return {
-      id: uid('prod'),
-      productCode: text(productCode),
-      productName: text(productName),
-      category: category === 'filter' ? 'filter' : 'normal',
-      createdAt: new Date().toISOString()
+      ProductCode: text(productCode),
+      ProductName: text(productName),
+      Category: category === 'filter' ? 'filter' : 'normal',
+      CreatedAt: createdAt || new Date().toISOString()
     };
   }
 
@@ -251,59 +238,73 @@ App.store = (function () {
     return errors;
   }
 
-  /** 商品マスタを登録する。商品コードは重複できない。 */
+  /** 商品マスタを登録する。商品コードは重複できない。SharePointへの登録が終わるまで待つ Promise を返す。 */
   function addProduct(data) {
     var input = data || {};
     var errors = validateProduct(input, null);
-    if (Object.keys(errors).length > 0) return { ok: false, errors: errors };
+    if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
 
-    var product = buildProduct(input.productCode, input.productName, input.category);
-    products.push(product);
-    save();
-    return { ok: true, product: product };
+    var fields = productToFields(input.productCode, input.productName, input.category);
+    return App.graph.createItem('Products', fields).then(function (created) {
+      var product = productFromGraphItem(created);
+      products.push(product);
+      return { ok: true, product: product };
+    }).catch(function (err) {
+      return { ok: false, errors: { productCode: 'SharePointへの登録に失敗しました：' + err.message } };
+    });
   }
 
-  /** 商品コードから商品を探し、無ければ自動登録する（入庫画面の自由入力用）。 */
+  /** 商品コードから商品を探し、無ければ自動登録する（入庫画面の自由入力用）。Promise を返す。 */
   function findOrCreateProduct(productCode, productName, category) {
     var existing = findProductByCode(productCode, category);
-    if (existing) return existing;
-    var product = buildProduct(productCode, productName || productCode, category);
-    products.push(product);
-    save();
-    return product;
+    if (existing) return Promise.resolve(existing);
+
+    var fields = productToFields(productCode, productName || productCode, category);
+    return App.graph.createItem('Products', fields).then(function (created) {
+      var product = productFromGraphItem(created);
+      products.push(product);
+      return product;
+    });
   }
 
-  /** 商品マスタを更新する。在庫・履歴の表示にもそのまま反映される。 */
+  /** 商品マスタを更新する。在庫・履歴の表示にもそのまま反映される。Promise を返す。 */
   function updateProduct(id, data) {
     var product = findProduct(id);
-    if (!product) return { ok: false, errors: { productCode: '対象の商品が見つかりません。' } };
+    if (!product) return Promise.resolve({ ok: false, errors: { productCode: '対象の商品が見つかりません。' } });
 
     var input = data || {};
     var errors = validateProduct(input, id);
-    if (Object.keys(errors).length > 0) return { ok: false, errors: errors };
+    if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
 
-    product.productCode = text(input.productCode);
-    product.productName = text(input.productName);
-    save();
-    return { ok: true, product: product };
+    var fields = { ProductCode: text(input.productCode), ProductName: text(input.productName) };
+    return App.graph.updateItem('Products', id, fields).then(function () {
+      product.productCode = fields.ProductCode;
+      product.productName = fields.ProductName;
+      return { ok: true, product: product };
+    }).catch(function (err) {
+      return { ok: false, errors: { productCode: 'SharePointの更新に失敗しました：' + err.message } };
+    });
   }
 
-  /** 在庫にも履歴にも使われていない商品だけ削除できる。 */
+  /** 在庫にも履歴にも使われていない商品だけ削除できる。Promise を返す。 */
   function deleteProduct(id) {
     var product = findProduct(id);
-    if (!product) return { ok: false, message: '対象の商品が見つかりません。' };
+    if (!product) return Promise.resolve({ ok: false, message: '対象の商品が見つかりません。' });
 
     var usage = productUsage(id);
     if (usage.total > 0) {
-      return {
+      return Promise.resolve({
         ok: false,
         message: 'この商品は在庫 ' + usage.inStock + ' 個・出庫済み ' + usage.shipped + ' 個で使われているため削除できません。'
-      };
+      });
     }
 
-    products = products.filter(function (p) { return p.id !== id; });
-    save();
-    return { ok: true };
+    return App.graph.deleteItem('Products', id).then(function () {
+      products = products.filter(function (p) { return p.id !== id; });
+      return { ok: true };
+    }).catch(function (err) {
+      return { ok: false, message: 'SharePointからの削除に失敗しました：' + err.message };
+    });
   }
 
   /* --- 在庫（商品マスタと結合して返す） -------------------------------- */
@@ -454,7 +455,7 @@ App.store = (function () {
       }
     }
 
-    save();
+    saveLocal();
     return resultIds;
   }
 
@@ -463,6 +464,7 @@ App.store = (function () {
   /**
    * 通常品を入庫登録する（商品コード・製品名は自由入力可。数量・入庫した人が必須）。
    * 製造番号・受注番号は入庫画面では扱わない（在庫一覧の表示・検索用の項目）。
+   * 新しい商品コードの場合はSharePointへの商品登録を待つ必要があるため、Promise を返す。
    * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
    */
   function addItem(data) {
@@ -490,30 +492,33 @@ App.store = (function () {
     }
 
     if (Object.keys(errors).length > 0) {
-      return { ok: false, errors: errors };
+      return Promise.resolve({ ok: false, errors: errors });
     }
 
-    if (!productId) {
-      var product = findOrCreateProduct(input.productCode, input.productName, 'normal');
-      productId = product.id;
-    }
+    var productIdPromise = productId
+      ? Promise.resolve(productId)
+      : findOrCreateProduct(input.productCode, input.productName, 'normal').then(function (product) {
+          return product.id;
+        });
 
-    var item = {
-      id: uid('item'),
-      productId: productId,
-      quantity: toQuantity(input.quantity),
-      serialNo: text(input.serialNo),
-      orderNo: text(input.orderNo),
-      arrivalDate: text(input.arrivalDate),
-      receivedBy: text(input.receivedBy),
-      remarks: text(input.remarks),
-      stockType: 'normal',
-      status: 'in_stock',
-      registeredAt: new Date().toISOString()
-    };
-    items.push(item);
-    save();
-    return { ok: true, item: decorate(item) };
+    return productIdPromise.then(function (resolvedProductId) {
+      var item = {
+        id: uid('item'),
+        productId: resolvedProductId,
+        quantity: toQuantity(input.quantity),
+        serialNo: text(input.serialNo),
+        orderNo: text(input.orderNo),
+        arrivalDate: text(input.arrivalDate),
+        receivedBy: text(input.receivedBy),
+        remarks: text(input.remarks),
+        stockType: 'normal',
+        status: 'in_stock',
+        registeredAt: new Date().toISOString()
+      };
+      items.push(item);
+      saveLocal();
+      return { ok: true, item: decorate(item) };
+    });
   }
 
   /**
@@ -551,7 +556,7 @@ App.store = (function () {
       registeredAt: new Date().toISOString()
     };
     items.push(item);
-    save();
+    saveLocal();
     return { ok: true, item: decorate(item) };
   }
 
@@ -598,7 +603,7 @@ App.store = (function () {
         cancelledAt: null
       });
     });
-    save();
+    saveLocal();
     return { ok: true, count: targets.length };
   }
 
@@ -670,22 +675,8 @@ App.store = (function () {
     var item = findItem(shipment.itemId);
     if (item) item.status = 'in_stock';
 
-    save();
+    saveLocal();
     return { ok: true };
-  }
-
-  /* --- デモデータ管理 -------------------------------------------------- */
-
-  function isSeeded() {
-    return localStorage.getItem(KEY_SEEDED) === '1';
-  }
-
-  function replaceAll(nextProducts, nextItems, nextShipments) {
-    products = nextProducts;
-    items = nextItems;
-    shipments = nextShipments;
-    localStorage.setItem(KEY_SEEDED, '1');
-    save();
   }
 
   return {
@@ -711,8 +702,6 @@ App.store = (function () {
     ship: ship,
     listShipments: listShipments,
     listFilterShipments: listFilterShipments,
-    cancelShipment: cancelShipment,
-    isSeeded: isSeeded,
-    replaceAll: replaceAll
+    cancelShipment: cancelShipment
   };
 })();
