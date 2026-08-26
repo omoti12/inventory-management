@@ -47,17 +47,18 @@ App.filterProducts = (function () {
     }).then(function (approved) {
       if (!approved) return;
 
-      var result = App.store.deleteProduct(product.id);
-      if (!result.ok) {
-        App.ui.toast(result.message, 'error');
-        render();
-        return;
-      }
+      App.store.deleteProduct(product.id).then(function (result) {
+        if (!result.ok) {
+          App.ui.toast(result.message, 'error');
+          render();
+          return;
+        }
 
-      if (editingId === product.id) setEditMode(null);
-      render();
-      App.filterInbound.refreshProducts();
-      App.ui.toast('「' + product.productCode + '」を削除しました。', 'success');
+        if (editingId === product.id) setEditMode(null);
+        render();
+        App.filterInbound.refreshProducts();
+        App.ui.toast('「' + product.productCode + '」を削除しました。', 'success');
+      });
     });
   }
 
@@ -106,25 +107,27 @@ App.filterProducts = (function () {
     event.preventDefault();
 
     var input = values();
-    var result = editingId
+    var wasEditing = editingId !== null;
+    var promise = wasEditing
       ? App.store.updateProduct(editingId, input)
       : App.store.addProduct(input);
 
-    if (!result.ok) {
-      App.ui.showFieldErrors(form, result.errors);
-      return;
-    }
+    promise.then(function (result) {
+      if (!result.ok) {
+        App.ui.showFieldErrors(form, result.errors);
+        return;
+      }
 
-    var wasEditing = editingId !== null;
-    setEditMode(null);
-    render();
-    App.filterInbound.refreshProducts();
-    App.ui.toast(
-      wasEditing
-        ? '「' + result.product.productCode + '」を更新しました。'
-        : '「' + result.product.productCode + '」を登録しました。',
-      'success'
-    );
+      setEditMode(null);
+      render();
+      App.filterInbound.refreshProducts();
+      App.ui.toast(
+        wasEditing
+          ? '「' + result.product.productCode + '」を更新しました。'
+          : '「' + result.product.productCode + '」を登録しました。',
+        'success'
+      );
+    });
   }
 
   function init() {
