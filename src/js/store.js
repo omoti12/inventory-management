@@ -94,7 +94,7 @@ App.store = (function () {
     var f = graphItem.fields || {};
     return {
       id: String(graphItem.id),
-      productCode: f.ProductCode || '',
+      productCode: f.ProductsCode || '',
       productName: f.ProductName || '',
       category: f.Category === 'filter' ? 'filter' : 'normal',
       createdAt: f.CreatedAt || ''
@@ -155,7 +155,7 @@ App.store = (function () {
 
   function productToFields(productCode, productName, category, createdAt) {
     return {
-      ProductCode: text(productCode),
+      ProductsCode: text(productCode),
       ProductName: text(productName),
       Category: category === 'filter' ? 'filter' : 'normal',
       CreatedAt: createdAt || new Date().toISOString()
@@ -276,9 +276,9 @@ App.store = (function () {
     var errors = validateProduct(input, id);
     if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
 
-    var fields = { ProductCode: text(input.productCode), ProductName: text(input.productName) };
+    var fields = { ProductsCode: text(input.productCode), ProductName: text(input.productName) };
     return App.graph.updateItem('Products', id, fields).then(function () {
-      product.productCode = fields.ProductCode;
+      product.productCode = fields.ProductsCode;
       product.productName = fields.ProductName;
       return { ok: true, product: product };
     }).catch(function (err) {
