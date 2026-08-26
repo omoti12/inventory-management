@@ -1,12 +1,12 @@
-/* データモデルと localStorage への永続化。画面側はこのモジュール経由でのみデータを触る。 */
+/* データモデルと、Microsoft Graph経由でのSharePoint永続化。画面側はこのモジュール経由でのみデータを触る。 */
 window.App = window.App || {};
 
 App.store = (function () {
   'use strict';
 
-  /* 商品マスタ(Products)・在庫(Items)は Microsoft Graph 経由で SharePoint リストに保存する
-     （App.graph）。出庫履歴(Shipments)は今のフェーズではまだ localStorage のまま。 */
-  var KEY_SHIPMENTS = 'inv.shipments';
+  /* 商品マスタ(Products)・在庫(Items)・出庫履歴(Shipments)はすべて
+     Microsoft Graph 経由で SharePoint リストに保存する（App.graph）。
+     読み取りは起動時に一括読み込みしたメモリ上のキャッシュに対して同期的に行う。 */
 
   var products = [];
   var items = [];
@@ -25,26 +25,6 @@ App.store = (function () {
     { key: 'endUser', label: 'エンドユーザー' }
   ];
 
-  function readJson(key, fallback) {
-    try {
-      var raw = localStorage.getItem(key);
-      if (!raw) return fallback;
-      var parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : fallback;
-    } catch (e) {
-      return fallback;
-    }
-  }
-
-  /** 出庫履歴だけをlocalStorageに保存する（商品マスタ・在庫はGraph経由でSharePointに保存済み）。 */
-  function saveLocal() {
-    localStorage.setItem(KEY_SHIPMENTS, JSON.stringify(shipments));
-  }
-
-  function uid(prefix) {
-    return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-  }
-
   function text(value) {
     return value === null || value === undefined ? '' : String(value).trim();
   }
@@ -62,22 +42,18 @@ App.store = (function () {
     return isNaN(n) || n < 1 ? 0 : n;
   }
 
-  /* --- 読み込みと移行 --------------------------------------------------- */
+  /* --- 読み込み ----------------------------------------------------------- */
 
-  /**
-   * 起動時に一度呼ぶ。商品マスタ(Products)・在庫(Items)はSharePointから読み込むため非同期になる。
-   * 出庫履歴(Shipments)は引き続きlocalStorageから同期的に読み込む。
-   */
+  /** 起動時に一度呼ぶ。商品マスタ・在庫・出庫履歴をすべてSharePointから読み込むため非同期になる。 */
   function load() {
-    shipments = readJson(KEY_SHIPMENTS, []);
-
     return App.graph.listItems('Products').then(function (graphItems) {
       products = graphItems.map(productFromGraphItem);
       return App.graph.listItems('Items');
     }).then(function (graphItems) {
       items = graphItems.map(itemFromGraphItem);
-      migrateLegacyShipments();
-      saveLocal();
+      return App.graph.listItems('Shipments');
+    }).then(function (graphItems) {
+      shipments = graphItems.map(shipmentFromGraphItem);
     });
   }
 
@@ -133,20 +109,35 @@ App.store = (function () {
     return fields;
   }
 
-  /** 旧・出荷先/宛先ベースのデータを受注先/エンドユーザーに移行する。 */
-  function migrateLegacyShipments() {
-    var changed = false;
-    shipments.forEach(function (shipment) {
-      if (shipment.orderTo === undefined) {
-        shipment.orderTo = text(shipment.destination);
-        shipment.endUser = text(shipment.addressee);
-        delete shipment.destination;
-        delete shipment.addressee;
-        delete shipment.projectNo;
-        changed = true;
-      }
-    });
-    return changed;
+  /** GraphのリストアイテムをこのアプリのShipment形状に変換する。 */
+  function shipmentFromGraphItem(graphItem) {
+    var f = graphItem.fields || {};
+    return {
+      id: String(graphItem.id),
+      itemId: f.ItemId || '',
+      shippedBy: f.ShippedBy || '',
+      orderTo: f.OrderTo || '',
+      endUser: f.EndUser || '',
+      remarks: f.Remarks || '',
+      shippedAt: f.ShippedAt || '',
+      status: f.Status === 'cancelled' ? 'cancelled' : 'shipped',
+      cancelledAt: f.CancelledAt || null
+    };
+  }
+
+  /** このアプリのShipment形状をGraphの Shipments リストのfields（内部名）に変換する。 */
+  function shipmentToFields(shipment) {
+    var fields = {
+      ItemId: text(shipment.itemId),
+      ShippedBy: text(shipment.shippedBy),
+      OrderTo: text(shipment.orderTo),
+      EndUser: text(shipment.endUser),
+      Remarks: text(shipment.remarks),
+      ShippedAt: shipment.shippedAt || new Date().toISOString(),
+      Status: shipment.status === 'cancelled' ? 'cancelled' : 'shipped'
+    };
+    if (shipment.cancelledAt) fields.CancelledAt = shipment.cancelledAt;
+    return fields;
   }
 
   /* --- 商品マスタ ------------------------------------------------------- */
@@ -585,10 +576,11 @@ App.store = (function () {
 
   /**
    * 選択した商品（行単位）を出庫する。必須項目が1つでも欠けていれば実行しない。
-   * 在庫(Items)の状態変更をSharePointに書き込むため、Promise を返す。
-   * 注意: 現時点ではETagによる競合検知（Phase 4予定）はまだ無く、複数人がほぼ同時に
-   * 同じ在庫を出庫しようとした場合の排他制御は未実装。
-   * 戻り値: { ok: true, count } / { ok: false, errors }
+   * 在庫(Items)の状態更新はETag付きで行い（App.graph.updateWithRetry）、他の担当者が
+   * 先に同じ在庫を出庫していた場合はその分だけ対象から除外する（複数人が同時に同じ
+   * 在庫を出庫しようとしても、二重に出庫記録が作られないようにするための排他制御）。
+   * 戻り値: { ok: true, count, conflictCount? } / { ok: false, errors }
+   * conflictCount がある場合、その個数は既に他の担当者が出庫済みだったため対象外。
    */
   function ship(itemIds, info) {
     var input = info || {};
@@ -613,12 +605,27 @@ App.store = (function () {
     }
 
     var shippedAt = new Date().toISOString();
+    var shippedQty = 0;
+    var conflictQty = 0;
+    var conflictCount = 0;
+
     return targets.reduce(function (chain, item) {
       return chain.then(function () {
-        return App.graph.updateItem('Items', item.id, { Status: 'shipped' }).then(function () {
+        var qty = item.quantity !== undefined ? (toQuantity(item.quantity) || 0) : 1;
+        return App.graph.updateWithRetry('Items', item.id, function (currentFields) {
+          /* 再取得した最新状態が既に出庫済みなら、他の担当者が先に出庫したということ。
+             上書きせず諦める（null を返すと updateWithRetry は書き込みをスキップする）。 */
+          if (currentFields.Status === 'shipped') return null;
+          return { Status: 'shipped' };
+        }).then(function (result) {
           item.status = 'shipped';
-          shipments.push({
-            id: uid('ship'),
+          if (result.skipped) {
+            conflictQty += qty;
+            conflictCount += 1;
+            return;
+          }
+          shippedQty += qty;
+          var shipment = {
             itemId: item.id,
             shippedBy: text(input.shippedBy),
             orderTo: text(input.orderTo),
@@ -627,14 +634,26 @@ App.store = (function () {
             shippedAt: shippedAt,
             status: 'shipped',
             cancelledAt: null
+          };
+          return App.graph.createItem('Shipments', shipmentToFields(shipment)).then(function (created) {
+            shipments.push(shipmentFromGraphItem(created));
           });
         });
       });
     }, Promise.resolve()).then(function () {
-      saveLocal();
-      return { ok: true, count: targets.length };
+      if (shippedQty === 0 && conflictCount > 0) {
+        return {
+          ok: false,
+          errors: { _items: '選択した商品はすべて、別の担当者が既に出庫済みでした。画面を更新してください。' }
+        };
+      }
+      var result = { ok: true, count: shippedQty };
+      if (conflictCount > 0) {
+        result.conflictCount = conflictCount;
+        result.conflictQty = conflictQty;
+      }
+      return result;
     }).catch(function (err) {
-      saveLocal();
       return { ok: false, errors: { _items: 'SharePointの更新に失敗しました：' + err.message } };
     });
   }
@@ -697,7 +716,8 @@ App.store = (function () {
 
   /**
    * 出庫をキャンセルし、商品を在庫に戻す。履歴自体は残して状態だけ変える。
-   * 在庫(Items)の状態変更をSharePointに書き込むため、Promise を返す。
+   * 在庫(Items)の状態更新はETag付きで行う（既に他の操作で状態が変わっていた場合は
+   * 上書きせず、そのまま在庫側の最新状態を尊重する）。
    */
   function cancelShipment(shipmentId) {
     var shipment = getShipment(shipmentId);
@@ -706,16 +726,22 @@ App.store = (function () {
     }
 
     var item = findItem(shipment.itemId);
+    var cancelledAt = new Date().toISOString();
+
     var restore = item
-      ? App.graph.updateItem('Items', item.id, { Status: 'in_stock' }).then(function () {
+      ? App.graph.updateWithRetry('Items', item.id, function (currentFields) {
+          if (currentFields.Status === 'in_stock') return null;
+          return { Status: 'in_stock' };
+        }).then(function () {
           item.status = 'in_stock';
         })
       : Promise.resolve();
 
     return restore.then(function () {
+      return App.graph.updateItem('Shipments', shipment.id, { Status: 'cancelled', CancelledAt: cancelledAt });
+    }).then(function () {
       shipment.status = 'cancelled';
-      shipment.cancelledAt = new Date().toISOString();
-      saveLocal();
+      shipment.cancelledAt = cancelledAt;
       return { ok: true };
     }).catch(function (err) {
       return { ok: false, message: 'SharePointの更新に失敗しました：' + err.message };

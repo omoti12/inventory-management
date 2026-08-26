@@ -233,6 +233,7 @@ App.shipping = (function () {
 
       App.store.ship(targetIds, input).then(function (result) {
         if (!result.ok) {
+          if (result.errors._items) App.ui.toast(result.errors._items, 'error');
           App.ui.showFieldErrors(form, result.errors);
           return;
         }
@@ -243,7 +244,14 @@ App.shipping = (function () {
         App.inventory.clearSelection();
         App.inventory.render();
         App.history.render();
-        App.ui.toast(totalQty + ' 個を出庫しました。出庫履歴に登録されています。', 'success');
+        if (result.conflictCount) {
+          App.ui.toast(
+            result.count + ' 個を出庫しました。' + result.conflictQty + ' 個は別の担当者が既に出庫済みのため対象外です。',
+            'success'
+          );
+        } else {
+          App.ui.toast(totalQty + ' 個を出庫しました。出庫履歴に登録されています。', 'success');
+        }
         App.ui.showView('inventory');
       });
     });
