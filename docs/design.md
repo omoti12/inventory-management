@@ -256,6 +256,14 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 ## 今後の申し送り
 
 - **バーコード読み取り**：`BarcodeDetector` API と `getUserMedia` で実装済み（フィルター在庫一覧・フィルター入庫の製造番号）。1Dバーコード各種とQRコードの両方を対象とする。`BarcodeDetector` が使えない環境（Windows/Mac の Chrome など）では `src/js/vendor/zxing.min.js`（[zxing-js](https://github.com/zxing-js/library)、Apache-2.0）にフォールバックする。誤読対策として同じ値が連続で読めたときだけ確定し、ネイティブ検出が機能しない端末では自動でZXingに切り替える。
+  長いバーコードは1本あたりのバーが細く、映像全体を解析対象にすると解像度が背景にも割かれて読み取りにくかったため、
+  `scanner.js` の `captureGuideCanvas()` が画面のガイド枠（`.scanner__guide`）と同じ範囲だけを毎フレームcanvasに
+  切り出し、ネイティブ・ZXingどちらの検出にもその枠内だけを渡すようにしている（`computeGuideRect()` が
+  `object-fit: cover` によるクロップ量を考慮して、表示上の枠とズレないよう変換する）。ZXing側もこのため、
+  映像全体を扱う高レベルAPI（`decodeFromStream`）ではなく、canvas単位で1フレームずつ渡せる低レベルAPI
+  （`MultiFormatReader` + `HTMLCanvasElementLuminanceSource`）に切り替えている。
+  読み取り画面の状態表示（試行回数・検出方式など）は`renderStatus()`が毎回の検出試行ごとに更新するため、
+  実機で「本当に動いているか」を切り分けたいときはそこを見る。
 - **スマートフォンからのカメラ利用**：`getUserMedia` は `https`、または `http://localhost`（端末自身）でしか動かない。
   パソコンで起動したサーバーにスマートフォンから `http://（パソコンのIPアドレス）` でアクセスする構成では、
   ブラウザの仕様としてカメラを一切使わせないため、コード側での回避はできない。
