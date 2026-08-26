@@ -25,16 +25,6 @@ App.scanner = (function () {
   /* バーコード読み取りには高解像度は不要。抑えることで1フレームの処理を軽くし、体感速度を上げる。 */
   var VIDEO_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 } };
 
-  /* 一度も読み取れないまま一定時間経つと、距離の目安を交互に案内する。長いバーコードは
-     近づきすぎると全体が枠に収まらず、逆に離れすぎると細かいバーが潰れて読み取れなくなる
-     ため、どちらの可能性も伝える（実際にどちらが原因かをコード側で判定する手段が無いため）。 */
-  var STUCK_HINT_DELAY = 4000;
-  var STUCK_HINT_CYCLE = 3500;
-  var DISTANCE_HINTS = [
-    'なかなか読み取れない場合は、バーコードにもう少し近づいてみてください。',
-    'なかなか読み取れない場合は、バーコード全体が枠に入るよう少し離れてみてください。'
-  ];
-
   var dialog, viewport, video, hint, statusBox, errorBox, manualButton, closeButton, switchButton;
   var stream = null;
   var detector = null;
@@ -49,9 +39,6 @@ App.scanner = (function () {
   var currentDeviceIndex = -1;
   var lastCandidate = null;
   var candidateCount = 0;
-  var defaultHintText = '';
-  var stuckTimerId = null;
-  var stuckHintIndex = 0;
 
   function ensureInit() {
     if (initialized) return;
@@ -65,7 +52,6 @@ App.scanner = (function () {
     manualButton = document.getElementById('scanner-manual');
     closeButton = document.getElementById('scanner-close');
     switchButton = document.getElementById('scanner-switch-camera');
-    defaultHintText = hint.textContent;
 
     closeButton.addEventListener('click', function () { finish(null); });
     manualButton.addEventListener('click', function () { finish(null); });
@@ -83,29 +69,7 @@ App.scanner = (function () {
     initialized = true;
   }
 
-  function clearStuckHintTimer() {
-    if (stuckTimerId !== null) {
-      clearTimeout(stuckTimerId);
-      stuckTimerId = null;
-    }
-  }
-
-  function cycleDistanceHint() {
-    hint.textContent = DISTANCE_HINTS[stuckHintIndex % DISTANCE_HINTS.length];
-    stuckHintIndex += 1;
-    stuckTimerId = setTimeout(cycleDistanceHint, STUCK_HINT_CYCLE);
-  }
-
-  /** 検出（再）開始のたびに呼ぶ。案内文をいったん既定に戻し、しばらく読み取れなければ距離の目安を出し始める。 */
-  function armStuckHintTimer() {
-    clearStuckHintTimer();
-    hint.textContent = defaultHintText;
-    stuckHintIndex = 0;
-    stuckTimerId = setTimeout(cycleDistanceHint, STUCK_HINT_DELAY);
-  }
-
   function stopCamera() {
-    clearStuckHintTimer();
     if (timerId !== null) {
       clearTimeout(timerId);
       timerId = null;
@@ -142,8 +106,6 @@ App.scanner = (function () {
   function resetView() {
     viewport.hidden = false;
     hint.hidden = false;
-    hint.textContent = defaultHintText;
-    clearStuckHintTimer();
     errorBox.hidden = true;
     errorBox.textContent = '';
     manualButton.hidden = true;
@@ -184,11 +146,6 @@ App.scanner = (function () {
    */
   function handleCandidate(value) {
     if (!value) return;
-    /* 一度でも読み取れたなら距離は問題ないということなので、以降は距離の案内を出さない。 */
-    if (stuckTimerId !== null) {
-      clearStuckHintTimer();
-      hint.textContent = defaultHintText;
-    }
     if (value === lastCandidate) {
       candidateCount += 1;
     } else {
@@ -327,7 +284,6 @@ App.scanner = (function () {
   function beginDetection() {
     lastCandidate = null;
     candidateCount = 0;
-    armStuckHintTimer();
     if (useNative) {
       nativeFailCount = 0;
       timerId = setTimeout(detectLoop, 0);
