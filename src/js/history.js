@@ -35,15 +35,16 @@ App.history = (function () {
     }).then(function (approved) {
       if (!approved) return;
 
-      var result = App.store.cancelShipment(row.id);
-      if (!result.ok) {
-        App.ui.toast(result.message, 'error');
-        return;
-      }
+      App.store.cancelShipment(row.id).then(function (result) {
+        if (!result.ok) {
+          App.ui.toast(result.message, 'error');
+          return;
+        }
 
-      render();
-      App.inventory.render();
-      App.ui.toast('出庫をキャンセルし、在庫に戻しました。', 'success');
+        render();
+        App.inventory.render();
+        App.ui.toast('出庫をキャンセルし、在庫に戻しました。', 'success');
+      });
     });
   }
 

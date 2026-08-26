@@ -4,9 +4,8 @@ window.App = window.App || {};
 App.store = (function () {
   'use strict';
 
-  /* 商品マスタ(Products)は Microsoft Graph 経由で SharePoint リストに保存する（App.graph）。
-     在庫(Items)・出庫履歴(Shipments)は今のフェーズではまだ localStorage のまま。 */
-  var KEY_ITEMS = 'inv.items';
+  /* 商品マスタ(Products)・在庫(Items)は Microsoft Graph 経由で SharePoint リストに保存する
+     （App.graph）。出庫履歴(Shipments)は今のフェーズではまだ localStorage のまま。 */
   var KEY_SHIPMENTS = 'inv.shipments';
 
   var products = [];
@@ -37,9 +36,8 @@ App.store = (function () {
     }
   }
 
-  /** 在庫・出庫履歴だけをlocalStorageに保存する（商品マスタはGraph経由でSharePointに保存済み）。 */
+  /** 出庫履歴だけをlocalStorageに保存する（商品マスタ・在庫はGraph経由でSharePointに保存済み）。 */
   function saveLocal() {
-    localStorage.setItem(KEY_ITEMS, JSON.stringify(items));
     localStorage.setItem(KEY_SHIPMENTS, JSON.stringify(shipments));
   }
 
@@ -67,24 +65,18 @@ App.store = (function () {
   /* --- 読み込みと移行 --------------------------------------------------- */
 
   /**
-   * 起動時に一度呼ぶ。商品マスタ(Products)はSharePointから読み込むため非同期になる。
-   * 在庫(Items)・出庫履歴(Shipments)は引き続きlocalStorageから同期的に読み込む。
+   * 起動時に一度呼ぶ。商品マスタ(Products)・在庫(Items)はSharePointから読み込むため非同期になる。
+   * 出庫履歴(Shipments)は引き続きlocalStorageから同期的に読み込む。
    */
   function load() {
-    items = readJson(KEY_ITEMS, []);
     shipments = readJson(KEY_SHIPMENTS, []);
 
     return App.graph.listItems('Products').then(function (graphItems) {
       products = graphItems.map(productFromGraphItem);
-
-      /* 商品マスタが揃ってから、それに依存するItemsの移行処理を行う。 */
-      migrateLegacyItems();
+      return App.graph.listItems('Items');
+    }).then(function (graphItems) {
+      items = graphItems.map(itemFromGraphItem);
       migrateLegacyShipments();
-
-      items.forEach(function (item) {
-        if (!item.stockType) item.stockType = 'normal';
-      });
-
       saveLocal();
     });
   }
@@ -101,38 +93,44 @@ App.store = (function () {
     };
   }
 
-  /**
-   * 旧・個体ベース（製造番号1本＝在庫1個、入荷月）のデータを数量ベースに移行する。
-   * 受注番号・案件番号は廃止したフィールドなので、残っていれば無条件に取り除く。
-   * 注意: productId が無い（商品マスタと紐付いていない）ごく古いローカルデータについては、
-   * ここでSharePointに商品を新規作成する非同期処理まではまだ対応していない
-   * （発生頻度が極めて低いための割り切り。該当データがあれば手動で商品コードを設定し直す）。
-   */
-  function migrateLegacyItems() {
-    var changed = false;
-    items.forEach(function (item) {
-      if (!item.productId) {
-        return;
-      }
-      if (item.stockType !== 'filter' && item.quantity === undefined) {
-        item.quantity = toQuantity(item.quantity) || 1;
-        item.receivedBy = text(item.receivedBy);
-        item.remarks = text(item.remarks);
-        item.arrivalDate = text(item.arrivalDate) || (text(item.arrivalMonth) ? text(item.arrivalMonth) + '-01' : '');
-        delete item.arrivalMonth;
-        changed = true;
-      }
-      if (item.stockType === 'filter' && item.orderNo !== undefined) {
-        /* 受注番号はフィルター品では扱わない項目。 */
-        delete item.orderNo;
-        changed = true;
-      }
-      if (item.projectNo !== undefined) {
-        delete item.projectNo;
-        changed = true;
-      }
-    });
-    return changed;
+  /** GraphのリストアイテムをこのアプリのItem形状に変換する。 */
+  function itemFromGraphItem(graphItem) {
+    var f = graphItem.fields || {};
+    var item = {
+      id: String(graphItem.id),
+      productId: f.ProductId || '',
+      serialNo: f.SerialNo || '',
+      arrivalDate: f.ArrivalDate || '',
+      remarks: f.Remarks || '',
+      stockType: f.StockType === 'filter' ? 'filter' : 'normal',
+      status: f.Status === 'shipped' ? 'shipped' : 'in_stock',
+      registeredAt: f.RegisteredAt || ''
+    };
+    if (item.stockType !== 'filter') {
+      item.quantity = f.Quantity != null ? toQuantity(f.Quantity) : 0;
+      item.orderNo = f.OrderNo || '';
+      item.receivedBy = f.ReceivedBy || '';
+    }
+    return item;
+  }
+
+  /** このアプリのItem形状をGraphの Items リストのfields（内部名）に変換する。 */
+  function itemToFields(item) {
+    var fields = {
+      ProductId: text(item.productId),
+      SerialNo: text(item.serialNo),
+      ArrivalDate: text(item.arrivalDate),
+      Remarks: text(item.remarks),
+      StockType: item.stockType === 'filter' ? 'filter' : 'normal',
+      Status: item.status === 'shipped' ? 'shipped' : 'in_stock',
+      RegisteredAt: item.registeredAt || new Date().toISOString()
+    };
+    if (item.stockType !== 'filter') {
+      fields.Quantity = toQuantity(item.quantity);
+      fields.OrderNo = text(item.orderNo);
+      fields.ReceivedBy = text(item.receivedBy);
+    }
+    return fields;
   }
 
   /** 旧・出荷先/宛先ベースのデータを受注先/エンドユーザーに移行する。 */
@@ -411,11 +409,12 @@ App.store = (function () {
    * 出庫対象にできる item の id 配列を返す。ちょうど数量が合わないバッチは分割し、
    * 端数は元のバッチに残したまま在庫として残す（通常品のみ。フィルター品は数量の
    * 概念が無く1行＝1個のため対象外）。要求数量が在庫合計を超える場合は、
-   * 確保できるところまでの id を返す。
+   * 確保できるところまでの id を返す。バッチ分割はSharePointへの書き込みを伴うため
+   * Promise を返す。
    */
   function allocateForShipment(productId, quantity) {
     var need = toQuantity(quantity);
-    if (!productId || need <= 0) return [];
+    if (!productId || need <= 0) return Promise.resolve([]);
 
     var candidates = items
       .filter(function (item) {
@@ -427,36 +426,51 @@ App.store = (function () {
         return da < db ? -1 : da > db ? 1 : 0;
       });
 
-    var resultIds = [];
+    var plan = [];
     for (var i = 0; i < candidates.length && need > 0; i++) {
       var item = candidates[i];
       var qty = toQuantity(item.quantity);
+      if (qty <= 0) continue;
       if (qty <= need) {
-        resultIds.push(item.id);
+        plan.push({ type: 'take', item: item });
         need -= qty;
       } else {
-        var splitItem = {
-          id: uid('item'),
-          productId: item.productId,
-          quantity: need,
-          serialNo: item.serialNo,
-          orderNo: item.orderNo,
-          arrivalDate: item.arrivalDate,
-          receivedBy: item.receivedBy,
-          remarks: item.remarks,
-          stockType: item.stockType,
-          status: 'in_stock',
-          registeredAt: item.registeredAt
-        };
-        item.quantity = qty - need;
-        items.push(splitItem);
-        resultIds.push(splitItem.id);
+        plan.push({ type: 'split', item: item, takeQty: need, remainQty: qty - need });
         need = 0;
       }
     }
 
-    saveLocal();
-    return resultIds;
+    var resultIds = [];
+    return plan.reduce(function (chain, step) {
+      return chain.then(function () {
+        if (step.type === 'take') {
+          resultIds.push(step.item.id);
+          return;
+        }
+        return App.graph.updateItem('Items', step.item.id, { Quantity: step.remainQty }).then(function () {
+          step.item.quantity = step.remainQty;
+          var splitFields = itemToFields({
+            productId: step.item.productId,
+            quantity: step.takeQty,
+            serialNo: step.item.serialNo,
+            orderNo: step.item.orderNo,
+            arrivalDate: step.item.arrivalDate,
+            receivedBy: step.item.receivedBy,
+            remarks: step.item.remarks,
+            stockType: step.item.stockType,
+            status: 'in_stock',
+            registeredAt: step.item.registeredAt
+          });
+          return App.graph.createItem('Items', splitFields).then(function (created) {
+            var splitItem = itemFromGraphItem(created);
+            items.push(splitItem);
+            resultIds.push(splitItem.id);
+          });
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      return resultIds;
+    });
   }
 
   /* --- 入庫登録 --------------------------------------------------------- */
@@ -503,7 +517,6 @@ App.store = (function () {
 
     return productIdPromise.then(function (resolvedProductId) {
       var item = {
-        id: uid('item'),
         productId: resolvedProductId,
         quantity: toQuantity(input.quantity),
         serialNo: text(input.serialNo),
@@ -515,14 +528,19 @@ App.store = (function () {
         status: 'in_stock',
         registeredAt: new Date().toISOString()
       };
-      items.push(item);
-      saveLocal();
-      return { ok: true, item: decorate(item) };
+      return App.graph.createItem('Items', itemToFields(item)).then(function (created) {
+        var savedItem = itemFromGraphItem(created);
+        items.push(savedItem);
+        return { ok: true, item: decorate(savedItem) };
+      });
+    }).catch(function (err) {
+      return { ok: false, errors: { productCode: 'SharePointへの登録に失敗しました：' + err.message } };
     });
   }
 
   /**
    * フィルター品を入庫登録する（フィルター商品管理から選んだ商品・製造番号・入荷日付が必須）。
+   * SharePointへの登録を待つ必要があるため、Promise を返す。
    * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
    */
   function addFilterItem(data) {
@@ -542,11 +560,10 @@ App.store = (function () {
     }
 
     if (Object.keys(errors).length > 0) {
-      return { ok: false, errors: errors };
+      return Promise.resolve({ ok: false, errors: errors });
     }
 
     var item = {
-      id: uid('item'),
       productId: text(input.productId),
       serialNo: text(input.serialNo),
       arrivalDate: text(input.arrivalDate),
@@ -555,15 +572,22 @@ App.store = (function () {
       status: 'in_stock',
       registeredAt: new Date().toISOString()
     };
-    items.push(item);
-    saveLocal();
-    return { ok: true, item: decorate(item) };
+    return App.graph.createItem('Items', itemToFields(item)).then(function (created) {
+      var savedItem = itemFromGraphItem(created);
+      items.push(savedItem);
+      return { ok: true, item: decorate(savedItem) };
+    }).catch(function (err) {
+      return { ok: false, errors: { productId: 'SharePointへの登録に失敗しました：' + err.message } };
+    });
   }
 
   /* --- 出庫 ------------------------------------------------------------ */
 
   /**
    * 選択した商品（行単位）を出庫する。必須項目が1つでも欠けていれば実行しない。
+   * 在庫(Items)の状態変更をSharePointに書き込むため、Promise を返す。
+   * 注意: 現時点ではETagによる競合検知（Phase 4予定）はまだ無く、複数人がほぼ同時に
+   * 同じ在庫を出庫しようとした場合の排他制御は未実装。
    * 戻り値: { ok: true, count } / { ok: false, errors }
    */
   function ship(itemIds, info) {
@@ -585,26 +609,34 @@ App.store = (function () {
     }
 
     if (Object.keys(errors).length > 0) {
-      return { ok: false, errors: errors };
+      return Promise.resolve({ ok: false, errors: errors });
     }
 
     var shippedAt = new Date().toISOString();
-    targets.forEach(function (item) {
-      item.status = 'shipped';
-      shipments.push({
-        id: uid('ship'),
-        itemId: item.id,
-        shippedBy: text(input.shippedBy),
-        orderTo: text(input.orderTo),
-        endUser: text(input.endUser),
-        remarks: text(input.remarks),
-        shippedAt: shippedAt,
-        status: 'shipped',
-        cancelledAt: null
+    return targets.reduce(function (chain, item) {
+      return chain.then(function () {
+        return App.graph.updateItem('Items', item.id, { Status: 'shipped' }).then(function () {
+          item.status = 'shipped';
+          shipments.push({
+            id: uid('ship'),
+            itemId: item.id,
+            shippedBy: text(input.shippedBy),
+            orderTo: text(input.orderTo),
+            endUser: text(input.endUser),
+            remarks: text(input.remarks),
+            shippedAt: shippedAt,
+            status: 'shipped',
+            cancelledAt: null
+          });
+        });
       });
+    }, Promise.resolve()).then(function () {
+      saveLocal();
+      return { ok: true, count: targets.length };
+    }).catch(function (err) {
+      saveLocal();
+      return { ok: false, errors: { _items: 'SharePointの更新に失敗しました：' + err.message } };
     });
-    saveLocal();
-    return { ok: true, count: targets.length };
   }
 
   /* --- 出庫履歴・キャンセル -------------------------------------------- */
@@ -663,20 +695,31 @@ App.store = (function () {
     return null;
   }
 
-  /** 出庫をキャンセルし、商品を在庫に戻す。履歴自体は残して状態だけ変える。 */
+  /**
+   * 出庫をキャンセルし、商品を在庫に戻す。履歴自体は残して状態だけ変える。
+   * 在庫(Items)の状態変更をSharePointに書き込むため、Promise を返す。
+   */
   function cancelShipment(shipmentId) {
     var shipment = getShipment(shipmentId);
     if (!shipment || shipment.status !== 'shipped') {
-      return { ok: false, message: 'この出庫はキャンセルできません。' };
+      return Promise.resolve({ ok: false, message: 'この出庫はキャンセルできません。' });
     }
-    shipment.status = 'cancelled';
-    shipment.cancelledAt = new Date().toISOString();
 
     var item = findItem(shipment.itemId);
-    if (item) item.status = 'in_stock';
+    var restore = item
+      ? App.graph.updateItem('Items', item.id, { Status: 'in_stock' }).then(function () {
+          item.status = 'in_stock';
+        })
+      : Promise.resolve();
 
-    saveLocal();
-    return { ok: true };
+    return restore.then(function () {
+      shipment.status = 'cancelled';
+      shipment.cancelledAt = new Date().toISOString();
+      saveLocal();
+      return { ok: true };
+    }).catch(function (err) {
+      return { ok: false, message: 'SharePointの更新に失敗しました：' + err.message };
+    });
   }
 
   return {

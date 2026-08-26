@@ -12,8 +12,16 @@ App.graph = (function () {
      サイトIDを事前に調べなくてもそのままリスト操作のURLに使える。 */
   var SITE_REF = 'nittoairtech.sharepoint.com:/sites/p:';
 
+  /* Items/Shipmentsは表示名で名前解決できなかったため、リストのGUIDを直接指定する。
+     Productsは表示名のままで解決できることを確認済みなのでそのまま。 */
+  var LIST_IDS = {
+    Items: '189ef57b-2faa-499d-8b7f-108af023be74',
+    Shipments: '8e82892a-a061-44e0-8f6b-a2cd1d1b6228'
+  };
+
   function listBaseUrl(listName) {
-    return BASE + '/sites/' + SITE_REF + '/lists/' + encodeURIComponent(listName);
+    var listRef = LIST_IDS[listName] || listName;
+    return BASE + '/sites/' + SITE_REF + '/lists/' + encodeURIComponent(listRef);
   }
 
   function authHeaders() {

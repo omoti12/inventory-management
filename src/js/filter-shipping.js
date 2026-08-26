@@ -128,20 +128,21 @@ App.filterShipping = (function () {
     }).then(function (approved) {
       if (!approved) return;
 
-      var result = App.store.ship(targetIds, input);
-      if (!result.ok) {
-        App.ui.showFieldErrors(form, result.errors);
-        return;
-      }
+      App.store.ship(targetIds, input).then(function (result) {
+        if (!result.ok) {
+          App.ui.showFieldErrors(form, result.errors);
+          return;
+        }
 
-      targetIds = [];
-      form.reset();
-      App.ui.clearFieldErrors(form);
-      App.filterInventory.clearSelection();
-      App.filterInventory.render();
-      App.filterHistory.render();
-      App.ui.toast(result.count + ' 個を出庫しました。フィルター出庫履歴に登録されています。', 'success');
-      App.ui.showView('filter-inventory');
+        targetIds = [];
+        form.reset();
+        App.ui.clearFieldErrors(form);
+        App.filterInventory.clearSelection();
+        App.filterInventory.render();
+        App.filterHistory.render();
+        App.ui.toast(result.count + ' 個を出庫しました。フィルター出庫履歴に登録されています。', 'success');
+        App.ui.showView('filter-inventory');
+      });
     });
   }
 

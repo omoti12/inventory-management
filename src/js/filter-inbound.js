@@ -52,22 +52,22 @@ App.filterInbound = (function () {
     var data = values();
     data.stockType = 'filter';
 
-    var result = App.store.addFilterItem(data);
+    App.store.addFilterItem(data).then(function (result) {
+      if (!result.ok) {
+        App.ui.showFieldErrors(form, result.errors);
+        return;
+      }
 
-    if (!result.ok) {
-      App.ui.showFieldErrors(form, result.errors);
-      return;
-    }
+      App.ui.clearFieldErrors(form);
+      App.ui.toast(
+        'フィルター在庫を登録しました：' +
+        result.item.productCode + ' / 製造番号 ' + result.item.serialNo,
+        'success'
+      );
 
-    App.ui.clearFieldErrors(form);
-    App.ui.toast(
-      'フィルター在庫を登録しました：' +
-      result.item.productCode + ' / 製造番号 ' + result.item.serialNo,
-      'success'
-    );
-
-    App.filterShipping.render();
-    form.reset();
+      App.filterShipping.render();
+      form.reset();
+    });
   }
 
   function init() {
