@@ -222,6 +222,7 @@ App.store = (function () {
       });
       if (duplicated) {
         errors.productCode = 'この商品コードは既に登録されています。';
+        errors._duplicate = true;
       }
     }
     return errors;

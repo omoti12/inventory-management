@@ -376,6 +376,17 @@
 
     <div class="card">
       <div class="card__head">
+        <h3 class="card__title">CSVから一括登録</h3>
+      </div>
+      <p class="muted">1行目は見出し行として読み飛ばします。1列目に商品コード、2列目に製品名を入れてください。既に登録済みの商品コードはスキップされます。</p>
+      <div class="form__foot">
+        <input type="file" id="products-import-file" accept=".csv,text/csv">
+        <button type="button" class="btn btn--primary" id="products-import-btn">取り込む</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
         <h3 class="card__title">登録済みの商品</h3>
         <p class="count" id="products-count">0 件</p>
       </div>
@@ -731,6 +742,17 @@
           </button>
         </div>
       </form>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">CSVから一括登録</h3>
+      </div>
+      <p class="muted">1行目は見出し行として読み飛ばします。1列目に商品コード、2列目に製品名を入れてください。既に登録済みの商品コードはスキップされます。</p>
+      <div class="form__foot">
+        <input type="file" id="filter-products-import-file" accept=".csv,text/csv">
+        <button type="button" class="btn btn--primary" id="filter-products-import-btn">取り込む</button>
+      </div>
     </div>
 
     <div class="card">

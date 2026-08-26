@@ -9,7 +9,67 @@ App.filterProducts = (function () {
   var COLUMNS = 5;
   var FIELD_NAMES = ['productCode', 'productName'];
   var form, body, countLabel, formTitle, submitButton, cancelEditButton;
+  var importInput, importButton;
   var editingId = null;
+
+  function summarizeCodes(codes) {
+    if (codes.length <= 10) return codes.join('、');
+    return codes.slice(0, 10).join('、') + ' 他' + (codes.length - 10) + '件';
+  }
+
+  /** CSVの行を1件ずつ順番に登録する（重複チェックが最新の登録状況を見られるよう直列に実行）。 */
+  function importRows(rows) {
+    var summary = { added: 0, skipped: [], failed: [] };
+
+    return rows.reduce(function (chain, cells) {
+      var code = (cells[0] || '').trim();
+      var name = (cells[1] || '').trim();
+      if (!code && !name) return chain;
+
+      return chain.then(function () {
+        return App.store.addProduct({ productCode: code, productName: name, category: CATEGORY }).then(function (result) {
+          if (result.ok) {
+            summary.added++;
+          } else if (result.errors && result.errors._duplicate) {
+            summary.skipped.push(code || '(コード未入力)');
+          } else {
+            var message = (result.errors && (result.errors.productCode || result.errors.productName)) || '登録に失敗しました';
+            summary.failed.push((code || '(コード未入力)') + '：' + message);
+          }
+        });
+      });
+    }, Promise.resolve()).then(function () { return summary; });
+  }
+
+  function onImport() {
+    var file = importInput.files[0];
+    if (!file) {
+      App.ui.toast('CSVファイルを選択してください。', 'error');
+      return;
+    }
+
+    importButton.disabled = true;
+    App.ui.parseCsvFile(file).then(function (rows) {
+      return importRows(rows.slice(1));
+    }).then(function (summary) {
+      render();
+      App.filterInbound.refreshProducts();
+
+      var message = summary.added + '件を登録しました。';
+      if (summary.skipped.length > 0) {
+        message += ' ' + summary.skipped.length + '件は既に登録済みのためスキップしました（' + summarizeCodes(summary.skipped) + '）。';
+      }
+      if (summary.failed.length > 0) {
+        message += ' ' + summary.failed.length + '件は失敗しました（' + summarizeCodes(summary.failed) + '）。';
+      }
+      App.ui.toast(message, summary.failed.length > 0 ? 'error' : 'success');
+      importInput.value = '';
+    }).catch(function (err) {
+      App.ui.toast('CSVの読み込みに失敗しました：' + err.message, 'error');
+    }).then(function () {
+      importButton.disabled = false;
+    });
+  }
 
   function values() {
     var data = new FormData(form);
@@ -142,6 +202,10 @@ App.filterProducts = (function () {
     formTitle = document.getElementById('filter-products-form-title');
     submitButton = document.getElementById('filter-products-submit');
     cancelEditButton = document.getElementById('filter-products-cancel-edit');
+    importInput = document.getElementById('filter-products-import-file');
+    importButton = document.getElementById('filter-products-import-btn');
+
+    importButton.addEventListener('click', onImport);
 
     form.addEventListener('submit', onSubmit);
     form.addEventListener('input', function (event) {

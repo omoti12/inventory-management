@@ -61,7 +61,7 @@ src/css/style.css         デザイントークン（CSS変数）＋レイアウ
 src/js/auth.js            Microsoft 365サインイン（MSAL Browser）とトークン取得
 src/js/graph-client.js    Microsoft Graph API共通ヘルパー（ページング・ETag対応）
 src/js/store.js           データモデル（商品マスタ／在庫／出庫）/ Graph経由でのSharePoint永続化 / 検索・集計・バリデーション
-src/js/ui.js              タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形
+src/js/ui.js              タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形・CSV読み込み
 src/js/inventory.js       在庫一覧（通常品、明細 / 商品まとめ）＋検索＋選択
 src/js/products.js        商品管理（通常品の商品マスタの登録・編集・削除）
 src/js/inbound.js         入庫（通常品、商品コード/製品名の自由入力＋数量・入庫した人など）
@@ -154,6 +154,19 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 `productCode` が `(削除済み商品)` として表示される（データが壊れるわけではなく、表示上の扱い）。
 呼び出し側（`products.js` / `filter-products.js`）は `productUsage()` で使用状況を確認し、
 使用中の場合は削除前にその旨を警告する確認ダイアログを出す。
+
+### CSVからの一括登録
+
+`ui.js` の `parseCsvFile(file)` が共通実装。UTF-8（BOM有無どちらも）と、Windows版Excelの
+既定であるShift_JIS（CP932）の両方に対応するため、まずUTF-8として厳密デコードを試み
+（`TextDecoder('utf-8', {fatal: true})`）、不正なバイト列で失敗したらShift_JISとして
+読み直す簡易判定を使っている。CSVの引用符（`"..."`・`""`エスケープ）にも対応した簡易パーサーを
+自前で実装しており、外部ライブラリは追加していない。
+
+`products.js` / `filter-products.js` の `importRows()` が、パースした行を1行ずつ順番に
+`addProduct()` へ渡して登録する（並行実行すると重複チェックが最新の登録状況を見られないため、
+あえて直列にしている）。重複エラーかどうかは、`store.js` の `validateProduct()` が付与する
+`errors._duplicate`（表示用フィールドではない、判定専用のフラグ）で判定する。
 
 ### SharePoint列の内部名マッピング
 

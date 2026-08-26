@@ -80,6 +80,58 @@ App.ui = (function () {
       ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
+  /* --- CSV読み込み ------------------------------------------------------ */
+
+  /**
+   * CSVファイルの文字コードを判定してテキストに変換する。UTF-8（BOM有無どちらも）と、
+   * Windows版ExcelでCSV保存したときの既定であるShift_JIS（CP932）の両方に対応する。
+   * UTF-8として正しく解釈できない場合だけShift_JISとして読み直す簡易判定。
+   */
+  function decodeCsvBuffer(buffer) {
+    var bytes = new Uint8Array(buffer);
+    var hasBom = bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF;
+    var body = hasBom ? bytes.subarray(3) : bytes;
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(body);
+    } catch (e) {
+      return new TextDecoder('shift-jis').decode(body);
+    }
+  }
+
+  /** 簡易CSVパーサー。ダブルクォート囲み・エスケープ（""）・改行(\r\n / \n)に対応する。 */
+  function parseCsvText(text) {
+    var rows = [];
+    var row = [];
+    var field = '';
+    var inQuotes = false;
+
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else { inQuotes = false; }
+        } else {
+          field += c;
+        }
+        continue;
+      }
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\r') { /* 次の \n で改行確定するので無視 */ }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else { field += c; }
+    }
+    if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+
+    return rows.filter(function (r) { return r.some(function (cell) { return cell.trim() !== ''; }); });
+  }
+
+  /** CSVファイルを読み込んで行の配列（各行は列の配列）を返す。 */
+  function parseCsvFile(file) {
+    return file.arrayBuffer().then(decodeCsvBuffer).then(parseCsvText);
+  }
+
   /* --- フォームのエラー表示 -------------------------------------------- */
 
   function clearFieldErrors(form) {
@@ -192,6 +244,7 @@ App.ui = (function () {
     debounce: debounce,
     formatMonth: formatMonth,
     formatDateTime: formatDateTime,
+    parseCsvFile: parseCsvFile,
     clearFieldErrors: clearFieldErrors,
     showFieldErrors: showFieldErrors,
     toast: toast,
