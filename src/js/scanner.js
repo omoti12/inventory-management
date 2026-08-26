@@ -27,6 +27,13 @@ App.scanner = (function () {
      ideal なので自動的に出せる範囲に収まる）。 */
   var VIDEO_CONSTRAINTS = { width: { ideal: 1920 }, height: { ideal: 1080 } };
 
+  /* 画面に出しているガイド枠（.scanner__guide、CSSで top/left/right/bottom を%指定）と
+     同じ範囲。検出対象をこの枠内だけに絞ることで、背景など枠外の映像に解像度を割かれず、
+     長いバーコードでもバー1本あたりの解像度を確保しやすくする。 */
+  var GUIDE_RECT_FRAC = { left: 0.08, right: 0.92, top: 0.28, bottom: 0.72 };
+  /* .scanner__viewport の aspect-ratio と同じ値。object-fit: cover によるクロップ量の計算に使う。 */
+  var VIEWPORT_ASPECT = 4 / 3;
+
   var dialog, viewport, video, hint, statusBox, errorBox, manualButton, closeButton, switchButton;
   var stream = null;
   var detector = null;
@@ -41,6 +48,8 @@ App.scanner = (function () {
   var currentDeviceIndex = -1;
   var lastCandidate = null;
   var candidateCount = 0;
+  var cropCanvas = null;
+  var cropCtx = null;
 
   function ensureInit() {
     if (initialized) return;
@@ -214,7 +223,7 @@ App.scanner = (function () {
 
     if (!stream || zxingReader) return;
 
-    if (window.ZXing && typeof window.ZXing.BrowserMultiFormatReader === 'function') {
+    if (window.ZXing && typeof window.ZXing.MultiFormatReader === 'function') {
       useNative = false;
       lastCandidate = null;
       candidateCount = 0;
@@ -223,6 +232,62 @@ App.scanner = (function () {
     } else {
       showError(reason || 'この端末のカメラ読み取りがうまく機能しませんでした。手入力してください。');
     }
+  }
+
+  function getCropCanvas() {
+    if (!cropCanvas) {
+      cropCanvas = document.createElement('canvas');
+      cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true });
+    }
+    return cropCanvas;
+  }
+
+  /**
+   * ガイド枠（GUIDE_RECT_FRAC）の表示上の範囲を、video要素のピクセル座標に変換する。
+   * video は object-fit: cover で表示しているため、videoの実解像度とビューポートの
+   * アスペクト比（VIEWPORT_ASPECT）が異なる分だけ、表示されていない領域が生じる
+   * （はみ出た分が上下または左右でクロップされる）。その分を考慮しないと、
+   * 画面で見えている枠とズレた範囲を切り出してしまう。
+   */
+  function computeGuideRect(videoEl) {
+    var sourceW = videoEl.videoWidth;
+    var sourceH = videoEl.videoHeight;
+    if (!sourceW || !sourceH) return null;
+
+    var sourceAspect = sourceW / sourceH;
+    var visibleWFrac, visibleHFrac;
+    if (sourceAspect > VIEWPORT_ASPECT) {
+      visibleHFrac = 1;
+      visibleWFrac = VIEWPORT_ASPECT / sourceAspect;
+    } else {
+      visibleWFrac = 1;
+      visibleHFrac = sourceAspect / VIEWPORT_ASPECT;
+    }
+    var offsetXFrac = (1 - visibleWFrac) / 2;
+    var offsetYFrac = (1 - visibleHFrac) / 2;
+
+    var srcLeftFrac = offsetXFrac + GUIDE_RECT_FRAC.left * visibleWFrac;
+    var srcRightFrac = offsetXFrac + GUIDE_RECT_FRAC.right * visibleWFrac;
+    var srcTopFrac = offsetYFrac + GUIDE_RECT_FRAC.top * visibleHFrac;
+    var srcBottomFrac = offsetYFrac + GUIDE_RECT_FRAC.bottom * visibleHFrac;
+
+    var x = Math.round(srcLeftFrac * sourceW);
+    var y = Math.round(srcTopFrac * sourceH);
+    var width = Math.round((srcRightFrac - srcLeftFrac) * sourceW);
+    var height = Math.round((srcBottomFrac - srcTopFrac) * sourceH);
+    if (width <= 0 || height <= 0) return null;
+    return { x: x, y: y, width: width, height: height };
+  }
+
+  /** ガイド枠内だけを切り出したcanvasを返す（video側の準備がまだなら null）。 */
+  function captureGuideCanvas() {
+    var rect = computeGuideRect(video);
+    if (!rect) return null;
+    var canvas = getCropCanvas();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    cropCtx.drawImage(video, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+    return canvas;
   }
 
   /**
@@ -236,7 +301,8 @@ App.scanner = (function () {
       if (detector) timerId = setTimeout(detectLoop, DETECT_INTERVAL);
       return;
     }
-    detector.detect(video).then(function (codes) {
+    var source = captureGuideCanvas() || video;
+    detector.detect(source).then(function (codes) {
       if (nativeFailCount !== 0) {
         nativeFailCount = 0;
         renderStatus();
@@ -271,16 +337,38 @@ App.scanner = (function () {
     return hints;
   }
 
-  /** BarcodeDetector が使えない環境向けのフォールバック（vendor/zxing.min.js）。
-   *  対応フォーマットを絞ることと、内部スキャン間隔を詰めることで速くする。 */
+  /**
+   * BarcodeDetector が使えない環境向けのフォールバック（vendor/zxing.min.js）。
+   * 高レベルの decodeFromStream() は映像全体をそのまま解析対象にしてしまい、ガイド枠内だけに
+   * 絞り込めないため、あえて低レベルの MultiFormatReader を使い、detectLoop() と同じく
+   * captureGuideCanvas() で切り出した canvas を渡す自走式ループにしている。
+   */
+  function zxingDetectLoop() {
+    timerId = null;
+    if (!zxingReader || video.readyState < 2) {
+      if (zxingReader) timerId = setTimeout(zxingDetectLoop, ZXING_SCAN_INTERVAL);
+      return;
+    }
+    var canvas = captureGuideCanvas();
+    if (canvas) {
+      try {
+        var luminanceSource = new window.ZXing.HTMLCanvasElementLuminanceSource(canvas);
+        var binarizer = new window.ZXing.HybridBinarizer(luminanceSource);
+        var bitmap = new window.ZXing.BinaryBitmap(binarizer);
+        var result = zxingReader.decode(bitmap);
+        handleCandidate(result.getText());
+      } catch (e) {
+        /* NotFoundException 等、1フレームで見つからないのは通常の動作なので無視する。 */
+      }
+    }
+    if (zxingReader) timerId = setTimeout(zxingDetectLoop, ZXING_SCAN_INTERVAL);
+  }
+
+  /** 対応フォーマットを絞ることで、探索を速くする。 */
   function startZXingDecode() {
-    zxingReader = new window.ZXing.BrowserMultiFormatReader(buildZXingHints(), ZXING_SCAN_INTERVAL);
-    zxingReader.decodeFromStream(stream, video, function (result) {
-      /* 検出できないフレームでは result が空のまま毎回呼ばれるので、値がある時だけ処理する。 */
-      if (result) handleCandidate(result.getText());
-    }).catch(function () {
-      /* ストリームが途中で閉じられた場合など。finish() 済みなら何もしない。 */
-    });
+    zxingReader = new window.ZXing.MultiFormatReader();
+    zxingReader.setHints(buildZXingHints() || new Map());
+    timerId = setTimeout(zxingDetectLoop, 0);
   }
 
   function beginDetection() {
@@ -370,7 +458,7 @@ App.scanner = (function () {
     }
 
     useNative = !!window.BarcodeDetector;
-    var useZXing = !useNative && window.ZXing && typeof window.ZXing.BrowserMultiFormatReader === 'function';
+    var useZXing = !useNative && window.ZXing && typeof window.ZXing.MultiFormatReader === 'function';
 
     if (!useNative && !useZXing) {
       showError('このブラウザはバーコード読み取りに対応していません。手入力してください。');
