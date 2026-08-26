@@ -75,11 +75,71 @@ h1, h2, h3, p { margin: 0; }
   gap: var(--space-4);
 }
 
+.app-header__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
 .app-brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
 }
+
+.app-account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-account__name {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* --- サインイン画面 ---------------------------------------------------- */
+
+.signin-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  padding: var(--space-5);
+}
+
+.signin-gate__box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-7) var(--space-6);
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+}
+
+.signin-gate__title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}
+
+.signin-gate__desc {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  margin-bottom: var(--space-5);
+}
+
+.signin-gate__error {
+  margin-top: var(--space-4);
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+.signin-gate__error[hidden] { display: none; }
 
 .app-title {
   font-size: 17px;
@@ -639,7 +699,7 @@ select:disabled {
   .form__foot { flex-wrap: wrap; }
 }
 
-/* --- 入力欄とボタンの横並び（商品コード・製造番号のQRコード読み取りなど） -------- */
+/* --- 入力欄とボタンの横並び（商品コード・製造番号のバーコード読み取りなど） -------- */
 
 /* 入力欄と補助ボタンを常に横並びにする。列幅が狭いときは入力欄側を縮めて対応する。 */
 .field-row {
@@ -666,7 +726,7 @@ select:disabled {
   }
 }
 
-/* --- QRコードスキャナー ---------------------------------------------- */
+/* --- バーコードスキャナー ---------------------------------------------- */
 
 .dialog--scanner {
   max-width: 420px;

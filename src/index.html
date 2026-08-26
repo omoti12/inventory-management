@@ -8,11 +8,28 @@
 </head>
 <body>
 
+<div class="signin-gate" id="signin-gate">
+  <div class="signin-gate__box">
+    <h1 class="signin-gate__title">在庫管理システム</h1>
+    <p class="signin-gate__desc">続けるには、Microsoft 365のアカウントでサインインしてください。</p>
+    <button type="button" class="btn btn--primary" id="signin-button">Microsoftでサインイン</button>
+    <p class="signin-gate__error" id="signin-error" hidden></p>
+  </div>
+</div>
+
+<div id="app-shell" hidden>
+
 <header class="app-header">
   <div class="app-header__inner">
-    <div class="app-brand">
-      <h1 class="app-title">在庫管理システム</h1>
-      <span class="tag">MOCK</span>
+    <div class="app-header__top">
+      <div class="app-brand">
+        <h1 class="app-title">在庫管理システム</h1>
+        <span class="tag">MOCK</span>
+      </div>
+      <div class="app-account" id="app-account" hidden>
+        <span class="app-account__name" id="app-account-name"></span>
+        <button type="button" class="btn btn--ghost btn--sm" id="app-sign-out">サインアウト</button>
+      </div>
     </div>
     <nav class="tabs" id="main-tabs" aria-label="メインメニュー">
       <button type="button" class="tab" data-view="inventory">在庫一覧</button>
@@ -403,7 +420,7 @@
             <label for="filter-inventory-search-serial">製造番号</label>
             <div class="field-row">
               <input type="text" id="filter-inventory-search-serial" name="serialNo" placeholder="例：0001">
-              <button type="button" class="btn btn--ghost btn--sm" id="filter-inventory-scan-btn">QRコードを読み取る</button>
+              <button type="button" class="btn btn--ghost btn--sm" id="filter-inventory-scan-btn">バーコードを読み取る</button>
             </div>
           </div>
           <div class="form-field">
@@ -486,7 +503,7 @@
             </label>
             <div class="field-row">
               <input type="text" id="filter-inbound-serial" name="serialNo" placeholder="例：0001">
-              <button type="button" class="btn btn--ghost btn--sm" id="filter-inbound-scan-btn">QRコードを読み取る</button>
+              <button type="button" class="btn btn--ghost btn--sm" id="filter-inbound-scan-btn">バーコードを読み取る</button>
             </div>
             <p class="form-error" data-error-for="serialNo"></p>
           </div>
@@ -746,6 +763,8 @@
   <button type="button" class="btn btn--ghost btn--sm" id="reset-demo-data">デモデータを初期状態に戻す</button>
 </footer>
 
+</div><!-- /#app-shell -->
+
 <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
 <dialog class="dialog" id="confirm-dialog">
@@ -758,12 +777,12 @@
 </dialog>
 
 <dialog class="dialog dialog--scanner" id="scanner-dialog">
-  <h3 class="dialog__title">QRコードを読み取る</h3>
+  <h3 class="dialog__title">バーコードを読み取る</h3>
   <div class="scanner__viewport" id="scanner-viewport">
     <video id="scanner-video" class="scanner__video" playsinline muted></video>
     <div class="scanner__guide" aria-hidden="true"></div>
   </div>
-  <p class="scanner__hint" id="scanner-hint">QRコードを枠内に収めてください。</p>
+  <p class="scanner__hint" id="scanner-hint">バーコードを枠内に収めてください。</p>
   <p class="scanner__status" id="scanner-status" hidden></p>
   <p class="scanner__error" id="scanner-error" hidden></p>
   <div class="dialog__foot">
@@ -773,6 +792,8 @@
   </div>
 </dialog>
 
+<script src="js/vendor/msal-browser.min.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/store.js"></script>
 <script src="js/seed.js"></script>
 <script src="js/ui.js"></script>
