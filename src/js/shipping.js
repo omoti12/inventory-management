@@ -86,9 +86,10 @@ App.shipping = (function () {
 
   /** 指定商品コードの在庫から、古いバッチ順に数量ぶんを確保して出庫対象に加える（必要ならバッチを分割する）。 */
   function addGroupToTargets(productId, quantity) {
-    var ids = App.store.allocateForShipment(productId, quantity);
-    ids.forEach(function (id) { if (targetIds.indexOf(id) === -1) targetIds.push(id); });
-    render();
+    App.store.allocateForShipment(productId, quantity).then(function (ids) {
+      ids.forEach(function (id) { if (targetIds.indexOf(id) === -1) targetIds.push(id); });
+      render();
+    });
   }
 
   function renderTargets() {
@@ -230,20 +231,21 @@ App.shipping = (function () {
     }).then(function (approved) {
       if (!approved) return;
 
-      var result = App.store.ship(targetIds, input);
-      if (!result.ok) {
-        App.ui.showFieldErrors(form, result.errors);
-        return;
-      }
+      App.store.ship(targetIds, input).then(function (result) {
+        if (!result.ok) {
+          App.ui.showFieldErrors(form, result.errors);
+          return;
+        }
 
-      targetIds = [];
-      form.reset();
-      App.ui.clearFieldErrors(form);
-      App.inventory.clearSelection();
-      App.inventory.render();
-      App.history.render();
-      App.ui.toast(totalQty + ' 個を出庫しました。出庫履歴に登録されています。', 'success');
-      App.ui.showView('inventory');
+        targetIds = [];
+        form.reset();
+        App.ui.clearFieldErrors(form);
+        App.inventory.clearSelection();
+        App.inventory.render();
+        App.history.render();
+        App.ui.toast(totalQty + ' 個を出庫しました。出庫履歴に登録されています。', 'success');
+        App.ui.showView('inventory');
+      });
     });
   }
 
