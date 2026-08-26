@@ -146,12 +146,14 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 
 出庫履歴は削除しない。キャンセルしても行は残り、状態表示だけが変わる。
 
-### 商品マスタの削除制約
+### 商品マスタの削除
 
-商品マスタは在庫・履歴から参照されている間は削除できない。
-`productUsage()` が `items` を走査して使用数（在庫数・出庫済み数・合計）を数え、
-合計が0件のときだけ `deleteProduct()` が成功する。
-この制約により、`decorate()` の参照先が消えて履歴が壊れることを防いでいる。
+`deleteProduct()` は、在庫・履歴から参照されている商品でも削除できる
+（誤って登録・使用してしまった商品を消せるようにするため、意図的に制約を設けていない）。
+使用中の商品を削除すると、その商品を参照していた在庫・出庫履歴の行は `decorate()` により
+`productCode` が `(削除済み商品)` として表示される（データが壊れるわけではなく、表示上の扱い）。
+呼び出し側（`products.js` / `filter-products.js`）は `productUsage()` で使用状況を確認し、
+使用中の場合は削除前にその旨を警告する確認ダイアログを出す。
 
 ### SharePoint列の内部名マッピング
 
@@ -175,10 +177,10 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 | `load()` | Products/Items/ShipmentsをすべてSharePointから読み込む | Promise |
 | `listProducts(category)` | 商品マスタを商品コード順で返す。`category`（'normal'/'filter'）で絞り込み可 | 同期 |
 | `getProduct(id)` / `getProductByCode(code, category)` | 商品マスタ1件を取得 | 同期 |
-| `productUsage(id)` | 指定した商品の使用状況（在庫数・出庫済み数・合計）を返す。削除可否の判定に使う | 同期 |
+| `productUsage(id)` | 指定した商品の使用状況（在庫数・出庫済み数・合計）を返す。削除前の警告表示に使う | 同期 |
 | `addProduct(data)` | 商品コード・製品名を検証（重複チェックを含む）して商品マスタを登録 | Promise |
 | `updateProduct(id, data)` | 商品マスタを更新する | Promise |
-| `deleteProduct(id)` | 未使用の商品だけ削除する | Promise |
+| `deleteProduct(id)` | 商品マスタを削除する（使用中でも削除できる） | Promise |
 | `findOrCreateProduct(code, name, category)` | 商品コードから商品を探し、無ければ自動登録する（入庫の自由入力用） | Promise |
 | `listInStock(filter)` / `listFilterInStock(filter)` | 在庫中の通常品／フィルター品を返す | 同期 |
 | `groupInStock(filter)` | 通常品を商品単位でまとめ、`count`（在庫数量の合計）を付けて返す | 同期 |

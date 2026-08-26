@@ -39,9 +39,16 @@ App.products = (function () {
   }
 
   function onDelete(product) {
+    var usage = App.store.productUsage(product.id);
+    var message = usage.total > 0
+      ? '「' + product.productCode + ' ' + product.productName + '」は在庫 ' + usage.inStock +
+        ' 個・出庫済み ' + usage.shipped + ' 個で使われています。削除すると、それらの在庫一覧・' +
+        '出庫履歴の表示は「(削除済み商品)」になります。それでも削除しますか？'
+      : '「' + product.productCode + ' ' + product.productName + '」を削除します。よろしいですか？';
+
     App.ui.confirm({
       title: '商品の削除',
-      message: '「' + product.productCode + ' ' + product.productName + '」を削除します。よろしいですか？',
+      message: message,
       okLabel: '削除する',
       danger: true
     }).then(function (approved) {
@@ -91,12 +98,10 @@ App.products = (function () {
       var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', '削除');
       deleteButton.type = 'button';
       if (usage.total > 0) {
-        /* 在庫や履歴から参照されている商品は消せない。理由をその場で伝える。 */
-        deleteButton.disabled = true;
-        deleteButton.title = '在庫 ' + usage.inStock + ' 個・出庫済み ' + usage.shipped + ' 個で使われているため削除できません';
-      } else {
-        deleteButton.addEventListener('click', function () { onDelete(product); });
+        /* 使用中でも削除は可能。誤って使ってしまった場合のために、理由だけその場で伝える。 */
+        deleteButton.title = '在庫 ' + usage.inStock + ' 個・出庫済み ' + usage.shipped + ' 個で使われています';
       }
+      deleteButton.addEventListener('click', function () { onDelete(product); });
       actionCell.appendChild(deleteButton);
 
       tr.appendChild(actionCell);
