@@ -547,6 +547,21 @@ select:disabled {
 
 .table .col-action .btn + .btn { margin-left: var(--space-2); }
 
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.th-sort:hover { color: var(--color-text); }
+.th-sort__arrow { font-size: 10px; }
+
 .badge {
   display: inline-block;
   padding: 1px var(--space-2);

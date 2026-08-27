@@ -7,7 +7,8 @@ App.history = (function () {
 
   var COLUMNS = 11;
 
-  var searchForm, body, countLabel;
+  var searchForm, body, countLabel, sortButton, sortArrow;
+  var sortOrder = 'desc';
 
   function currentFilter() {
     var data = new FormData(searchForm);
@@ -48,8 +49,14 @@ App.history = (function () {
     });
   }
 
+  function toggleSort() {
+    sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+    sortArrow.textContent = sortOrder === 'desc' ? '▼' : '▲';
+    render();
+  }
+
   function render() {
-    var rows = App.store.listShipments(currentFilter(), 'normal');
+    var rows = App.store.listShipments(currentFilter(), 'normal', sortOrder);
     App.ui.clear(body);
     countLabel.textContent = rows.length + ' 件';
 
@@ -97,11 +104,14 @@ App.history = (function () {
     searchForm = document.getElementById('history-search');
     body = document.getElementById('history-body');
     countLabel = document.getElementById('history-count');
+    sortButton = document.getElementById('history-sort-date');
+    sortArrow = document.getElementById('history-sort-arrow');
 
     var onInput = App.ui.debounce(render, 200);
     searchForm.addEventListener('input', onInput);
     searchForm.addEventListener('change', render);
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); render(); });
+    sortButton.addEventListener('click', toggleSort);
   }
 
   App.views.history = { onShow: render };
