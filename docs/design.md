@@ -202,7 +202,7 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 | `addItem(data)` | 通常品を入庫登録する（商品コード自由入力・数量・入庫した人を検証） | Promise |
 | `addFilterItem(data)` | フィルター品を入庫登録する（商品選択・製造番号・入荷日付を検証） | Promise |
 | `ship(itemIds, info)` | 選択した行を出庫する（出庫した人・受注先・エンドユーザーを検証）。ETag付きで在庫状態を更新し、他の担当者が先に出庫していた分は対象から除外する | Promise |
-| `listShipments(filter, stockType)` / `listFilterShipments(filter)` | 履歴を商品情報と結合し、出庫日時の降順で返す | 同期 |
+| `listShipments(filter, stockType, sortOrder)` / `listFilterShipments(filter, sortOrder)` | 履歴を商品情報と結合して返す。`sortOrder` は `'asc'`/`'desc'`（省略時は`'desc'`＝出庫日時が新しい順） | 同期 |
 | `cancelShipment(id)` | 出庫をキャンセルし、商品を在庫に戻す | Promise |
 
 バリデーションは `store.js` に集約している（画面側では二重に持たない）。

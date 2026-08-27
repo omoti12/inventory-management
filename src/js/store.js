@@ -669,8 +669,12 @@ App.store = (function () {
     ].some(function (value) { return includes(value, keyword); });
   }
 
-  /** 出庫履歴を商品情報と結合して、出庫日時の新しい順に返す。stockType を指定すると絞り込む。 */
-  function listShipments(filter, stockType) {
+  /**
+   * 出庫履歴を商品情報と結合して返す。stockType を指定すると絞り込む。
+   * sortOrder は 'asc'（出庫日時が古い順）/ 'desc'（新しい順、省略時のデフォルト）。
+   */
+  function listShipments(filter, stockType, sortOrder) {
+    var direction = sortOrder === 'asc' ? -1 : 1;
     return shipments
       .map(function (shipment) {
         var item = findItem(shipment.itemId);
@@ -697,12 +701,14 @@ App.store = (function () {
       })
       .filter(function (row) { return !stockType || row.stockType === stockType; })
       .filter(function (row) { return matchesShipmentRow(row, filter); })
-      .sort(function (a, b) { return a.shippedAt < b.shippedAt ? 1 : a.shippedAt > b.shippedAt ? -1 : 0; });
+      .sort(function (a, b) {
+        return a.shippedAt < b.shippedAt ? direction : a.shippedAt > b.shippedAt ? -direction : 0;
+      });
   }
 
-  /** フィルター商品の出庫履歴だけを返す。 */
-  function listFilterShipments(filter) {
-    return listShipments(filter, 'filter');
+  /** フィルター商品の出庫履歴だけを返す。sortOrder は listShipments() と同じ。 */
+  function listFilterShipments(filter, sortOrder) {
+    return listShipments(filter, 'filter', sortOrder);
   }
 
   function getShipment(id) {

@@ -7,7 +7,8 @@ App.filterHistory = (function () {
 
   var COLUMNS = 11;
 
-  var searchForm, body, countLabel;
+  var searchForm, body, countLabel, sortButton, sortArrow;
+  var sortOrder = 'desc';
 
   function currentFilter() {
     var data = new FormData(searchForm);
@@ -48,8 +49,14 @@ App.filterHistory = (function () {
     });
   }
 
+  function toggleSort() {
+    sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+    sortArrow.textContent = sortOrder === 'desc' ? '▼' : '▲';
+    render();
+  }
+
   function render() {
-    var rows = App.store.listFilterShipments(currentFilter());
+    var rows = App.store.listFilterShipments(currentFilter(), sortOrder);
     App.ui.clear(body);
     countLabel.textContent = rows.length + ' 件';
 
@@ -97,11 +104,14 @@ App.filterHistory = (function () {
     searchForm = document.getElementById('filter-history-search');
     body = document.getElementById('filter-history-body');
     countLabel = document.getElementById('filter-history-count');
+    sortButton = document.getElementById('filter-history-sort-date');
+    sortArrow = document.getElementById('filter-history-sort-arrow');
 
     var onInput = App.ui.debounce(render, 200);
     searchForm.addEventListener('input', onInput);
     searchForm.addEventListener('change', render);
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); render(); });
+    sortButton.addEventListener('click', toggleSort);
   }
 
   App.views['filter-history'] = { onShow: render };
