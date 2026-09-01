@@ -65,6 +65,7 @@ App.store = (function () {
       productCode: f.ProductsCode || '',
       productName: f.ProductName || '',
       category: f.Category === 'filter' ? 'filter' : 'normal',
+      storageLocation: f.StorageLocation || '',
       createdAt: f.CreatedAt || ''
     };
   }
@@ -142,13 +143,18 @@ App.store = (function () {
 
   /* --- 商品マスタ ------------------------------------------------------- */
 
-  function productToFields(productCode, productName, category, createdAt) {
-    return {
+  function productToFields(productCode, productName, category, storageLocation, createdAt) {
+    var fields = {
       ProductsCode: text(productCode),
       ProductName: text(productName),
       Category: category === 'filter' ? 'filter' : 'normal',
       CreatedAt: createdAt || new Date().toISOString()
     };
+    /* 保管場所はフィルター品には無い項目（フィルター商品管理には設けていない）。 */
+    if (category !== 'filter') {
+      fields.StorageLocation = text(storageLocation);
+    }
+    return fields;
   }
 
   function findProduct(id) {
@@ -234,7 +240,7 @@ App.store = (function () {
     var errors = validateProduct(input, null);
     if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
 
-    var fields = productToFields(input.productCode, input.productName, input.category);
+    var fields = productToFields(input.productCode, input.productName, input.category, input.storageLocation);
     return App.graph.createItem('Products', fields).then(function (created) {
       var product = productFromGraphItem(created);
       products.push(product);
@@ -267,9 +273,13 @@ App.store = (function () {
     if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
 
     var fields = { ProductsCode: text(input.productCode), ProductName: text(input.productName) };
+    if (product.category !== 'filter') {
+      fields.StorageLocation = text(input.storageLocation);
+    }
     return App.graph.updateItem('Products', id, fields).then(function () {
       product.productCode = fields.ProductsCode;
       product.productName = fields.ProductName;
+      if (fields.StorageLocation !== undefined) product.storageLocation = fields.StorageLocation;
       return { ok: true, product: product };
     }).catch(function (err) {
       return { ok: false, errors: { productCode: 'SharePointの更新に失敗しました：' + err.message } };
@@ -308,6 +318,7 @@ App.store = (function () {
       productId: item.productId,
       productCode: product.productCode || '(削除済み商品)',
       productName: product.productName || '',
+      storageLocation: product.storageLocation || '',
       quantity: item.quantity,
       receivedBy: item.receivedBy,
       remarks: item.remarks,
@@ -682,6 +693,7 @@ App.store = (function () {
           stockType: row.stockType || 'normal',
           productCode: row.productCode || '(削除済み)',
           productName: row.productName || '',
+          storageLocation: row.storageLocation || '',
           quantity: row.quantity,
           serialNo: row.serialNo || '',
           orderNo: row.orderNo || '',

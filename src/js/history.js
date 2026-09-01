@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.history = (function () {
   'use strict';
 
-  var COLUMNS = 11;
+  var COLUMNS = 12;
 
   var searchForm, body, countLabel, sortButton, sortArrow, exportButton;
   var sortOrder = 'desc';
@@ -65,12 +65,13 @@ App.history = (function () {
   function onExportCsv() {
     var rows = App.store.listShipments(currentFilter(), 'normal', sortOrder);
     var csvRows = [
-      ['商品コード', '製品名', '数量', '入荷日', '出庫した人', '受注先', 'エンドユーザー', '備考', '出庫日時', '状態']
+      ['商品コード', '製品名', '保管場所', '数量', '入荷日', '出庫した人', '受注先', 'エンドユーザー', '備考', '出庫日時', '状態']
     ];
     rows.forEach(function (row) {
       csvRows.push([
         row.productCode,
         row.productName,
+        row.storageLocation || '',
         row.quantity,
         row.arrivalDate || '',
         row.shippedBy,
@@ -99,6 +100,7 @@ App.history = (function () {
       [
         row.productCode,
         row.productName,
+        row.storageLocation || '—',
         row.quantity + ' 個',
         row.arrivalDate || '—',
         row.shippedBy,

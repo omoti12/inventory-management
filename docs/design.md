@@ -93,6 +93,7 @@ src/js/app.js             起動処理（サインイン確認 → データ読�
 product = {
   id, productCode, productName,
   category,              // 'normal' | 'filter'
+  storageLocation,       // 通常品のみ。'第一工場' | '本社在庫' | ''（任意項目、フィルター品には無い）
   createdAt
 }
 
@@ -183,7 +184,7 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 | リスト | アプリ内の項目 | 列の内部名 |
 | --- | --- | --- |
 | Products | productCode | **ProductsCode**（表示名は「ProductCode」だが内部名はズレている） |
-| Products | productName / category / createdAt | ProductName / Category / CreatedAt |
+| Products | productName / category / storageLocation / createdAt | ProductName / Category / StorageLocation / CreatedAt（すべて表示名と一致） |
 | Items | productId / quantity / serialNo / orderNo / arrivalDate / receivedBy / remarks / stockType / status / registeredAt | ProductId / Quantity / SerialNo / OrderNo / ArrivalDate / ReceivedBy / Remarks / StockType / Status / RegisteredAt（すべて表示名と一致） |
 | Shipments | itemId / shippedBy / orderTo / endUser / remarks / shippedAt / status / cancelledAt | ItemId / ShippedBy / OrderTo / EndUser / Remarks / ShippedAt / Status / CancelledAt（すべて表示名と一致） |
 
