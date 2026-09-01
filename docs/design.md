@@ -168,6 +168,14 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 あえて直列にしている）。重複エラーかどうかは、`store.js` の `validateProduct()` が付与する
 `errors._duplicate`（表示用フィールドではない、判定専用のフラグ）で判定する。
 
+### 出庫履歴のCSV出力
+
+`ui.js` の `downloadCsv(filename, rows)` が共通実装。`rows`（1行目はヘッダー）からCSV文字列を組み立て、
+先頭にUTF-8のBOMを付けたBlobを`<a download>`経由でダウンロードさせる（BOM無しだとExcelでダブル
+クリックで開いたときに文字化けするため）。`history.js` / `filter-history.js` の `onExportCsv()` が、
+その時点の絞り込み条件・並び順のまま `listShipments()` / `listFilterShipments()` を呼び直して
+CSV化する（画面に描画済みのDOMを読み取るのではなく、データ取得からやり直す方式）。
+
 ### SharePoint列の内部名マッピング
 
 `store.js` の `xxxToFields` / `xxxFromGraphItem` が、アプリ内の項目名とSharePointの列の内部名を変換する。
