@@ -544,9 +544,6 @@ App.store = (function () {
     if (!text(input.serialNo)) {
       errors.serialNo = '製造番号を入力してください。';
     }
-    if (!text(input.arrivalDate)) {
-      errors.arrivalDate = '入荷日付を入力してください。';
-    }
 
     if (Object.keys(errors).length > 0) {
       return Promise.resolve({ ok: false, errors: errors });
