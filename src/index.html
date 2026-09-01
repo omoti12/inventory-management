@@ -313,7 +313,10 @@
             <input type="text" id="history-keyword" name="keyword" placeholder="商品コード・製品名・受注先・担当者など">
           </div>
         </form>
-        <p class="count" id="history-count">0 件</p>
+        <div class="head-actions">
+          <p class="count" id="history-count">0 件</p>
+          <button type="button" class="btn btn--ghost btn--sm" id="history-export-csv">CSVダウンロード</button>
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -655,7 +658,10 @@
             <input type="text" id="filter-history-keyword" name="keyword" placeholder="商品コード・製造番号・受注先・担当者など">
           </div>
         </form>
-        <p class="count" id="filter-history-count">0 件</p>
+        <div class="head-actions">
+          <p class="count" id="filter-history-count">0 件</p>
+          <button type="button" class="btn btn--ghost btn--sm" id="filter-history-export-csv">CSVダウンロード</button>
+        </div>
       </div>
 
       <div class="table-wrap">

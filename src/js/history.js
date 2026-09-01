@@ -7,8 +7,14 @@ App.history = (function () {
 
   var COLUMNS = 11;
 
-  var searchForm, body, countLabel, sortButton, sortArrow;
+  var searchForm, body, countLabel, sortButton, sortArrow, exportButton;
   var sortOrder = 'desc';
+
+  function todayStamp() {
+    var d = new Date();
+    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
 
   function currentFilter() {
     var data = new FormData(searchForm);
@@ -53,6 +59,29 @@ App.history = (function () {
     sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
     sortArrow.textContent = sortOrder === 'desc' ? '▼' : '▲';
     render();
+  }
+
+  /** 今表示している絞り込み・並び順のまま、出庫履歴をCSVでダウンロードする。 */
+  function onExportCsv() {
+    var rows = App.store.listShipments(currentFilter(), 'normal', sortOrder);
+    var csvRows = [
+      ['商品コード', '製品名', '数量', '入荷日', '出庫した人', '受注先', 'エンドユーザー', '備考', '出庫日時', '状態']
+    ];
+    rows.forEach(function (row) {
+      csvRows.push([
+        row.productCode,
+        row.productName,
+        row.quantity,
+        row.arrivalDate || '',
+        row.shippedBy,
+        row.orderTo,
+        row.endUser,
+        row.remarks || '',
+        App.ui.formatDateTime(row.shippedAt),
+        row.status === 'cancelled' ? 'キャンセル' : '出庫済み'
+      ]);
+    });
+    App.ui.downloadCsv('出庫履歴_' + todayStamp() + '.csv', csvRows);
   }
 
   function render() {
@@ -106,12 +135,14 @@ App.history = (function () {
     countLabel = document.getElementById('history-count');
     sortButton = document.getElementById('history-sort-date');
     sortArrow = document.getElementById('history-sort-arrow');
+    exportButton = document.getElementById('history-export-csv');
 
     var onInput = App.ui.debounce(render, 200);
     searchForm.addEventListener('input', onInput);
     searchForm.addEventListener('change', render);
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); render(); });
     sortButton.addEventListener('click', toggleSort);
+    exportButton.addEventListener('click', onExportCsv);
   }
 
   App.views.history = { onShow: render };

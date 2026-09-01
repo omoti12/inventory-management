@@ -132,6 +132,37 @@ App.ui = (function () {
     return file.arrayBuffer().then(decodeCsvBuffer).then(parseCsvText);
   }
 
+  /* --- CSV出力 ------------------------------------------------------------ */
+
+  function escapeCsvField(value) {
+    var str = value === null || value === undefined ? '' : String(value);
+    if (/[",\r\n]/.test(str)) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  /**
+   * 行の配列（各行は列の配列。1行目はヘッダー）からCSVファイルをダウンロードさせる。
+   * 先頭にBOMを付けて保存することで、Excelでそのままダブルクリックで開いたときに
+   * 文字化けしないようにしている（BOM無しUTF-8はExcelが既定の文字コードと誤認しやすい）。
+   */
+  function downloadCsv(filename, rows) {
+    var BOM = '﻿';
+    var text = rows.map(function (row) {
+      return row.map(escapeCsvField).join(',');
+    }).join('\r\n');
+    var blob = new Blob([BOM + text], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
   /* --- フォームのエラー表示 -------------------------------------------- */
 
   function clearFieldErrors(form) {
@@ -245,6 +276,7 @@ App.ui = (function () {
     formatMonth: formatMonth,
     formatDateTime: formatDateTime,
     parseCsvFile: parseCsvFile,
+    downloadCsv: downloadCsv,
     clearFieldErrors: clearFieldErrors,
     showFieldErrors: showFieldErrors,
     toast: toast,
