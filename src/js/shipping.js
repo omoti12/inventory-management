@@ -6,7 +6,7 @@ App.shipping = (function () {
   'use strict';
 
   var TARGET_COLUMNS = 4;
-  var SEARCH_COLUMNS = 5;
+  var SEARCH_COLUMNS = 6;
 
   var targetIds = [];
   var form, itemsBody, countLabel, submitButton, hint;
@@ -141,6 +141,7 @@ App.shipping = (function () {
           productId: item.productId,
           productCode: item.productCode,
           productName: item.productName,
+          storageLocation: item.storageLocation || '',
           count: 0
         };
         order.push(item.productId);
@@ -165,6 +166,7 @@ App.shipping = (function () {
       var tr = App.ui.el('tr');
       tr.appendChild(App.ui.el('td', null, group.productCode));
       tr.appendChild(App.ui.el('td', null, group.productName));
+      tr.appendChild(App.ui.el('td', null, group.storageLocation || '—'));
       tr.appendChild(App.ui.el('td', 'col-num', group.count + ' 個'));
 
       var qtyCell = App.ui.el('td', 'col-num');

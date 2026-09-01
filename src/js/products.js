@@ -6,8 +6,8 @@ App.products = (function () {
   'use strict';
 
   var CATEGORY = 'normal';
-  var COLUMNS = 5;
-  var FIELD_NAMES = ['productCode', 'productName'];
+  var COLUMNS = 6;
+  var FIELD_NAMES = ['productCode', 'productName', 'storageLocation'];
   var form, body, countLabel, formTitle, submitButton, cancelEditButton;
   var importInput, importButton;
   var editingId = null;
@@ -145,6 +145,7 @@ App.products = (function () {
 
       tr.appendChild(App.ui.el('td', null, product.productCode));
       tr.appendChild(App.ui.el('td', null, product.productName));
+      tr.appendChild(App.ui.el('td', null, product.storageLocation || '—'));
       tr.appendChild(App.ui.el('td', 'col-num', usage.inStock + ' 個'));
       tr.appendChild(App.ui.el('td', 'col-num', usage.shipped + ' 個'));
 

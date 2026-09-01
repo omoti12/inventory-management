@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.inventory = (function () {
   'use strict';
 
-  var DETAIL_COLUMNS = 7;
+  var DETAIL_COLUMNS = 8;
   var GROUP_COLUMNS = 5;
 
   var mode = 'group';
@@ -79,6 +79,7 @@ App.inventory = (function () {
       [
         item.productCode,
         item.productName,
+        item.storageLocation || '—',
         item.arrivalDate || '—'
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));

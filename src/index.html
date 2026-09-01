@@ -94,6 +94,7 @@
               <th class="col-check"><input type="checkbox" id="inventory-select-all" aria-label="すべて選択"></th>
               <th>商品コード</th>
               <th>製品名</th>
+              <th>保管場所</th>
               <th>入荷日</th>
               <th>備考</th>
               <th class="col-num">数量</th>
@@ -277,6 +278,7 @@
             <tr>
               <th>商品コード</th>
               <th>製品名</th>
+              <th>保管場所</th>
               <th class="col-num">在庫数量</th>
               <th class="col-num">出荷したい数</th>
               <th class="col-action">操作</th>
@@ -325,6 +327,7 @@
             <tr>
               <th>商品コード</th>
               <th>製品名</th>
+              <th>保管場所</th>
               <th class="col-num">数量</th>
               <th>入荷日</th>
               <th>出庫した人</th>
@@ -371,6 +374,15 @@
             <input type="text" id="products-name" name="productName" placeholder="例：アングルブラケット ABC-100">
             <p class="form-error" data-error-for="productName"></p>
           </div>
+          <div class="form-field">
+            <label for="products-storage-location">保管場所 <span class="optional">任意</span></label>
+            <select id="products-storage-location" name="storageLocation">
+              <option value="">選択してください</option>
+              <option value="第一工場">第一工場</option>
+              <option value="本社在庫">本社在庫</option>
+            </select>
+            <p class="form-error" data-error-for="storageLocation"></p>
+          </div>
         </div>
 
         <div class="form__foot">
@@ -402,6 +414,7 @@
             <tr>
               <th>商品コード</th>
               <th>製品名</th>
+              <th>保管場所</th>
               <th class="col-num">在庫数</th>
               <th class="col-num">出庫済み</th>
               <th class="col-action">操作</th>
