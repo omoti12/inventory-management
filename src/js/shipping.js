@@ -31,7 +31,15 @@ App.shipping = (function () {
       shippedBy: data.get('shippedBy') || '',
       orderTo: data.get('orderTo') || '',
       endUser: data.get('endUser') || '',
-      remarks: data.get('remarks') || ''
+      remarks: data.get('remarks') || '',
+      /* 会計/販売システムへのCSV取込用の項目（すべて任意入力）。 */
+      destinationCode: data.get('destinationCode') || '',
+      destinationSubCode: data.get('destinationSubCode') || '',
+      destinationName1: data.get('destinationName1') || '',
+      destinationName2: data.get('destinationName2') || '',
+      orderNumber1: data.get('orderNumber1') || '',
+      orderNumber2: data.get('orderNumber2') || '',
+      orderNumber3: data.get('orderNumber3') || ''
     };
   }
 

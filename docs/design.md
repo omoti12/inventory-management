@@ -123,6 +123,10 @@ item = {
 shipment = {
   id, itemId,
   shippedBy, orderTo, endUser,
+  /* 会計/販売システムへのCSV取込用の項目（通常品のみ、すべて任意入力）。
+     出荷先コード・小番、出荷先名1/2、受注番号1〜3。 */
+  destinationCode, destinationSubCode, destinationName1, destinationName2,
+  orderNumber1, orderNumber2, orderNumber3,
   shippedAt,
   status,                  // 'shipped' | 'cancelled'
   cancelledAt
@@ -187,6 +191,7 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 | Products | productName / category / storageLocation / createdAt | ProductName / Category / StorageLocation / CreatedAt（すべて表示名と一致） |
 | Items | productId / quantity / serialNo / orderNo / arrivalDate / receivedBy / remarks / stockType / status / registeredAt | ProductId / Quantity / SerialNo / OrderNo / ArrivalDate / ReceivedBy / Remarks / StockType / Status / RegisteredAt（すべて表示名と一致） |
 | Shipments | itemId / shippedBy / orderTo / endUser / remarks / shippedAt / status / cancelledAt | ItemId / ShippedBy / OrderTo / EndUser / Remarks / ShippedAt / Status / CancelledAt（すべて表示名と一致） |
+| Shipments | destinationCode / destinationSubCode / destinationName1 / destinationName2 / orderNumber1〜3 | DestinationCode / DestinationSubCode / DestinationName1 / DestinationName2 / OrderNumber1〜3（すべて表示名と一致） |
 
 ## store.js の公開関数
 
@@ -239,6 +244,15 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 - 必須3項目（出庫した人・受注先・エンドユーザー）のいずれかが空、または対象商品が0個 → ボタンを `disabled`
 - 未入力があるときは「未入力：出庫した人、受注先」のように項目名を表示
 - 入力欄から離れた時点で、その項目が空ならエラーを表示
+
+### 出庫画面：会計/販売システム連携用の項目
+
+社内で使っている会計/販売システム（別製品）のCSV取込機能に出庫実績を取り込めるようにするため、
+出庫画面に出荷先コード・小番、出荷先名1/2、受注番号1〜3を追加した（通常品の出庫のみ。フィルター
+出庫には無い）。すべて任意入力の自由記述で、候補一覧からの入力補完や、出荷先コード⇔名前の
+自動連携はまだ無い（出荷先の一覧をどう管理するかが未確定のため、いったん自由入力のみで導入した）。
+将来的に出荷先マスタが用意できたら、入力補完・自動連携を追加する想定。受注番号1〜3・出荷先コード・
+小番は、`shipping.js`で「-」区切りの複数枠（`.split-field`）として入力する見た目にしている。
 
 ### 入庫画面：商品コード・製品名の自由入力
 
