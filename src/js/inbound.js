@@ -30,10 +30,26 @@ App.inbound = (function () {
     nameField.value = product ? product.productName : codeField.value;
   }
 
-  /** 製品名を先に入力した場合、商品コードが空ならそのまま商品コードにもコピーする。 */
+  /**
+   * 製品名の入力に一致する登録済み商品があれば、商品コードをその商品の正しいコードに更新する
+   * （商品コードに既に値が入っていても、名前欄で別の登録済み商品を選び直した場合は上書きする）。
+   * 一致する商品が無い（新しい製品名）場合は、商品コードが空の時だけ製品名をそのままコピーする
+   * （既に入力済みの商品コードを、無関係な新規名で誤って上書きしないため）。
+   */
   function syncProductCode() {
-    if (!nameField.value.trim() || codeField.value.trim()) return;
-    codeField.value = nameField.value;
+    var name = nameField.value.trim();
+    if (!name) return;
+
+    var products = App.store.listProducts(CATEGORY);
+    var match = products.filter(function (product) {
+      return product.productName.trim().toLowerCase() === name.toLowerCase();
+    })[0];
+
+    if (match) {
+      codeField.value = match.productCode;
+    } else if (!codeField.value.trim()) {
+      codeField.value = name;
+    }
   }
 
   /** 商品マスタの登録・更新・削除に追従して、コード・製品名の候補一覧を作り直す。 */
