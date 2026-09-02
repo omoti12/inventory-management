@@ -18,11 +18,17 @@ App.store = (function () {
     { key: 'productName', label: '製品名' }
   ];
 
-  /* 出庫時の必須項目。 */
+  /* 出庫時の必須項目（フィルター出庫）。 */
   var SHIPMENT_FIELDS = [
     { key: 'shippedBy', label: '出庫した人' },
     { key: 'orderTo', label: '受注先' },
     { key: 'endUser', label: 'エンドユーザー' }
+  ];
+
+  /* 出庫時の必須項目（通常品）。受注先・エンドユーザーは出荷先コード/名・受注番号に
+     置き換わったため必須にしていない。 */
+  var NORMAL_SHIPMENT_FIELDS = [
+    { key: 'shippedBy', label: '出庫した人' }
   ];
 
   function text(value) {
@@ -601,14 +607,16 @@ App.store = (function () {
    * 先に同じ在庫を出庫していた場合はその分だけ対象から除外する（複数人が同時に同じ
    * 在庫を出庫しようとしても、二重に出庫記録が作られないようにするための排他制御）。
    * info.shippedAt を指定すると出庫日時をその値にする（任意入力。省略時は今の日時）。
+   * requiredFields で必須項目を差し替えられる（省略時は SHIPMENT_FIELDS＝フィルター出庫向け。
+   * 通常品の出庫は NORMAL_SHIPMENT_FIELDS を渡す）。
    * 戻り値: { ok: true, count, conflictCount? } / { ok: false, errors }
    * conflictCount がある場合、その個数は既に他の担当者が出庫済みだったため対象外。
    */
-  function ship(itemIds, info) {
+  function ship(itemIds, info, requiredFields) {
     var input = info || {};
     var errors = {};
 
-    SHIPMENT_FIELDS.forEach(function (field) {
+    (requiredFields || SHIPMENT_FIELDS).forEach(function (field) {
       if (!text(input[field.key])) {
         errors[field.key] = field.label + 'を入力してください。';
       }
@@ -697,7 +705,8 @@ App.store = (function () {
     if (!keyword) return true;
     return [
       row.productCode, row.productName, row.serialNo, row.orderNo,
-      row.shippedBy, row.orderTo, row.endUser, row.remarks
+      row.shippedBy, row.orderTo, row.endUser, row.remarks,
+      row.destinationName1, row.destinationName2
     ].some(function (value) { return includes(value, keyword); });
   }
 
@@ -795,6 +804,7 @@ App.store = (function () {
   return {
     PRODUCT_FIELDS: PRODUCT_FIELDS,
     SHIPMENT_FIELDS: SHIPMENT_FIELDS,
+    NORMAL_SHIPMENT_FIELDS: NORMAL_SHIPMENT_FIELDS,
     load: load,
     listProducts: listProducts,
     getProduct: getProduct,
