@@ -149,6 +149,38 @@ h1, h2, h3, p { margin: 0; }
 
 /* --- タブ ------------------------------------------------------------ */
 
+/* メインメニューは「通常」「フィルター」の2グループに分けて2段で表示する
+   （全12画面を1段に並べると横に長くなり見づらいため）。 */
+.tabs-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-1);
+}
+
+.tabs-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.tabs-group__label {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-radius: 999px;
+  padding: 3px var(--space-2);
+}
+
+.tabs-group .tabs {
+  min-width: 0;
+  overflow-x: auto;
+}
+
 .tabs {
   display: flex;
   gap: var(--space-5);
