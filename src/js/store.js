@@ -442,9 +442,31 @@ App.store = (function () {
       });
   }
 
+  function matchesFilterInboundRow(row, filter) {
+    var f = filter || {};
+    if (f.status && f.status !== 'all' && row.status !== f.status) return false;
+    var keyword = text(f.keyword);
+    if (!keyword) return true;
+    return [row.productCode, row.productName, row.serialNo, row.remarks]
+      .some(function (value) { return includes(value, keyword); });
+  }
+
+  /** フィルター入庫履歴：フィルター品の在庫を、在庫中・出庫済みを問わずすべて返す。 */
+  function listFilterInboundHistory(filter, sortOrder) {
+    var direction = sortOrder === 'asc' ? -1 : 1;
+    return items
+      .filter(function (item) { return item.stockType === 'filter'; })
+      .map(decorate)
+      .filter(function (row) { return matchesFilterInboundRow(row, filter); })
+      .sort(function (a, b) {
+        return a.registeredAt < b.registeredAt ? direction : a.registeredAt > b.registeredAt ? -direction : 0;
+      });
+  }
+
   /**
-   * 入庫記録（在庫の1行）を編集する。入庫履歴画面からの利用を想定し、数量・入荷日・
-   * 入庫した人・備考を更新できる（商品そのものの変更は対象外）。Promise を返す。
+   * 入庫記録（在庫の1行）を編集する。入庫履歴・フィルター入庫履歴画面からの利用を想定し、
+   * 通常品なら数量・入荷日・入庫した人・備考、フィルター品なら製造番号・入荷日・備考を
+   * 更新できる（商品そのものの変更は対象外）。Promise を返す。
    */
   function updateItem(id, data) {
     var item = findItem(id);
@@ -452,24 +474,43 @@ App.store = (function () {
 
     var input = data || {};
     var errors = {};
-    if (toQuantity(input.quantity) === 0) {
-      errors.quantity = '数量を1以上で入力してください。';
-    }
-    if (!text(input.receivedBy)) {
-      errors.receivedBy = '入庫した人を入力してください。';
-    }
-    if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
+    var fields;
+    var isFilter = item.stockType === 'filter';
 
-    var fields = {
-      Quantity: toQuantity(input.quantity),
-      ArrivalDate: text(input.arrivalDate),
-      ReceivedBy: text(input.receivedBy),
-      Remarks: text(input.remarks)
-    };
+    if (isFilter) {
+      if (!text(input.serialNo)) {
+        errors.serialNo = '製造番号を入力してください。';
+      }
+      if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
+      fields = {
+        SerialNo: text(input.serialNo),
+        ArrivalDate: text(input.arrivalDate),
+        Remarks: text(input.remarks)
+      };
+    } else {
+      if (toQuantity(input.quantity) === 0) {
+        errors.quantity = '数量を1以上で入力してください。';
+      }
+      if (!text(input.receivedBy)) {
+        errors.receivedBy = '入庫した人を入力してください。';
+      }
+      if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
+      fields = {
+        Quantity: toQuantity(input.quantity),
+        ArrivalDate: text(input.arrivalDate),
+        ReceivedBy: text(input.receivedBy),
+        Remarks: text(input.remarks)
+      };
+    }
+
     return App.graph.updateItem('Items', id, fields).then(function () {
-      item.quantity = fields.Quantity;
+      if (isFilter) {
+        item.serialNo = fields.SerialNo;
+      } else {
+        item.quantity = fields.Quantity;
+        item.receivedBy = fields.ReceivedBy;
+      }
       item.arrivalDate = fields.ArrivalDate;
-      item.receivedBy = fields.ReceivedBy;
       item.remarks = fields.Remarks;
       return { ok: true, item: decorate(item) };
     }).catch(function (err) {
@@ -888,6 +929,7 @@ App.store = (function () {
     getItem: getItem,
     getItems: getItems,
     listInboundHistory: listInboundHistory,
+    listFilterInboundHistory: listFilterInboundHistory,
     updateItem: updateItem,
     allocateForShipment: allocateForShipment,
     addItem: addItem,

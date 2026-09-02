@@ -43,6 +43,7 @@ App.init = function () {
       App.inbound.init();
       App.inboundHistory.init();
       App.filterInbound.init();
+      App.filterInboundHistory.init();
       App.shipping.init();
       App.filterShipping.init();
       App.history.init();

@@ -14,6 +14,7 @@ App.ui = (function () {
   'products',
   'filter-inventory',
   'filter-inbound',
+  'filter-inbound-history',
   'filter-shipping',
   'filter-history',
   'filter-products'
