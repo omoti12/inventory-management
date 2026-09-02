@@ -30,19 +30,29 @@
         <button type="button" class="btn btn--ghost btn--sm" id="app-sign-out">サインアウト</button>
       </div>
     </div>
-    <nav class="tabs" id="main-tabs" aria-label="メインメニュー">
-      <button type="button" class="tab" data-view="inventory">在庫一覧</button>
-      <button type="button" class="tab" data-view="inbound">入庫</button>
-      <button type="button" class="tab" data-view="inbound-history">入庫履歴</button>
-      <button type="button" class="tab" data-view="shipping">出庫</button>
-      <button type="button" class="tab" data-view="history">出庫履歴</button>
-      <button type="button" class="tab" data-view="products">商品管理</button>
-      <button type="button" class="tab" data-view="filter-inventory">フィルター在庫一覧</button>
-      <button type="button" class="tab" data-view="filter-inbound">フィルター入庫</button>
-      <button type="button" class="tab" data-view="filter-inbound-history">フィルター入庫履歴</button>
-      <button type="button" class="tab" data-view="filter-shipping">フィルター出庫</button>
-      <button type="button" class="tab" data-view="filter-history">フィルター出庫履歴</button>
-      <button type="button" class="tab" data-view="filter-products">フィルター商品管理</button>
+    <nav class="tabs-nav" id="main-tabs" aria-label="メインメニュー">
+      <div class="tabs-group">
+        <span class="tabs-group__label">通常</span>
+        <div class="tabs">
+          <button type="button" class="tab" data-view="inventory">在庫一覧</button>
+          <button type="button" class="tab" data-view="inbound">入庫</button>
+          <button type="button" class="tab" data-view="inbound-history">入庫履歴</button>
+          <button type="button" class="tab" data-view="shipping">出庫</button>
+          <button type="button" class="tab" data-view="history">出庫履歴</button>
+          <button type="button" class="tab" data-view="products">商品管理</button>
+        </div>
+      </div>
+      <div class="tabs-group">
+        <span class="tabs-group__label">フィルター</span>
+        <div class="tabs">
+          <button type="button" class="tab" data-view="filter-inventory">フィルター在庫一覧</button>
+          <button type="button" class="tab" data-view="filter-inbound">フィルター入庫</button>
+          <button type="button" class="tab" data-view="filter-inbound-history">フィルター入庫履歴</button>
+          <button type="button" class="tab" data-view="filter-shipping">フィルター出庫</button>
+          <button type="button" class="tab" data-view="filter-history">フィルター出庫履歴</button>
+          <button type="button" class="tab" data-view="filter-products">フィルター商品管理</button>
+        </div>
+      </div>
     </nav>
   </div>
 </header>
