@@ -25,12 +25,15 @@ App.filterShipping = (function () {
 
   function values() {
     var data = new FormData(form);
+    var shippedDate = data.get('shippedDate') || '';
     return {
       shippedBy: data.get('shippedBy') || '',
-      /* 出庫日は任意入力。指定が無ければ null にし、store.js側で今の日時を使う。 */
-      shippedAt: App.ui.combineDateWithNow(data.get('shippedDate')),
+      /* shippedDate はフォームの生の値（必須項目チェック用）。shippedAt はそれを実際の
+         出庫日時（ISO日時）に変換した値で、こちらをSharePointへの保存に使う。 */
+      shippedDate: shippedDate,
+      shippedAt: App.ui.combineDateWithNow(shippedDate),
       remarks: data.get('remarks') || '',
-      /* 会計/販売システムへのCSV取込用の項目（すべて任意入力）。 */
+      /* 会計/販売システムへのCSV取込用の項目。 */
       destinationCode: data.get('destinationCode') || '',
       destinationSubCode: data.get('destinationSubCode') || '',
       destinationName1: data.get('destinationName1') || '',

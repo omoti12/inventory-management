@@ -18,10 +18,20 @@ App.store = (function () {
     { key: 'productName', label: '製品名' }
   ];
 
-  /* 出庫時の必須項目（通常品・フィルター品共通）。かつては受注先・エンドユーザーも必須
-     だったが、出荷先コード/名・受注番号に置き換わったため必須から外した。 */
+  /* 出庫時の必須項目（通常品・フィルター品共通）。備考だけが任意で、それ以外はすべて必須。
+     shippedDate はフォーム上の生の日付文字列（<input type="date"> の値）を指す。実際に
+     SharePointへ送る出庫日時 shippedAt は、これを App.ui.combineDateWithNow() で変換した値
+     （values() がその両方を返す）。 */
   var SHIPMENT_FIELDS = [
-    { key: 'shippedBy', label: '出庫した人' }
+    { key: 'shippedBy', label: '出庫した人' },
+    { key: 'shippedDate', label: '出庫日' },
+    { key: 'destinationCode', label: '出荷先コード' },
+    { key: 'destinationSubCode', label: '出荷先小番' },
+    { key: 'destinationName1', label: '出荷先名1' },
+    { key: 'destinationName2', label: '出荷先名2' },
+    { key: 'orderNumber1', label: '受注番号1' },
+    { key: 'orderNumber2', label: '受注番号2' },
+    { key: 'orderNumber3', label: '受注番号3' }
   ];
 
   function text(value) {
