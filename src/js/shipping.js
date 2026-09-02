@@ -222,17 +222,49 @@ App.shipping = (function () {
   }
 
   /**
-   * 出荷先コード・小番の両方が登録済みの出荷先と完全一致すれば、出荷先名1/2をその
-   * 登録内容で自動入力する（既に入力済みでも、登録済みの出荷先を選び直した場合は上書きする）。
+   * 値をJSから直接書き換えた入力欄に input イベントを発火させる。フォームの input リスナー
+   * （エラー表示のクリア・出庫ボタンの活性状態の更新）は input イベント前提のため、これを
+   * 発火させないと「値は入っているのに未入力エラーが残ったまま」になってしまう。
+   */
+  function fireInput(field) {
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function fillDestinationName(destination) {
+    form.elements.destinationName1.value = destination.destinationName1;
+    form.elements.destinationName2.value = destination.destinationName2;
+    fireInput(form.elements.destinationName1);
+    fireInput(form.elements.destinationName2);
+  }
+
+  /**
+   * 出荷先コードだけを入力/変更した時点で呼ぶ。そのコードに登録済みの出荷先があれば、
+   * 出荷先小番・出荷先名1/2をまとめて自動入力する（コードに複数の小番がある場合は、
+   * 一番小さい小番のものを仮に採用する。違っていれば小番を直せば下のsyncDestinationFromSubCode
+   * が正しい方に合わせ直す）。一致しなければ何もしない（自由入力のまま）。
+   */
+  function syncDestinationFromCode() {
+    var code = destinationCodeField.value.trim();
+    if (!code) return;
+    var matches = App.store.findDestinationsByCode(code);
+    if (matches.length === 0) return;
+    var destination = matches[0];
+    destinationSubCodeField.value = destination.destinationSubCode;
+    fireInput(destinationSubCodeField);
+    fillDestinationName(destination);
+  }
+
+  /**
+   * 出荷先小番を入力/変更した時点で呼ぶ。出荷先コード・小番の完全一致で出荷先名1/2を
+   * 上書きする（既に入力済みでも、登録済みの出荷先を選び直した場合は上書きする）。
    * 一致しなければ何もしない（自由入力のまま）。
    */
-  function syncDestinationName() {
+  function syncDestinationFromSubCode() {
     var code = destinationCodeField.value.trim();
     if (!code) return;
     var destination = App.store.findDestination(code, destinationSubCodeField.value.trim());
     if (!destination) return;
-    form.elements.destinationName1.value = destination.destinationName1;
-    form.elements.destinationName2.value = destination.destinationName2;
+    fillDestinationName(destination);
   }
 
   function render() {
@@ -310,8 +342,8 @@ App.shipping = (function () {
     destinationSubCodeField = document.getElementById('shipping-destination-sub-code');
     destinationCodeList = document.getElementById('shipping-destination-code-list');
 
-    destinationCodeField.addEventListener('change', syncDestinationName);
-    destinationSubCodeField.addEventListener('change', syncDestinationName);
+    destinationCodeField.addEventListener('change', syncDestinationFromCode);
+    destinationSubCodeField.addEventListener('change', syncDestinationFromSubCode);
     refreshDestinations();
 
     var onSearchInput = App.ui.debounce(renderSearch, 200);
