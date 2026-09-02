@@ -11,6 +11,7 @@ App.store = (function () {
   var products = [];
   var items = [];
   var shipments = [];
+  var destinations = [];
 
   /* 商品マスタの必須項目。商品コードは一意。 */
   var PRODUCT_FIELDS = [
@@ -53,7 +54,13 @@ App.store = (function () {
 
   /* --- 読み込み ----------------------------------------------------------- */
 
-  /** 起動時に一度呼ぶ。商品マスタ・在庫・出庫履歴をすべてSharePointから読み込むため非同期になる。 */
+  /**
+   * 起動時に一度呼ぶ。商品マスタ・在庫・出庫履歴・出荷先マスタをすべてSharePointから
+   * 読み込むため非同期になる。
+   * 出荷先マスタ(Destinations)は後から追加したリストで、SharePoint側にまだ作成されていない
+   * 環境（作成前の一時的な状態）でもアプリ全体の起動を妨げないよう、読み込みに失敗した場合は
+   * 空の一覧として扱う（出荷先の自動入力の候補が出ないだけで、他の機能には影響しない）。
+   */
   function load() {
     return App.graph.listItems('Products').then(function (graphItems) {
       products = graphItems.map(productFromGraphItem);
@@ -63,6 +70,9 @@ App.store = (function () {
       return App.graph.listItems('Shipments');
     }).then(function (graphItems) {
       shipments = graphItems.map(shipmentFromGraphItem);
+      return App.graph.listItems('Destinations').catch(function () { return []; });
+    }).then(function (graphItems) {
+      destinations = graphItems.map(destinationFromGraphItem);
     });
   }
 
@@ -1002,6 +1012,136 @@ App.store = (function () {
     });
   }
 
+  /* --- 出荷先マスタ ------------------------------------------------------ */
+
+  /**
+   * 出荷先マスタ：出庫・フィルター出庫の出荷先コード・小番・出荷先名1/2の入力補完
+   * （自動連携）のために、あらかじめ登録しておく出荷先の一覧。出荷先コード・小番の
+   * 組み合わせが一意になる（同じコードでも小番違いは別の出荷先として登録できる）。
+   */
+
+  /** GraphのリストアイテムをこのアプリのDestination形状に変換する。 */
+  function destinationFromGraphItem(graphItem) {
+    var f = graphItem.fields || {};
+    return {
+      id: String(graphItem.id),
+      destinationCode: f.DestinationCode || '',
+      destinationSubCode: f.DestinationSubCode || '',
+      destinationName1: f.DestinationName1 || '',
+      destinationName2: f.DestinationName2 || '',
+      createdAt: f.CreatedAt || ''
+    };
+  }
+
+  /** このアプリのDestination形状をGraphの Destinations リストのfields（内部名）に変換する。 */
+  function destinationToFields(input, createdAt) {
+    return {
+      DestinationCode: text(input.destinationCode),
+      DestinationSubCode: text(input.destinationSubCode),
+      DestinationName1: text(input.destinationName1),
+      DestinationName2: text(input.destinationName2),
+      CreatedAt: createdAt || new Date().toISOString()
+    };
+  }
+
+  function findDestinationById(id) {
+    for (var i = 0; i < destinations.length; i++) {
+      if (destinations[i].id === id) return destinations[i];
+    }
+    return null;
+  }
+
+  /** 出荷先コード・小番の完全一致で出荷先を探す（出庫フォームの自動連携用）。見つからなければ null。 */
+  function findDestination(destinationCode, destinationSubCode) {
+    var code = norm(destinationCode);
+    var subCode = norm(destinationSubCode);
+    for (var i = 0; i < destinations.length; i++) {
+      if (norm(destinations[i].destinationCode) === code && norm(destinations[i].destinationSubCode) === subCode) {
+        return destinations[i];
+      }
+    }
+    return null;
+  }
+
+  function compareDestinations(a, b) {
+    if (a.destinationCode !== b.destinationCode) return a.destinationCode < b.destinationCode ? -1 : 1;
+    return a.destinationSubCode < b.destinationSubCode ? -1 : a.destinationSubCode > b.destinationSubCode ? 1 : 0;
+  }
+
+  /** 出荷先マスタを出荷先コード・小番順で返す。 */
+  function listDestinations() {
+    return destinations.slice().sort(compareDestinations);
+  }
+
+  function validateDestination(input, excludeId) {
+    var errors = {};
+    if (!text(input.destinationCode)) {
+      errors.destinationCode = '出荷先コードを入力してください。';
+    }
+    if (!errors.destinationCode) {
+      var duplicated = destinations.some(function (d) {
+        return d.id !== excludeId &&
+          norm(d.destinationCode) === norm(input.destinationCode) &&
+          norm(d.destinationSubCode) === norm(input.destinationSubCode);
+      });
+      if (duplicated) {
+        errors.destinationCode = 'この出荷先コード・小番の組み合わせは既に登録されています。';
+        errors._duplicate = true;
+      }
+    }
+    return errors;
+  }
+
+  /** 出荷先マスタを登録する。出荷先コード・小番の組み合わせは重複できない。Promiseを返す。 */
+  function addDestination(data) {
+    var input = data || {};
+    var errors = validateDestination(input, null);
+    if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
+
+    var fields = destinationToFields(input);
+    return App.graph.createItem('Destinations', fields).then(function (created) {
+      var destination = destinationFromGraphItem(created);
+      destinations.push(destination);
+      return { ok: true, destination: destination };
+    }).catch(function (err) {
+      return { ok: false, errors: { destinationCode: 'SharePointへの登録に失敗しました：' + err.message } };
+    });
+  }
+
+  /** 出荷先マスタを更新する。Promiseを返す。 */
+  function updateDestination(id, data) {
+    var destination = findDestinationById(id);
+    if (!destination) return Promise.resolve({ ok: false, errors: { destinationCode: '対象の出荷先が見つかりません。' } });
+
+    var input = data || {};
+    var errors = validateDestination(input, id);
+    if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
+
+    var fields = destinationToFields(input);
+    return App.graph.updateItem('Destinations', id, fields).then(function () {
+      destination.destinationCode = fields.DestinationCode;
+      destination.destinationSubCode = fields.DestinationSubCode;
+      destination.destinationName1 = fields.DestinationName1;
+      destination.destinationName2 = fields.DestinationName2;
+      return { ok: true, destination: destination };
+    }).catch(function (err) {
+      return { ok: false, errors: { destinationCode: 'SharePointの更新に失敗しました：' + err.message } };
+    });
+  }
+
+  /** 出荷先マスタを削除する。過去の出庫履歴には影響しない（履歴側は入力値をそのまま保持しているため）。 */
+  function deleteDestination(id) {
+    var destination = findDestinationById(id);
+    if (!destination) return Promise.resolve({ ok: false, message: '対象の出荷先が見つかりません。' });
+
+    return App.graph.deleteItem('Destinations', id).then(function () {
+      destinations = destinations.filter(function (d) { return d.id !== id; });
+      return { ok: true };
+    }).catch(function (err) {
+      return { ok: false, message: 'SharePointからの削除に失敗しました：' + err.message };
+    });
+  }
+
   return {
     PRODUCT_FIELDS: PRODUCT_FIELDS,
     SHIPMENT_FIELDS: SHIPMENT_FIELDS,
@@ -1031,6 +1171,11 @@ App.store = (function () {
     groupShipmentRows: groupShipmentRows,
     cancelShipment: cancelShipment,
     updateShipment: updateShipment,
-    deleteShipment: deleteShipment
+    deleteShipment: deleteShipment,
+    listDestinations: listDestinations,
+    findDestination: findDestination,
+    addDestination: addDestination,
+    updateDestination: updateDestination,
+    deleteDestination: deleteDestination
   };
 })();

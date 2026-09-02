@@ -11,6 +11,7 @@ App.shipping = (function () {
   var targetIds = [];
   var form, itemsBody, countLabel, submitButton, hint;
   var searchForm, searchBody;
+  var destinationCodeField, destinationSubCodeField, destinationCodeList;
 
   /** 入荷日が古いものから先に出庫する（入荷日不明のものは後ろに回す）。 */
   function byArrivalDateAsc(a, b) {
@@ -208,6 +209,32 @@ App.shipping = (function () {
     });
   }
 
+  /** 出荷先マスタの登録・更新・削除に追従して、出荷先コードの候補一覧を作り直す。 */
+  function refreshDestinations() {
+    var destinations = App.store.listDestinations();
+    App.ui.clear(destinationCodeList);
+    destinations.forEach(function (destination) {
+      var option = App.ui.el('option', null, null);
+      option.value = destination.destinationCode;
+      option.label = destination.destinationName1;
+      destinationCodeList.appendChild(option);
+    });
+  }
+
+  /**
+   * 出荷先コード・小番の両方が登録済みの出荷先と完全一致すれば、出荷先名1/2をその
+   * 登録内容で自動入力する（既に入力済みでも、登録済みの出荷先を選び直した場合は上書きする）。
+   * 一致しなければ何もしない（自由入力のまま）。
+   */
+  function syncDestinationName() {
+    var code = destinationCodeField.value.trim();
+    if (!code) return;
+    var destination = App.store.findDestination(code, destinationSubCodeField.value.trim());
+    if (!destination) return;
+    form.elements.destinationName1.value = destination.destinationName1;
+    form.elements.destinationName2.value = destination.destinationName2;
+  }
+
   function render() {
     renderTargets();
     renderSearch();
@@ -279,6 +306,13 @@ App.shipping = (function () {
     hint = document.getElementById('shipping-hint');
     searchForm = document.getElementById('shipping-search');
     searchBody = document.getElementById('shipping-search-body');
+    destinationCodeField = document.getElementById('shipping-destination-code');
+    destinationSubCodeField = document.getElementById('shipping-destination-sub-code');
+    destinationCodeList = document.getElementById('shipping-destination-code-list');
+
+    destinationCodeField.addEventListener('change', syncDestinationName);
+    destinationSubCodeField.addEventListener('change', syncDestinationName);
+    refreshDestinations();
 
     var onSearchInput = App.ui.debounce(renderSearch, 200);
     searchForm.addEventListener('input', onSearchInput);
@@ -310,7 +344,12 @@ App.shipping = (function () {
     });
   }
 
-  App.views.shipping = { onShow: render };
+  App.views.shipping = {
+    onShow: function () {
+      refreshDestinations();
+      render();
+    }
+  };
 
-  return { init: init, start: start, render: render };
+  return { init: init, start: start, render: render, refreshDestinations: refreshDestinations };
 })();
