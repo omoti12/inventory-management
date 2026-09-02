@@ -84,6 +84,66 @@ App.filterHistory = (function () {
     });
   }
 
+  /** 複数件に対して同じStore操作を順番に実行し、成功件数と最初のエラーメッセージをまとめる。 */
+  function runBulk(rows, action) {
+    var successCount = 0;
+    var firstError = null;
+    return rows.reduce(function (chain, row) {
+      return chain.then(function () {
+        return action(row.id).then(function (result) {
+          if (result.ok) {
+            successCount += 1;
+          } else if (!firstError) {
+            firstError = result.message;
+          }
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      return { successCount: successCount, firstError: firstError };
+    });
+  }
+
+  /** まとめ表示のうち、出庫済みの行をまとめてキャンセルする。 */
+  function onBulkCancel(targets) {
+    App.ui.confirm({
+      title: '出庫のキャンセル',
+      message: targets.length + '件の商品をまとめてキャンセルし、在庫に戻します。よろしいですか？',
+      okLabel: 'キャンセルする',
+      danger: true
+    }).then(function (approved) {
+      if (!approved) return;
+
+      runBulk(targets, App.store.cancelShipment).then(function (summary) {
+        render();
+        App.filterInventory.render();
+        if (summary.successCount > 0) {
+          App.ui.toast(summary.successCount + '件をまとめてキャンセルし、在庫に戻しました。', 'success');
+        }
+        if (summary.firstError) App.ui.toast(summary.firstError, 'error');
+      });
+    });
+  }
+
+  /** まとめ表示のうち、キャンセル済みの行をまとめて削除する。 */
+  function onBulkDelete(targets) {
+    App.ui.confirm({
+      title: '出庫履歴の削除',
+      message: targets.length + '件のキャンセル済み履歴をまとめて削除します。元に戻せません。よろしいですか？',
+      okLabel: '削除する',
+      danger: true
+    }).then(function (approved) {
+      if (!approved) return;
+
+      runBulk(targets, App.store.deleteShipment).then(function (summary) {
+        render();
+        if (summary.successCount > 0) {
+          App.ui.toast(summary.successCount + '件の出庫履歴をまとめて削除しました。', 'success');
+        }
+        if (summary.firstError) App.ui.toast(summary.firstError, 'error');
+      });
+    });
+  }
+
   function toggleSort() {
     sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
     sortArrow.textContent = sortOrder === 'desc' ? '▼' : '▲';
@@ -178,7 +238,22 @@ App.filterHistory = (function () {
     statusCell.appendChild(statusBadge(groupStatus(group.rows)));
     tr.appendChild(statusCell);
 
-    tr.appendChild(App.ui.el('td', 'col-action'));
+    var actionsCell = App.ui.el('td', 'col-action');
+    var shippedRows = group.rows.filter(function (r) { return r.status === 'shipped'; });
+    var cancelledRows = group.rows.filter(function (r) { return r.status === 'cancelled'; });
+    if (shippedRows.length > 0) {
+      var bulkCancelButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'まとめてキャンセル');
+      bulkCancelButton.type = 'button';
+      bulkCancelButton.addEventListener('click', function () { onBulkCancel(shippedRows); });
+      actionsCell.appendChild(bulkCancelButton);
+    }
+    if (cancelledRows.length > 0) {
+      var bulkDeleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'まとめて削除');
+      bulkDeleteButton.type = 'button';
+      bulkDeleteButton.addEventListener('click', function () { onBulkDelete(cancelledRows); });
+      actionsCell.appendChild(bulkDeleteButton);
+    }
+    tr.appendChild(actionsCell);
 
     tr.addEventListener('click', function (event) {
       if (event.target.closest('button')) return;
