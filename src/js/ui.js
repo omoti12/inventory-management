@@ -8,6 +8,7 @@ App.ui = (function () {
   var VIEWS = [
   'inventory',
   'inbound',
+  'inbound-history',
   'shipping',
   'history',
   'products',
