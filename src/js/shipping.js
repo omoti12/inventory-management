@@ -29,6 +29,8 @@ App.shipping = (function () {
     var data = new FormData(form);
     return {
       shippedBy: data.get('shippedBy') || '',
+      /* 出庫日は任意入力。指定が無ければ null にし、store.js側で今の日時を使う。 */
+      shippedAt: App.ui.combineDateWithNow(data.get('shippedDate')),
       orderTo: data.get('orderTo') || '',
       endUser: data.get('endUser') || '',
       remarks: data.get('remarks') || '',

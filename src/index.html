@@ -210,6 +210,10 @@
             <p class="form-error" data-error-for="shippedBy"></p>
           </div>
           <div class="form-field">
+            <label for="shipping-date">出庫日 <span class="optional">任意</span></label>
+            <input type="date" id="shipping-date" name="shippedDate">
+          </div>
+          <div class="form-field">
             <label for="shipping-order-to">受注先 <span class="req">必須</span></label>
             <input type="text" id="shipping-order-to" name="orderTo" placeholder="例：株式会社○○ 東京営業所">
             <p class="form-error" data-error-for="orderTo"></p>
@@ -646,6 +650,10 @@
             <label for="filter-shipping-person">出庫した人 <span class="req">必須</span></label>
             <input type="text" id="filter-shipping-person" name="shippedBy" placeholder="例：日東太郎">
             <p class="form-error" data-error-for="shippedBy"></p>
+          </div>
+          <div class="form-field">
+            <label for="filter-shipping-date">出庫日 <span class="optional">任意</span></label>
+            <input type="date" id="filter-shipping-date" name="shippedDate">
           </div>
           <div class="form-field">
             <label for="filter-shipping-order-to">受注先 <span class="req">必須</span></label>
