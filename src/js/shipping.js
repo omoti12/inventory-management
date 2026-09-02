@@ -45,7 +45,7 @@ App.shipping = (function () {
 
   function missingFields() {
     var input = values();
-    return App.store.NORMAL_SHIPMENT_FIELDS.filter(function (field) {
+    return App.store.SHIPMENT_FIELDS.filter(function (field) {
       return String(input[field.key]).trim() === '';
     });
   }
@@ -242,7 +242,7 @@ App.shipping = (function () {
     }).then(function (approved) {
       if (!approved) return;
 
-      App.store.ship(targetIds, input, App.store.NORMAL_SHIPMENT_FIELDS).then(function (result) {
+      App.store.ship(targetIds, input).then(function (result) {
         if (!result.ok) {
           if (result.errors._items) App.ui.toast(result.errors._items, 'error');
           App.ui.showFieldErrors(form, result.errors);
@@ -297,7 +297,7 @@ App.shipping = (function () {
     form.addEventListener('focusout', function (event) {
       var input = event.target;
       if (!input.name) return;
-      var field = App.store.NORMAL_SHIPMENT_FIELDS.filter(function (f) { return f.key === input.name; })[0];
+      var field = App.store.SHIPMENT_FIELDS.filter(function (f) { return f.key === input.name; })[0];
       if (!field) return;
       var message = form.querySelector('[data-error-for="' + input.name + '"]');
       if (input.value.trim() === '') {

@@ -63,6 +63,28 @@ App.history = (function () {
     });
   }
 
+  /** キャンセル済みの履歴を削除する（出庫済みのままの履歴は削除できない）。 */
+  function onDelete(row) {
+    App.ui.confirm({
+      title: '出庫履歴の削除',
+      message: '「' + row.productCode + ' / ' + row.productName + '」のキャンセル済み履歴を削除します。元に戻せません。よろしいですか？',
+      okLabel: '削除する',
+      danger: true
+    }).then(function (approved) {
+      if (!approved) return;
+
+      App.store.deleteShipment(row.id).then(function (result) {
+        if (!result.ok) {
+          App.ui.toast(result.message, 'error');
+          return;
+        }
+
+        render();
+        App.ui.toast('出庫履歴を削除しました。', 'success');
+      });
+    });
+  }
+
   function toggleSort() {
     sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
     sortArrow.textContent = sortOrder === 'desc' ? '▼' : '▲';
@@ -159,7 +181,10 @@ App.history = (function () {
         cancelButton.addEventListener('click', function () { onCancel(row); });
         actionCell.appendChild(cancelButton);
       } else {
-        actionCell.appendChild(App.ui.el('span', 'muted', '—'));
+        var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', '削除');
+        deleteButton.type = 'button';
+        deleteButton.addEventListener('click', function () { onDelete(row); });
+        actionCell.appendChild(deleteButton);
       }
       tr.appendChild(actionCell);
 

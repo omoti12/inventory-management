@@ -29,9 +29,15 @@ App.filterShipping = (function () {
       shippedBy: data.get('shippedBy') || '',
       /* 出庫日は任意入力。指定が無ければ null にし、store.js側で今の日時を使う。 */
       shippedAt: App.ui.combineDateWithNow(data.get('shippedDate')),
-      orderTo: data.get('orderTo') || '',
-      endUser: data.get('endUser') || '',
-      remarks: data.get('remarks') || ''
+      remarks: data.get('remarks') || '',
+      /* 会計/販売システムへのCSV取込用の項目（すべて任意入力）。 */
+      destinationCode: data.get('destinationCode') || '',
+      destinationSubCode: data.get('destinationSubCode') || '',
+      destinationName1: data.get('destinationName1') || '',
+      destinationName2: data.get('destinationName2') || '',
+      orderNumber1: data.get('orderNumber1') || '',
+      orderNumber2: data.get('orderNumber2') || '',
+      orderNumber3: data.get('orderNumber3') || ''
     };
   }
 
@@ -122,10 +128,11 @@ App.filterShipping = (function () {
     }
 
     var items = targets();
+    var destination = [input.destinationName1, input.destinationName2].filter(Boolean).join('／');
 
     App.ui.confirm({
       title: 'フィルター出庫の確認',
-      message: items.length + ' 個の商品を「' + input.orderTo + '／' + input.endUser + '」宛に出庫します。よろしいですか？',
+      message: items.length + ' 個の商品を' + (destination ? '「' + destination + '」宛に' : '') + '出庫します。よろしいですか？',
       okLabel: '出庫する'
     }).then(function (approved) {
       if (!approved) return;
