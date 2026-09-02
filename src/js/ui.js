@@ -80,6 +80,20 @@ App.ui = (function () {
       ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
+  /**
+   * 「YYYY-MM-DD」の日付（<input type="date">の値）に、今の時刻を組み合わせてISO日時にする。
+   * 出庫日を任意で指定できるようにするための変換で、時刻までは指定させないため今の時刻を使う。
+   * dateStr が空なら null を返す（呼び出し側は「未指定＝今の日時のまま」として扱う）。
+   */
+  function combineDateWithNow(dateStr) {
+    if (!dateStr) return null;
+    var now = new Date();
+    var d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return null;
+    d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+    return d.toISOString();
+  }
+
   /* --- CSV読み込み ------------------------------------------------------ */
 
   /**
@@ -275,6 +289,7 @@ App.ui = (function () {
     debounce: debounce,
     formatMonth: formatMonth,
     formatDateTime: formatDateTime,
+    combineDateWithNow: combineDateWithNow,
     parseCsvFile: parseCsvFile,
     downloadCsv: downloadCsv,
     clearFieldErrors: clearFieldErrors,

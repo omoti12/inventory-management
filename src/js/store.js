@@ -600,6 +600,7 @@ App.store = (function () {
    * 在庫(Items)の状態更新はETag付きで行い（App.graph.updateWithRetry）、他の担当者が
    * 先に同じ在庫を出庫していた場合はその分だけ対象から除外する（複数人が同時に同じ
    * 在庫を出庫しようとしても、二重に出庫記録が作られないようにするための排他制御）。
+   * info.shippedAt を指定すると出庫日時をその値にする（任意入力。省略時は今の日時）。
    * 戻り値: { ok: true, count, conflictCount? } / { ok: false, errors }
    * conflictCount がある場合、その個数は既に他の担当者が出庫済みだったため対象外。
    */
@@ -625,7 +626,8 @@ App.store = (function () {
       return Promise.resolve({ ok: false, errors: errors });
     }
 
-    var shippedAt = new Date().toISOString();
+    /* 出庫日は任意入力。指定が無ければ、今の日時をそのまま使う。 */
+    var shippedAt = text(input.shippedAt) || new Date().toISOString();
     var shippedQty = 0;
     var conflictQty = 0;
     var conflictCount = 0;
