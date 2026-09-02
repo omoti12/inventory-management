@@ -104,7 +104,7 @@ App.filterInbound = (function () {
     refreshProducts();
   }
 
-  App.views.filterInbound = {
+  App.views['filter-inbound'] = {
     onShow: function () {
       refreshProducts();
     }
