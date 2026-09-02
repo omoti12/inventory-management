@@ -364,6 +364,16 @@ App.ui = (function () {
     return currentView;
   }
 
+  /**
+   * 今表示中の画面だけを再描画する（「更新」ボタン用）。showView() と違い、画面の切替や
+   * タブのハイライト、ページ先頭へのスクロールは行わない（今見ている場所のまま、表示中の
+   * データだけを最新化するため）。
+   */
+  function refreshCurrentView() {
+    var view = App.views[currentView];
+    if (view && typeof view.onShow === 'function') view.onShow();
+  }
+
   function init() {
     document.querySelectorAll('#main-tabs .tab').forEach(function (tab) {
       tab.addEventListener('click', function () { showView(tab.dataset.view); });
@@ -388,6 +398,7 @@ App.ui = (function () {
     editShipment: editShipment,
     showView: showView,
     getCurrentView: getCurrentView,
+    refreshCurrentView: refreshCurrentView,
     init: init
   };
 })();

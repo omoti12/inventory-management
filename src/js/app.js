@@ -11,6 +11,7 @@ App.init = function () {
   var accountBox = document.getElementById('app-account');
   var accountName = document.getElementById('app-account-name');
   var signOutButton = document.getElementById('app-sign-out');
+  var refreshButton = document.getElementById('app-refresh');
 
   function showSigninError(message) {
     signinError.textContent = message;
@@ -26,6 +27,23 @@ App.init = function () {
 
   signOutButton.addEventListener('click', function () {
     App.auth.signOut();
+  });
+
+  /**
+   * 「更新」ボタン：他の人がSharePoint上で追加・変更した内容を取り込む。自動では一切動かず、
+   * 押した時だけ全データを読み直して、今表示中の画面だけを再描画する（入力中のフォームには
+   * 触れない）。
+   */
+  refreshButton.addEventListener('click', function () {
+    refreshButton.disabled = true;
+    App.store.load().then(function () {
+      App.ui.refreshCurrentView();
+      App.ui.toast('最新の状態に更新しました。', 'success');
+    }).catch(function (err) {
+      App.ui.toast('更新に失敗しました：' + err.message, 'error');
+    }).then(function () {
+      refreshButton.disabled = false;
+    });
   });
 
   function startApp(account) {
