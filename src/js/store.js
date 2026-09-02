@@ -57,6 +57,9 @@ App.store = (function () {
   /**
    * 起動時に一度呼ぶ。商品マスタ・在庫・出庫履歴・出荷先マスタをすべてSharePointから
    * 読み込むため非同期になる。
+   * 出荷先マスタ(Destinations)は後から追加したリストで、SharePoint側にまだ作成されていない
+   * 環境（作成前の一時的な状態）でもアプリ全体の起動を妨げないよう、読み込みに失敗した場合は
+   * 空の一覧として扱う（出荷先の自動入力の候補が出ないだけで、他の機能には影響しない）。
    */
   function load() {
     return App.graph.listItems('Products').then(function (graphItems) {
@@ -67,7 +70,7 @@ App.store = (function () {
       return App.graph.listItems('Shipments');
     }).then(function (graphItems) {
       shipments = graphItems.map(shipmentFromGraphItem);
-      return App.graph.listItems('Destinations');
+      return App.graph.listItems('Destinations').catch(function () { return []; });
     }).then(function (graphItems) {
       destinations = graphItems.map(destinationFromGraphItem);
     });
