@@ -19,7 +19,9 @@ App.store = (function () {
     { key: 'productName', label: '製品名' }
   ];
 
-  /* 出庫時の必須項目（通常品・フィルター品共通）。備考だけが任意で、それ以外はすべて必須。
+  /* 出庫時の必須項目（通常品・フィルター品共通）。備考と出荷先名2は任意で、それ以外はすべて必須。
+     出荷先名2が任意なのは、出荷先マスタ側でも出荷先名2を必須にしていない（出荷先名2が無い
+     出荷先が実際にあるため）のに合わせたもの。
      shippedDate はフォーム上の生の日付文字列（<input type="date"> の値）を指す。実際に
      SharePointへ送る出庫日時 shippedAt は、これを App.ui.combineDateWithNow() で変換した値
      （values() がその両方を返す）。 */
@@ -29,7 +31,6 @@ App.store = (function () {
     { key: 'destinationCode', label: '出荷先コード' },
     { key: 'destinationSubCode', label: '出荷先小番' },
     { key: 'destinationName1', label: '出荷先名1' },
-    { key: 'destinationName2', label: '出荷先名2' },
     { key: 'orderNumber1', label: '受注番号1' },
     { key: 'orderNumber2', label: '受注番号2' },
     { key: 'orderNumber3', label: '受注番号3' }
@@ -1063,6 +1064,18 @@ App.store = (function () {
     return null;
   }
 
+  /**
+   * 出荷先コードだけが一致する出荷先を、小番の昇順ですべて返す（出庫フォームで出荷先コードを
+   * 入力した時点、まだ小番を入力していない段階での自動入力用）。見つからなければ空配列。
+   */
+  function findDestinationsByCode(destinationCode) {
+    var code = norm(destinationCode);
+    return destinations
+      .filter(function (d) { return norm(d.destinationCode) === code; })
+      .slice()
+      .sort(compareDestinations);
+  }
+
   function compareDestinations(a, b) {
     if (a.destinationCode !== b.destinationCode) return a.destinationCode < b.destinationCode ? -1 : 1;
     return a.destinationSubCode < b.destinationSubCode ? -1 : a.destinationSubCode > b.destinationSubCode ? 1 : 0;
@@ -1174,6 +1187,7 @@ App.store = (function () {
     deleteShipment: deleteShipment,
     listDestinations: listDestinations,
     findDestination: findDestination,
+    findDestinationsByCode: findDestinationsByCode,
     addDestination: addDestination,
     updateDestination: updateDestination,
     deleteDestination: deleteDestination
