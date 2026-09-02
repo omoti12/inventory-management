@@ -95,20 +95,18 @@ App.history = (function () {
 
   /**
    * 社内の会計/販売システムの出荷CSV取込機能にそのまま読み込ませる形式でダウンロードする。
-   * 列の順序（出荷日・伝票入力担当者コード・出荷先コード・出荷先小番・出荷先名1・出荷先名2・
-   * 受注番号1〜3・商品コード）は先方の取込画面の仕様に合わせている。伝票入力担当者コードは、
-   * 先方には担当者コードから氏名を引く仕組みがあるが、こちらにはコード体系が無いため、
-   * 「出庫した人」の名前をそのまま入れている。今表示している絞り込み・並び順のまま出力する。
+   * 列の順序（出荷日・出荷先コード・出荷先小番・出荷先名1・出荷先名2・受注番号1〜3・商品コード・
+   * フリー在庫分数量）は先方の取込画面の仕様に合わせている。今表示している絞り込み・並び順の
+   * まま出力する。
    */
   function onExportExternalCsv() {
     var rows = App.store.listShipments(currentFilter(), 'normal', sortOrder);
     var csvRows = [
-      ['出荷日', '伝票入力担当者コード', '出荷先コード', '出荷先小番', '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '商品コード']
+      ['出荷日', '出荷先コード', '出荷先小番', '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '商品コード', 'フリー在庫分数量']
     ];
     rows.forEach(function (row) {
       csvRows.push([
         formatExternalDate(row.shippedAt),
-        row.shippedBy || '',
         row.destinationCode || '',
         row.destinationSubCode || '',
         row.destinationName1 || '',
@@ -116,7 +114,8 @@ App.history = (function () {
         row.orderNumber1 || '',
         row.orderNumber2 || '',
         row.orderNumber3 || '',
-        row.productCode
+        row.productCode,
+        row.quantity
       ]);
     });
     App.ui.downloadCsv('出荷CSV_' + todayStamp() + '.csv', csvRows);
