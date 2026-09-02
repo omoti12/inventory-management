@@ -173,9 +173,35 @@ App.filterHistory = (function () {
     App.ui.downloadCsv('フィルター出庫履歴_' + todayStamp() + '.csv', csvRows);
   }
 
-  /** 1商品ぶんの行の操作セル（キャンセル/削除）を作る。単独行・まとめ表示の内訳行の両方で使う。 */
+  /**
+   * 出庫履歴の内容（出庫した人・出庫日・出荷先・受注番号・備考）を編集する。
+   * 何を出庫したか（商品・製造番号）自体は編集対象外。
+   */
+  function onEdit(row) {
+    App.ui.editShipment(row).then(function (values) {
+      if (!values) return;
+
+      App.store.updateShipment(row.id, values).then(function (result) {
+        if (!result.ok) {
+          var message = result.message || (result.errors && Object.keys(result.errors).map(function (k) { return result.errors[k]; })[0]) || '更新に失敗しました。';
+          App.ui.toast(message, 'error');
+          return;
+        }
+
+        render();
+        App.ui.toast('出庫履歴を更新しました。', 'success');
+      });
+    });
+  }
+
+  /** 1商品ぶんの行の操作セル（編集/キャンセル/削除）を作る。単独行・まとめ表示の内訳行の両方で使う。 */
   function actionCell(row) {
     var cell = App.ui.el('td', 'col-action');
+    var editButton = App.ui.el('button', 'btn btn--ghost btn--sm', '編集');
+    editButton.type = 'button';
+    editButton.addEventListener('click', function () { onEdit(row); });
+    cell.appendChild(editButton);
+
     if (row.status === 'shipped') {
       var cancelButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'キャンセル');
       cancelButton.type = 'button';

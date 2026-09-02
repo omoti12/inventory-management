@@ -253,6 +253,93 @@ App.ui = (function () {
     });
   }
 
+  /* --- 出庫履歴の編集ダイアログ ------------------------------------------ */
+
+  /**
+   * 出庫履歴の1件（row。商品コード・製品名・SHIPMENT_FIELDSの各項目を持つ）を編集するダイアログを
+   * 開く。出庫履歴・フィルター出庫履歴の両方から共通で使う（編集できる項目はどちらも同じ
+   * SHIPMENT_FIELDS のため）。保存されたら入力値のオブジェクトを、キャンセルされたら null を
+   * resolve するPromiseを返す。実際の保存（SharePointへの反映）は呼び出し側が
+   * App.store.updateShipment() で行う。
+   */
+  function editShipment(row) {
+    var dialog = document.getElementById('shipment-edit-dialog');
+    var form = document.getElementById('shipment-edit-form');
+
+    document.getElementById('shipment-edit-product').textContent = row.productCode + ' / ' + row.productName;
+    form.elements.shippedBy.value = row.shippedBy || '';
+    form.elements.shippedDate.value = (row.shippedAt || '').slice(0, 10);
+    form.elements.destinationCode.value = row.destinationCode || '';
+    form.elements.destinationSubCode.value = row.destinationSubCode || '';
+    form.elements.destinationName1.value = row.destinationName1 || '';
+    form.elements.destinationName2.value = row.destinationName2 || '';
+    form.elements.orderNumber1.value = row.orderNumber1 || '';
+    form.elements.orderNumber2.value = row.orderNumber2 || '';
+    form.elements.orderNumber3.value = row.orderNumber3 || '';
+    form.elements.remarks.value = row.remarks || '';
+    clearFieldErrors(form);
+
+    if (typeof dialog.showModal !== 'function') {
+      return Promise.resolve(null);
+    }
+
+    return new Promise(function (resolve) {
+      var cancelButton = document.getElementById('shipment-edit-cancel');
+
+      function done(result) {
+        form.removeEventListener('submit', onSubmit);
+        cancelButton.removeEventListener('click', onCancelClick);
+        dialog.removeEventListener('cancel', onDialogCancel);
+        if (dialog.open) dialog.close();
+        resolve(result);
+      }
+
+      function onSubmit(event) {
+        event.preventDefault();
+        var data = new FormData(form);
+        var shippedDate = data.get('shippedDate') || '';
+        var values = {
+          shippedBy: data.get('shippedBy') || '',
+          /* shippedDate はフォーム上の生の日付。実際に保存する shippedAt はこれを今の時刻と
+             組み合わせた値にする（出庫フォームの出庫日入力と同じ扱い）。 */
+          shippedDate: shippedDate,
+          shippedAt: combineDateWithNow(shippedDate),
+          destinationCode: data.get('destinationCode') || '',
+          destinationSubCode: data.get('destinationSubCode') || '',
+          destinationName1: data.get('destinationName1') || '',
+          destinationName2: data.get('destinationName2') || '',
+          orderNumber1: data.get('orderNumber1') || '',
+          orderNumber2: data.get('orderNumber2') || '',
+          orderNumber3: data.get('orderNumber3') || '',
+          remarks: data.get('remarks') || ''
+        };
+
+        var missing = (App.store.SHIPMENT_FIELDS || []).filter(function (field) {
+          return String(values[field.key]).trim() === '';
+        });
+        if (missing.length > 0) {
+          var errors = {};
+          missing.forEach(function (field) { errors[field.key] = field.label + 'を入力してください。'; });
+          showFieldErrors(form, errors);
+          return;
+        }
+
+        done(values);
+      }
+
+      function onCancelClick() { done(null); }
+      function onDialogCancel(event) {
+        if (event) event.preventDefault();
+        done(null);
+      }
+
+      form.addEventListener('submit', onSubmit);
+      cancelButton.addEventListener('click', onCancelClick);
+      dialog.addEventListener('cancel', onDialogCancel);
+      dialog.showModal();
+    });
+  }
+
   /* --- 画面切替 -------------------------------------------------------- */
 
   function showView(name) {
@@ -298,6 +385,7 @@ App.ui = (function () {
     showFieldErrors: showFieldErrors,
     toast: toast,
     confirm: confirmDialog,
+    editShipment: editShipment,
     showView: showView,
     getCurrentView: getCurrentView,
     init: init

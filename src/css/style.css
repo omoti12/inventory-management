@@ -780,6 +780,16 @@ select:disabled {
   max-width: 420px;
 }
 
+/* --- 出庫履歴の編集ダイアログ ------------------------------------------ */
+
+.dialog--wide {
+  max-width: 640px;
+}
+
+.dialog--wide .form__grid {
+  margin-bottom: var(--space-5);
+}
+
 .scanner__viewport {
   position: relative;
   background: var(--color-text);

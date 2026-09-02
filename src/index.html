@@ -1008,6 +1008,68 @@
   </div>
 </dialog>
 
+<dialog class="dialog dialog--wide" id="shipment-edit-dialog">
+  <form id="shipment-edit-form" novalidate>
+    <h3 class="dialog__title">出庫履歴の編集</h3>
+    <p class="dialog__body" id="shipment-edit-product"></p>
+
+    <div class="form__grid">
+      <div class="form-field">
+        <label for="shipment-edit-shipped-by">出庫した人 <span class="req">必須</span></label>
+        <input type="text" id="shipment-edit-shipped-by" name="shippedBy">
+        <p class="form-error" data-error-for="shippedBy"></p>
+      </div>
+      <div class="form-field">
+        <label for="shipment-edit-shipped-date">出庫日 <span class="req">必須</span></label>
+        <input type="date" id="shipment-edit-shipped-date" name="shippedDate">
+        <p class="form-error" data-error-for="shippedDate"></p>
+      </div>
+      <div class="form-field">
+        <label for="shipment-edit-destination-code">出荷先コード・小番 <span class="req">必須</span></label>
+        <div class="split-field">
+          <input type="text" id="shipment-edit-destination-code" name="destinationCode">
+          <span class="split-field__sep">-</span>
+          <input type="text" id="shipment-edit-destination-sub-code" name="destinationSubCode" aria-label="出荷先小番">
+        </div>
+        <p class="form-error" data-error-for="destinationCode"></p>
+        <p class="form-error" data-error-for="destinationSubCode"></p>
+      </div>
+      <div class="form-field">
+        <label for="shipment-edit-destination-name1">出荷先名1 <span class="req">必須</span></label>
+        <input type="text" id="shipment-edit-destination-name1" name="destinationName1">
+        <p class="form-error" data-error-for="destinationName1"></p>
+      </div>
+      <div class="form-field">
+        <label for="shipment-edit-destination-name2">出荷先名2 <span class="req">必須</span></label>
+        <input type="text" id="shipment-edit-destination-name2" name="destinationName2">
+        <p class="form-error" data-error-for="destinationName2"></p>
+      </div>
+      <div class="form-field">
+        <label for="shipment-edit-order-number1">受注番号 <span class="req">必須</span></label>
+        <div class="split-field">
+          <input type="text" id="shipment-edit-order-number1" name="orderNumber1" aria-label="受注番号1">
+          <span class="split-field__sep">-</span>
+          <input type="text" id="shipment-edit-order-number2" name="orderNumber2" aria-label="受注番号2">
+          <span class="split-field__sep">-</span>
+          <input type="text" id="shipment-edit-order-number3" name="orderNumber3" aria-label="受注番号3">
+        </div>
+        <p class="form-error" data-error-for="orderNumber1"></p>
+        <p class="form-error" data-error-for="orderNumber2"></p>
+        <p class="form-error" data-error-for="orderNumber3"></p>
+      </div>
+      <div class="form-field form-field--wide">
+        <label for="shipment-edit-remarks">備考 <span class="optional">任意</span></label>
+        <textarea id="shipment-edit-remarks" name="remarks" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="dialog__foot">
+      <button type="button" class="btn btn--ghost" id="shipment-edit-cancel">キャンセル</button>
+      <button type="submit" class="btn btn--primary" id="shipment-edit-save">保存</button>
+    </div>
+  </form>
+</dialog>
+
 <script src="js/vendor/msal-browser.min.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/graph-client.js"></script>

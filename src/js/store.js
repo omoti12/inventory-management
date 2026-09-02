@@ -934,6 +934,56 @@ App.store = (function () {
   }
 
   /**
+   * 出庫履歴の内容を編集する（出庫した後に、出庫した人・出庫日・出荷先・受注番号・備考の
+   * 入力間違いに気づいた場合に、キャンセルしてやり直さなくても直接直せるようにするためのもの）。
+   * 何を出庫したか（商品・数量）自体は在庫の実数と結び付いているため対象外で、
+   * SHIPMENT_FIELDS が指す項目（備考を除きすべて必須）だけを更新できる。状態
+   * （出庫済み/キャンセル）は問わず編集できる。Promise を返す。
+   */
+  function updateShipment(id, data) {
+    var shipment = getShipment(id);
+    if (!shipment) return Promise.resolve({ ok: false, message: '対象の出庫履歴が見つかりません。' });
+
+    var input = data || {};
+    var errors = {};
+    SHIPMENT_FIELDS.forEach(function (field) {
+      if (!text(input[field.key])) {
+        errors[field.key] = field.label + 'を入力してください。';
+      }
+    });
+    if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
+
+    var fields = {
+      ShippedBy: text(input.shippedBy),
+      ShippedAt: text(input.shippedAt) || shipment.shippedAt,
+      DestinationCode: text(input.destinationCode),
+      DestinationSubCode: text(input.destinationSubCode),
+      DestinationName1: text(input.destinationName1),
+      DestinationName2: text(input.destinationName2),
+      OrderNumber1: text(input.orderNumber1),
+      OrderNumber2: text(input.orderNumber2),
+      OrderNumber3: text(input.orderNumber3),
+      Remarks: text(input.remarks)
+    };
+
+    return App.graph.updateItem('Shipments', id, fields).then(function () {
+      shipment.shippedBy = fields.ShippedBy;
+      shipment.shippedAt = fields.ShippedAt;
+      shipment.destinationCode = fields.DestinationCode;
+      shipment.destinationSubCode = fields.DestinationSubCode;
+      shipment.destinationName1 = fields.DestinationName1;
+      shipment.destinationName2 = fields.DestinationName2;
+      shipment.orderNumber1 = fields.OrderNumber1;
+      shipment.orderNumber2 = fields.OrderNumber2;
+      shipment.orderNumber3 = fields.OrderNumber3;
+      shipment.remarks = fields.Remarks;
+      return { ok: true, shipment: shipment };
+    }).catch(function (err) {
+      return { ok: false, message: 'SharePointの更新に失敗しました：' + err.message };
+    });
+  }
+
+  /**
    * 出庫履歴を削除する。誤って出庫を確定させてしまった記録が残り続けるのを防ぐためのもので、
    * 在庫の増減とは無関係な「履歴の片付け」。そのため、キャンセル済み（在庫には既に戻っている）
    * の記録だけを対象にする。出庫済みのまま削除すると在庫の実数と合わなくなるため許可しない。
@@ -980,6 +1030,7 @@ App.store = (function () {
     listFilterShipments: listFilterShipments,
     groupShipmentRows: groupShipmentRows,
     cancelShipment: cancelShipment,
+    updateShipment: updateShipment,
     deleteShipment: deleteShipment
   };
 })();
