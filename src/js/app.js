@@ -41,6 +41,7 @@ App.init = function () {
       App.filterProducts.init();
       App.filterInventory.init();
       App.inbound.init();
+      App.inboundHistory.init();
       App.filterInbound.init();
       App.shipping.init();
       App.filterShipping.init();

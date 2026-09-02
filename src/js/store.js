@@ -418,6 +418,65 @@ App.store = (function () {
     return (ids || []).map(getItem).filter(Boolean);
   }
 
+  function matchesInboundRow(row, filter) {
+    var f = filter || {};
+    if (f.status && f.status !== 'all' && row.status !== f.status) return false;
+    var keyword = text(f.keyword);
+    if (!keyword) return true;
+    return [row.productCode, row.productName, row.receivedBy, row.remarks]
+      .some(function (value) { return includes(value, keyword); });
+  }
+
+  /**
+   * 入庫履歴：通常品の在庫を、在庫中・出庫済みを問わずすべて返す（在庫一覧は在庫中のものだけ）。
+   * sortOrder は 'asc'（登録日時が古い順）/ 'desc'（新しい順、省略時のデフォルト）。
+   */
+  function listInboundHistory(filter, sortOrder) {
+    var direction = sortOrder === 'asc' ? -1 : 1;
+    return items
+      .filter(function (item) { return (item.stockType || 'normal') === 'normal'; })
+      .map(decorate)
+      .filter(function (row) { return matchesInboundRow(row, filter); })
+      .sort(function (a, b) {
+        return a.registeredAt < b.registeredAt ? direction : a.registeredAt > b.registeredAt ? -direction : 0;
+      });
+  }
+
+  /**
+   * 入庫記録（在庫の1行）を編集する。入庫履歴画面からの利用を想定し、数量・入荷日・
+   * 入庫した人・備考を更新できる（商品そのものの変更は対象外）。Promise を返す。
+   */
+  function updateItem(id, data) {
+    var item = findItem(id);
+    if (!item) return Promise.resolve({ ok: false, message: '対象の入庫記録が見つかりません。' });
+
+    var input = data || {};
+    var errors = {};
+    if (toQuantity(input.quantity) === 0) {
+      errors.quantity = '数量を1以上で入力してください。';
+    }
+    if (!text(input.receivedBy)) {
+      errors.receivedBy = '入庫した人を入力してください。';
+    }
+    if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
+
+    var fields = {
+      Quantity: toQuantity(input.quantity),
+      ArrivalDate: text(input.arrivalDate),
+      ReceivedBy: text(input.receivedBy),
+      Remarks: text(input.remarks)
+    };
+    return App.graph.updateItem('Items', id, fields).then(function () {
+      item.quantity = fields.Quantity;
+      item.arrivalDate = fields.ArrivalDate;
+      item.receivedBy = fields.ReceivedBy;
+      item.remarks = fields.Remarks;
+      return { ok: true, item: decorate(item) };
+    }).catch(function (err) {
+      return { ok: false, message: 'SharePointの更新に失敗しました：' + err.message };
+    });
+  }
+
   /**
    * 指定した商品の在庫から、入荷日が古いバッチから順に指定数量ぶんを確保し、
    * 出庫対象にできる item の id 配列を返す。ちょうど数量が合わないバッチは分割し、
@@ -828,6 +887,8 @@ App.store = (function () {
     groupInStock: groupInStock,
     getItem: getItem,
     getItems: getItems,
+    listInboundHistory: listInboundHistory,
+    updateItem: updateItem,
     allocateForShipment: allocateForShipment,
     addItem: addItem,
     addFilterItem: addFilterItem,
