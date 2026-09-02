@@ -595,6 +595,34 @@ select:disabled {
   color: var(--color-text-muted);
 }
 
+.badge--warning {
+  background: var(--color-danger-weak);
+  color: var(--color-danger);
+}
+
+/* --- 出庫履歴：まとめ表示（1回の出庫で複数商品を出庫した場合） --------- */
+
+.batch-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent-dark);
+  cursor: pointer;
+}
+.batch-toggle:hover { text-decoration: underline; }
+
+.row--batch-child td {
+  color: var(--color-text-muted);
+  background: #fbfcfd;
+}
+.row--batch-child td:first-child { padding-left: var(--space-6); }
+
 /* --- 選択時のアクションバー ------------------------------------------ */
 
 .action-bar {

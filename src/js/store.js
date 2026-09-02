@@ -861,6 +861,37 @@ App.store = (function () {
     return listShipments(filter, 'filter', sortOrder);
   }
 
+  /**
+   * listShipments()/listFilterShipments() が返す行を、同じ出庫操作（出庫画面での1回の送信）
+   * でまとめて出庫された商品ごとにグループ化する。ship() は1回の呼び出し内で作る出庫記録
+   * すべてに同じ shippedAt（と同じ shippedBy）を使うため、この2つが一致する行は同じ出庫操作
+   * によるものとみなせる。履歴画面で「複数商品をまとめて出庫した」場合に1つの操作として
+   * まとめて表示する（プルダウンで個々の商品を確認できるようにする）ために使う。
+   * 戻り値: [{ key, shippedAt, shippedBy, destinationName1, destinationName2, remarks, rows }]
+   * rows は呼び出し側が渡した並び順のまま保つ。
+   */
+  function groupShipmentRows(rows) {
+    var map = {};
+    var order = [];
+    (rows || []).forEach(function (row) {
+      var key = text(row.shippedAt) + '|' + text(row.shippedBy);
+      if (!map[key]) {
+        map[key] = {
+          key: key,
+          shippedAt: row.shippedAt,
+          shippedBy: row.shippedBy,
+          destinationName1: row.destinationName1,
+          destinationName2: row.destinationName2,
+          remarks: row.remarks,
+          rows: []
+        };
+        order.push(key);
+      }
+      map[key].rows.push(row);
+    });
+    return order.map(function (key) { return map[key]; });
+  }
+
   function getShipment(id) {
     for (var i = 0; i < shipments.length; i++) {
       if (shipments[i].id === id) return shipments[i];
@@ -947,6 +978,7 @@ App.store = (function () {
     ship: ship,
     listShipments: listShipments,
     listFilterShipments: listFilterShipments,
+    groupShipmentRows: groupShipmentRows,
     cancelShipment: cancelShipment,
     deleteShipment: deleteShipment
   };
