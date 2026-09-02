@@ -9,6 +9,8 @@ App.filterHistory = (function () {
 
   var searchForm, body, countLabel, sortButton, sortArrow, exportButton;
   var sortOrder = 'desc';
+  /* まとめ表示の開閉状態。キーは groupShipmentRows() の group.key。再描画をまたいで維持する。 */
+  var expandedGroups = {};
 
   function todayStamp() {
     var d = new Date();
@@ -25,12 +27,17 @@ App.filterHistory = (function () {
   }
 
   function statusBadge(status) {
-    var isCancelled = status === 'cancelled';
-    return App.ui.el(
-      'span',
-      'badge ' + (isCancelled ? 'badge--muted' : 'badge--success'),
-      isCancelled ? 'キャンセル' : '出庫済み'
-    );
+    if (status === 'cancelled') return App.ui.el('span', 'badge badge--muted', 'キャンセル');
+    if (status === 'mixed') return App.ui.el('span', 'badge badge--warning', '一部キャンセル');
+    return App.ui.el('span', 'badge badge--success', '出庫済み');
+  }
+
+  /** グループ内の行がすべて出庫済み/すべてキャンセルか、キャンセルが混在しているかを判定する。 */
+  function groupStatus(rows) {
+    var hasShipped = rows.some(function (r) { return r.status !== 'cancelled'; });
+    var hasCancelled = rows.some(function (r) { return r.status === 'cancelled'; });
+    if (hasShipped && hasCancelled) return 'mixed';
+    return hasCancelled ? 'cancelled' : 'shipped';
   }
 
   function onCancel(row) {
@@ -106,51 +113,131 @@ App.filterHistory = (function () {
     App.ui.downloadCsv('フィルター出庫履歴_' + todayStamp() + '.csv', csvRows);
   }
 
+  /** 1商品ぶんの行の操作セル（キャンセル/削除）を作る。単独行・まとめ表示の内訳行の両方で使う。 */
+  function actionCell(row) {
+    var cell = App.ui.el('td', 'col-action');
+    if (row.status === 'shipped') {
+      var cancelButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'キャンセル');
+      cancelButton.type = 'button';
+      cancelButton.addEventListener('click', function () { onCancel(row); });
+      cell.appendChild(cancelButton);
+    } else {
+      var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', '削除');
+      deleteButton.type = 'button';
+      deleteButton.addEventListener('click', function () { onDelete(row); });
+      cell.appendChild(deleteButton);
+    }
+    return cell;
+  }
+
+  /** 出庫操作1件ぶん（商品が1つだけ）を、まとめ表示にせずそのまま1行で表示する。 */
+  function renderSingleRow(row) {
+    var tr = App.ui.el('tr');
+    [
+      row.productCode,
+      row.productName,
+      row.serialNo,
+      row.arrivalDate || '—',
+      row.shippedBy,
+      row.destinationName1 || '—',
+      row.destinationName2 || '—'
+    ].forEach(function (value) {
+      tr.appendChild(App.ui.el('td', null, value));
+    });
+    tr.appendChild(App.ui.el('td', 'col-remarks', row.remarks || ''));
+    tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(row.shippedAt)));
+
+    var statusCell = App.ui.el('td');
+    statusCell.appendChild(statusBadge(row.status));
+    tr.appendChild(statusCell);
+
+    tr.appendChild(actionCell(row));
+    return tr;
+  }
+
+  /** まとめ表示の見出し行（クリックで内訳の開閉）。 */
+  function renderGroupSummary(group, expanded) {
+    var tr = App.ui.el('tr', 'row--batch-summary row-clickable');
+
+    var toggleCell = App.ui.el('td');
+    var toggleButton = App.ui.el('button', 'batch-toggle', (expanded ? '▼ ' : '▶ ') + group.rows.length + '件の商品をまとめて出庫');
+    toggleButton.type = 'button';
+    toggleButton.addEventListener('click', function () { toggleGroup(group.key); });
+    toggleCell.appendChild(toggleButton);
+    tr.appendChild(toggleCell);
+
+    ['—', '—', '—'].forEach(function (value) { tr.appendChild(App.ui.el('td', null, value)); });
+
+    tr.appendChild(App.ui.el('td', null, group.shippedBy));
+    tr.appendChild(App.ui.el('td', null, group.destinationName1 || '—'));
+    tr.appendChild(App.ui.el('td', null, group.destinationName2 || '—'));
+    tr.appendChild(App.ui.el('td', 'col-remarks', group.remarks || ''));
+    tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(group.shippedAt)));
+
+    var statusCell = App.ui.el('td');
+    statusCell.appendChild(statusBadge(groupStatus(group.rows)));
+    tr.appendChild(statusCell);
+
+    tr.appendChild(App.ui.el('td', 'col-action'));
+
+    tr.addEventListener('click', function (event) {
+      if (event.target.closest('button')) return;
+      toggleGroup(group.key);
+    });
+
+    return tr;
+  }
+
+  /** まとめ表示の内訳行（商品ごと）。 */
+  function renderGroupChildRow(row) {
+    var tr = App.ui.el('tr', 'row--batch-child');
+    tr.appendChild(App.ui.el('td', null, row.productCode));
+    tr.appendChild(App.ui.el('td', null, row.productName));
+    tr.appendChild(App.ui.el('td', null, row.serialNo));
+    tr.appendChild(App.ui.el('td', null, row.arrivalDate || '—'));
+    tr.appendChild(App.ui.el('td', null, '—'));
+    tr.appendChild(App.ui.el('td', null, '—'));
+    tr.appendChild(App.ui.el('td', null, '—'));
+    tr.appendChild(App.ui.el('td', 'col-remarks', ''));
+    tr.appendChild(App.ui.el('td', null, '—'));
+
+    var statusCell = App.ui.el('td');
+    statusCell.appendChild(statusBadge(row.status));
+    tr.appendChild(statusCell);
+
+    tr.appendChild(actionCell(row));
+    return tr;
+  }
+
+  function toggleGroup(key) {
+    expandedGroups[key] = !expandedGroups[key];
+    render();
+  }
+
   function render() {
     var rows = App.store.listFilterShipments(currentFilter(), sortOrder);
+    var groups = App.store.groupShipmentRows(rows);
     App.ui.clear(body);
     countLabel.textContent = rows.length + ' 件';
 
-    if (rows.length === 0) {
+    if (groups.length === 0) {
       body.appendChild(App.ui.emptyRow(COLUMNS, '該当する出庫履歴がありません。'));
       return;
     }
 
-    rows.forEach(function (row) {
-      var tr = App.ui.el('tr');
-      [
-        row.productCode,
-        row.productName,
-        row.serialNo,
-        row.arrivalDate || '—',
-        row.shippedBy,
-        row.destinationName1 || '—',
-        row.destinationName2 || '—'
-      ].forEach(function (value) {
-        tr.appendChild(App.ui.el('td', null, value));
-      });
-      tr.appendChild(App.ui.el('td', 'col-remarks', row.remarks || ''));
-      tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(row.shippedAt)));
-
-      var statusCell = App.ui.el('td');
-      statusCell.appendChild(statusBadge(row.status));
-      tr.appendChild(statusCell);
-
-      var actionCell = App.ui.el('td', 'col-action');
-      if (row.status === 'shipped') {
-        var cancelButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'キャンセル');
-        cancelButton.type = 'button';
-        cancelButton.addEventListener('click', function () { onCancel(row); });
-        actionCell.appendChild(cancelButton);
-      } else {
-        var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', '削除');
-        deleteButton.type = 'button';
-        deleteButton.addEventListener('click', function () { onDelete(row); });
-        actionCell.appendChild(deleteButton);
+    groups.forEach(function (group) {
+      if (group.rows.length === 1) {
+        body.appendChild(renderSingleRow(group.rows[0]));
+        return;
       }
-      tr.appendChild(actionCell);
 
-      body.appendChild(tr);
+      var expanded = !!expandedGroups[group.key];
+      body.appendChild(renderGroupSummary(group, expanded));
+      if (expanded) {
+        group.rows.forEach(function (row) {
+          body.appendChild(renderGroupChildRow(row));
+        });
+      }
     });
   }
 
