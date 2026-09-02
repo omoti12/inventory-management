@@ -56,7 +56,7 @@
 ## ファイル構成
 
 ```
-src/index.html            10画面ぶんの section とタブナビ
+src/index.html            11画面ぶんの section とタブナビ
 src/css/style.css         デザイントークン（CSS変数）＋レイアウト＋コンポーネント
 src/js/auth.js            Microsoft 365サインイン（MSAL Browser）とトークン取得
 src/js/graph-client.js    Microsoft Graph API共通ヘルパー（ページング・ETag対応）
@@ -72,13 +72,14 @@ src/js/shipping.js        出庫（通常品、必須項目チェック）
 src/js/history.js         出庫履歴（通常品）・キャンセル
 src/js/filter-products.js フィルター商品管理（フィルター品の商品マスタの登録・編集・削除）
 src/js/filter-inbound.js  フィルター入庫（フィルター品、製造番号・入荷日付）
+src/js/filter-inbound-history.js フィルター入庫履歴（在庫中・出庫済みを問わず一覧表示＋製造番号等の編集）
 src/js/filter-shipping.js フィルター出庫（在庫の選択＋出庫フォームを1画面に統合）
 src/js/filter-history.js  フィルター出庫履歴・キャンセル
 src/js/app.js             起動処理（サインイン確認 → データ読み込み → 各画面初期化）
 ```
 
 読み込み順は
-`msal-browser → auth → graph-client → store → ui → inventory → products → filter-products → scanner → inbound → inbound-history → filter-inbound → shipping → filter-shipping → history → filter-history → app`。
+`msal-browser → auth → graph-client → store → ui → inventory → products → filter-products → scanner → inbound → inbound-history → filter-inbound → filter-inbound-history → shipping → filter-shipping → history → filter-history → app`。
 `src/js/scanner.js` は `inbound.js` より前に読み込む。`src/js/app.js` が `DOMContentLoaded` で初期化し、
 サインイン済みアカウントがあれば `App.store.load()`（Graphからの読み込み、非同期）を待ってから各画面を初期化する。
 
@@ -225,7 +226,8 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 | `groupInStock(filter)` | 通常品を商品単位でまとめ、`count`（在庫数量の合計）を付けて返す | 同期 |
 | `getItem(id)` / `getItems(ids)` | 在庫の取得（商品マスタと合成した表示用オブジェクト） | 同期 |
 | `listInboundHistory(filter, sortOrder)` | 通常品の入庫履歴を、在庫中・出庫済みを問わず全件返す | 同期 |
-| `updateItem(id, data)` | 入庫記録（数量・入荷日・入庫した人・備考）を編集する | Promise |
+| `listFilterInboundHistory(filter, sortOrder)` | フィルター品の入庫履歴を、在庫中・出庫済みを問わず全件返す | 同期 |
+| `updateItem(id, data)` | 入庫記録を編集する（通常品は数量・入荷日・入庫した人・備考、フィルター品は製造番号・入荷日・備考） | Promise |
 | `allocateForShipment(productId, quantity)` | 古いバッチ順に数量を確保する。バッチ分割が必要なら在庫を分けてSharePointに書き込む | Promise |
 | `addItem(data)` | 通常品を入庫登録する（商品コード自由入力・数量・入庫した人を検証） | Promise |
 | `addFilterItem(data)` | フィルター品を入庫登録する（商品選択・製造番号・入荷日付を検証） | Promise |
@@ -249,6 +251,7 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 | 出庫履歴 | 状態・キーワードでの絞り込み、キャンセル |
 | 商品管理 | 商品マスタ（商品コード・製品名）の登録・編集・削除、使用状況の確認 |
 | フィルター入庫 | フィルター商品の選択、製造番号・入荷日付の入力、バーコード読み取り |
+| フィルター入庫履歴 | 入庫したフィルター品の一覧（在庫中・出庫済みを問わず表示）、製造番号・入荷日・備考の編集 |
 | フィルター出庫 | フィルター在庫の選択と出庫フォームを1画面に統合 |
 | フィルター出庫履歴 | フィルター品の出庫実績の一覧・キャンセル |
 | フィルター商品管理 | フィルター品の商品マスタの登録・編集・削除 |
