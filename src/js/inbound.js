@@ -18,12 +18,22 @@ App.inbound = (function () {
     return result;
   }
 
-  /** 商品コードの入力に一致する商品があれば、製品名を自動補完する。 */
+  /**
+   * 商品コードの入力に一致する商品があれば、製品名をその登録済みの名前で自動補完する。
+   * 一致する商品が無い（新しい商品コード）場合は、商品コードと製品名を同じ運用にしているため、
+   * 商品コードをそのまま製品名にコピーする。
+   */
   function syncProductName() {
     var code = codeField.value.trim();
     if (!code) return;
     var product = App.store.getProductByCode(code, CATEGORY);
-    if (product) nameField.value = product.productName;
+    nameField.value = product ? product.productName : codeField.value;
+  }
+
+  /** 製品名を先に入力した場合、商品コードが空ならそのまま商品コードにもコピーする。 */
+  function syncProductCode() {
+    if (!nameField.value.trim() || codeField.value.trim()) return;
+    codeField.value = nameField.value;
   }
 
   /** 商品マスタの登録・更新・削除に追従して、コード・製品名の候補一覧を作り直す。 */
@@ -125,6 +135,7 @@ App.inbound = (function () {
     });
 
     codeField.addEventListener('change', syncProductName);
+    nameField.addEventListener('change', syncProductCode);
 
     document.getElementById('inbound-reset').addEventListener('click', resetForm);
     document.getElementById('inbound-copy-clear').addEventListener('click', resetForm);
