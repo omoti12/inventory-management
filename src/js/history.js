@@ -7,13 +7,21 @@ App.history = (function () {
 
   var COLUMNS = 12;
 
-  var searchForm, body, countLabel, sortButton, sortArrow, exportButton;
+  var searchForm, body, countLabel, sortButton, sortArrow, exportButton, exportExternalButton;
   var sortOrder = 'desc';
 
   function todayStamp() {
     var d = new Date();
     var pad = function (n) { return n < 10 ? '0' + n : String(n); };
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  /** 外部システム用CSVの日付欄に合わせた「YYYY/M/D」形式（0埋めしない）。 */
+  function formatExternalDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
   }
 
   function currentFilter() {
@@ -85,6 +93,32 @@ App.history = (function () {
     App.ui.downloadCsv('出庫履歴_' + todayStamp() + '.csv', csvRows);
   }
 
+  /**
+   * 社内の会計/販売システムの出荷CSV取込機能にそのまま読み込ませる形式でダウンロードする。
+   * 列の順序（出荷日・出荷先コード・出荷先小番・出荷先名1・出荷先名2・受注番号1〜3・商品コード）は
+   * 先方の取込画面の仕様に合わせている。今表示している絞り込み・並び順のまま出力する。
+   */
+  function onExportExternalCsv() {
+    var rows = App.store.listShipments(currentFilter(), 'normal', sortOrder);
+    var csvRows = [
+      ['出荷日', '出荷先コード', '出荷先小番', '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '商品コード']
+    ];
+    rows.forEach(function (row) {
+      csvRows.push([
+        formatExternalDate(row.shippedAt),
+        row.destinationCode || '',
+        row.destinationSubCode || '',
+        row.destinationName1 || '',
+        row.destinationName2 || '',
+        row.orderNumber1 || '',
+        row.orderNumber2 || '',
+        row.orderNumber3 || '',
+        row.productCode
+      ]);
+    });
+    App.ui.downloadCsv('出荷CSV_' + todayStamp() + '.csv', csvRows);
+  }
+
   function render() {
     var rows = App.store.listShipments(currentFilter(), 'normal', sortOrder);
     App.ui.clear(body);
@@ -138,6 +172,7 @@ App.history = (function () {
     sortButton = document.getElementById('history-sort-date');
     sortArrow = document.getElementById('history-sort-arrow');
     exportButton = document.getElementById('history-export-csv');
+    exportExternalButton = document.getElementById('history-export-external-csv');
 
     var onInput = App.ui.debounce(render, 200);
     searchForm.addEventListener('input', onInput);
@@ -145,6 +180,7 @@ App.history = (function () {
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); render(); });
     sortButton.addEventListener('click', toggleSort);
     exportButton.addEventListener('click', onExportCsv);
+    exportExternalButton.addEventListener('click', onExportExternalCsv);
   }
 
   App.views.history = { onShow: render };
