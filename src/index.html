@@ -647,14 +647,30 @@
             <input type="date" id="filter-shipping-date" name="shippedDate">
           </div>
           <div class="form-field">
-            <label for="filter-shipping-order-to">受注先 <span class="req">必須</span></label>
-            <input type="text" id="filter-shipping-order-to" name="orderTo" placeholder="例：株式会社○○ 東京営業所">
-            <p class="form-error" data-error-for="orderTo"></p>
+            <label for="filter-shipping-destination-code">出荷先コード・小番 <span class="optional">任意</span></label>
+            <div class="split-field">
+              <input type="text" id="filter-shipping-destination-code" name="destinationCode" placeholder="コード">
+              <span class="split-field__sep">-</span>
+              <input type="text" id="filter-shipping-destination-sub-code" name="destinationSubCode" placeholder="小番">
+            </div>
           </div>
           <div class="form-field">
-            <label for="filter-shipping-end-user">エンドユーザー <span class="req">必須</span></label>
-            <input type="text" id="filter-shipping-end-user" name="endUser" placeholder="例：営業部　○○様">
-            <p class="form-error" data-error-for="endUser"></p>
+            <label for="filter-shipping-destination-name1">出荷先名1 <span class="optional">任意</span></label>
+            <input type="text" id="filter-shipping-destination-name1" name="destinationName1" placeholder="例：東レ株式会社">
+          </div>
+          <div class="form-field">
+            <label for="filter-shipping-destination-name2">出荷先名2 <span class="optional">任意</span></label>
+            <input type="text" id="filter-shipping-destination-name2" name="destinationName2" placeholder="例：愛媛工場">
+          </div>
+          <div class="form-field">
+            <label for="filter-shipping-order-number1">受注番号 <span class="optional">任意</span></label>
+            <div class="split-field">
+              <input type="text" id="filter-shipping-order-number1" name="orderNumber1" placeholder="例：25CA">
+              <span class="split-field__sep">-</span>
+              <input type="text" id="filter-shipping-order-number2" name="orderNumber2" placeholder="例：197">
+              <span class="split-field__sep">-</span>
+              <input type="text" id="filter-shipping-order-number3" name="orderNumber3" placeholder="例：0">
+            </div>
           </div>
           <div class="form-field form-field--wide">
             <label for="filter-shipping-remarks">備考 <span class="optional">任意</span></label>
@@ -693,7 +709,7 @@
           </div>
           <div class="form-field form-field--wide">
             <label for="filter-history-keyword">キーワード</label>
-            <input type="text" id="filter-history-keyword" name="keyword" placeholder="商品コード・製造番号・受注先・担当者など">
+            <input type="text" id="filter-history-keyword" name="keyword" placeholder="商品コード・製造番号・出荷先名・担当者など">
           </div>
         </form>
         <div class="head-actions">
@@ -711,8 +727,8 @@
               <th>製造番号</th>
               <th>入荷日</th>
               <th>出庫した人</th>
-              <th>受注先</th>
-              <th>エンドユーザー</th>
+              <th>出荷先名1</th>
+              <th>出荷先名2</th>
               <th>備考</th>
               <th>
                 <button type="button" class="th-sort" id="filter-history-sort-date">
