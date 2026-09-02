@@ -140,8 +140,8 @@ App.history = (function () {
         row.quantity + ' 個',
         row.arrivalDate || '—',
         row.shippedBy,
-        row.orderTo,
-        row.endUser
+        row.destinationName1 || '—',
+        row.destinationName2 || '—'
       ].forEach(function (value) {
         tr.appendChild(App.ui.el('td', null, value));
       });

@@ -1,4 +1,4 @@
-/* 出庫：在庫一覧で選んだ商品に出庫情報を入力する。必須3項目が揃うまで出庫できない。 */
+/* 出庫：在庫一覧で選んだ商品に出庫情報を入力する。必須項目（出庫した人）が無いと出庫できない。 */
 window.App = window.App || {};
 App.views = App.views || {};
 
@@ -31,8 +31,6 @@ App.shipping = (function () {
       shippedBy: data.get('shippedBy') || '',
       /* 出庫日は任意入力。指定が無ければ null にし、store.js側で今の日時を使う。 */
       shippedAt: App.ui.combineDateWithNow(data.get('shippedDate')),
-      orderTo: data.get('orderTo') || '',
-      endUser: data.get('endUser') || '',
       remarks: data.get('remarks') || '',
       /* 会計/販売システムへのCSV取込用の項目（すべて任意入力）。 */
       destinationCode: data.get('destinationCode') || '',
@@ -47,7 +45,7 @@ App.shipping = (function () {
 
   function missingFields() {
     var input = values();
-    return App.store.SHIPMENT_FIELDS.filter(function (field) {
+    return App.store.NORMAL_SHIPMENT_FIELDS.filter(function (field) {
       return String(input[field.key]).trim() === '';
     });
   }
@@ -235,15 +233,16 @@ App.shipping = (function () {
 
     var items = targets();
     var totalQty = items.reduce(function (sum, item) { return sum + (parseInt(item.quantity, 10) || 0); }, 0);
+    var destination = [input.destinationName1, input.destinationName2].filter(Boolean).join('／');
 
     App.ui.confirm({
       title: '出庫の確認',
-      message: totalQty + ' 個の商品を「' + input.orderTo + '／' + input.endUser + '」宛に出庫します。よろしいですか？',
+      message: totalQty + ' 個の商品を' + (destination ? '「' + destination + '」宛に' : '') + '出庫します。よろしいですか？',
       okLabel: '出庫する'
     }).then(function (approved) {
       if (!approved) return;
 
-      App.store.ship(targetIds, input).then(function (result) {
+      App.store.ship(targetIds, input, App.store.NORMAL_SHIPMENT_FIELDS).then(function (result) {
         if (!result.ok) {
           if (result.errors._items) App.ui.toast(result.errors._items, 'error');
           App.ui.showFieldErrors(form, result.errors);
@@ -298,7 +297,7 @@ App.shipping = (function () {
     form.addEventListener('focusout', function (event) {
       var input = event.target;
       if (!input.name) return;
-      var field = App.store.SHIPMENT_FIELDS.filter(function (f) { return f.key === input.name; })[0];
+      var field = App.store.NORMAL_SHIPMENT_FIELDS.filter(function (f) { return f.key === input.name; })[0];
       if (!field) return;
       var message = form.querySelector('[data-error-for="' + input.name + '"]');
       if (input.value.trim() === '') {
