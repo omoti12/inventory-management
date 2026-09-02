@@ -181,6 +181,12 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 その時点の絞り込み条件・並び順のまま `listShipments()` / `listFilterShipments()` を呼び直して
 CSV化する（画面に描画済みのDOMを読み取るのではなく、データ取得からやり直す方式）。
 
+出庫履歴（通常品側）には、社内の会計/販売システムの出荷CSV取込機能にそのまま読み込ませる形式の
+「外部システム用CSV」ボタンも別にある（`history.js`の`onExportExternalCsv()`）。列の順序
+（出荷日・出荷先コード・出荷先小番・出荷先名1・出荷先名2・受注番号1〜3・商品コード）は先方の
+取込画面の項目順に合わせている。日付は「YYYY/M/D」形式（0埋めしない）で、`formatDateTime()`とは
+別の`formatExternalDate()`を使う（先方システムの実例CSVがこの形式だったため）。
+
 ### SharePoint列の内部名マッピング
 
 `store.js` の `xxxToFields` / `xxxFromGraphItem` が、アプリ内の項目名とSharePointの列の内部名を変換する。
