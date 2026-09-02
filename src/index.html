@@ -41,6 +41,7 @@
           <button type="button" class="tab" data-view="shipping">出庫</button>
           <button type="button" class="tab" data-view="history">出庫履歴</button>
           <button type="button" class="tab" data-view="products">商品管理</button>
+          <button type="button" class="tab" data-view="destinations">出荷先マスタ</button>
         </div>
       </div>
       <div class="tabs-group">
@@ -286,12 +287,14 @@
           <div class="form-field">
             <label for="shipping-destination-code">出荷先コード・小番 <span class="req">必須</span></label>
             <div class="split-field">
-              <input type="text" id="shipping-destination-code" name="destinationCode" placeholder="コード">
+              <input type="text" id="shipping-destination-code" name="destinationCode" list="shipping-destination-code-list" placeholder="コード">
+              <datalist id="shipping-destination-code-list"></datalist>
               <span class="split-field__sep">-</span>
               <input type="text" id="shipping-destination-sub-code" name="destinationSubCode" placeholder="小番">
             </div>
             <p class="form-error" data-error-for="destinationCode"></p>
             <p class="form-error" data-error-for="destinationSubCode"></p>
+            <p class="muted">出荷先マスタに登録済みのコード・小番を入力すると、出荷先名1/2が自動で入力されます。</p>
           </div>
           <div class="form-field">
             <label for="shipping-destination-name1">出荷先名1 <span class="req">必須</span></label>
@@ -519,6 +522,80 @@
             </tr>
           </thead>
           <tbody id="products-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 出荷先マスタ ============ -->
+  <section class="view" id="view-destinations" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">出荷先マスタ</h2>
+        <p class="view__desc">出庫・フィルター出庫の出荷先コード・小番を入力すると、出荷先名1/2を自動入力するための一覧です。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title" id="destinations-form-title">出荷先を登録</h3>
+      </div>
+      <form class="form" id="destinations-form" autocomplete="off" novalidate>
+        <div class="form__grid">
+          <div class="form-field">
+            <label for="destinations-code">出荷先コード <span class="req">必須</span></label>
+            <input type="text" id="destinations-code" name="destinationCode" placeholder="例：DC001">
+            <p class="form-error" data-error-for="destinationCode"></p>
+          </div>
+          <div class="form-field">
+            <label for="destinations-sub-code">出荷先小番 <span class="optional">任意</span></label>
+            <input type="text" id="destinations-sub-code" name="destinationSubCode" placeholder="例：01">
+          </div>
+          <div class="form-field">
+            <label for="destinations-name1">出荷先名1 <span class="optional">任意</span></label>
+            <input type="text" id="destinations-name1" name="destinationName1" placeholder="例：東レ株式会社">
+          </div>
+          <div class="form-field">
+            <label for="destinations-name2">出荷先名2 <span class="optional">任意</span></label>
+            <input type="text" id="destinations-name2" name="destinationName2" placeholder="例：愛媛工場">
+          </div>
+        </div>
+
+        <div class="form__foot">
+          <button type="button" class="btn btn--ghost" id="destinations-cancel-edit" hidden>編集をやめる</button>
+          <button type="submit" class="btn btn--primary" id="destinations-submit">登録する</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">CSVから一括登録</h3>
+      </div>
+      <p class="muted">1行目は見出し行として読み飛ばします。1列目に出荷先コード、2列目に出荷先小番、3列目に出荷先名1、4列目に出荷先名2を入れてください。既に登録済みのコード・小番の組み合わせはスキップされます。</p>
+      <div class="form__foot">
+        <input type="file" id="destinations-import-file" accept=".csv,text/csv">
+        <button type="button" class="btn btn--primary" id="destinations-import-btn">取り込む</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">登録済みの出荷先</h3>
+        <p class="count" id="destinations-count">0 件</p>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>出荷先コード</th>
+              <th>出荷先小番</th>
+              <th>出荷先名1</th>
+              <th>出荷先名2</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="destinations-body"></tbody>
         </table>
       </div>
     </div>
@@ -781,12 +858,14 @@
           <div class="form-field">
             <label for="filter-shipping-destination-code">出荷先コード・小番 <span class="req">必須</span></label>
             <div class="split-field">
-              <input type="text" id="filter-shipping-destination-code" name="destinationCode" placeholder="コード">
+              <input type="text" id="filter-shipping-destination-code" name="destinationCode" list="filter-shipping-destination-code-list" placeholder="コード">
+              <datalist id="filter-shipping-destination-code-list"></datalist>
               <span class="split-field__sep">-</span>
               <input type="text" id="filter-shipping-destination-sub-code" name="destinationSubCode" placeholder="小番">
             </div>
             <p class="form-error" data-error-for="destinationCode"></p>
             <p class="form-error" data-error-for="destinationSubCode"></p>
+            <p class="muted">出荷先マスタに登録済みのコード・小番を入力すると、出荷先名1/2が自動で入力されます。</p>
           </div>
           <div class="form-field">
             <label for="filter-shipping-destination-name1">出荷先名1 <span class="req">必須</span></label>
@@ -1088,6 +1167,7 @@
 <script src="js/ui.js"></script>
 <script src="js/inventory.js"></script>
 <script src="js/products.js"></script>
+<script src="js/destinations.js"></script>
 <script src="js/filter-products.js"></script>
 <script src="js/filter-inventory.js"></script>
 <script src="js/vendor/zxing.min.js"></script>

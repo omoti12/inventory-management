@@ -56,6 +56,7 @@ App.init = function () {
       App.ui.init();
       App.inventory.init();
       App.products.init();
+      App.destinations.init();
       App.filterProducts.init();
       App.filterInventory.init();
       App.inbound.init();

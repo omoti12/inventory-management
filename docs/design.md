@@ -56,30 +56,31 @@
 ## ファイル構成
 
 ```
-src/index.html            11画面ぶんの section とタブナビ
+src/index.html            13画面ぶんの section とタブナビ
 src/css/style.css         デザイントークン（CSS変数）＋レイアウト＋コンポーネント
 src/js/auth.js            Microsoft 365サインイン（MSAL Browser）とトークン取得
 src/js/graph-client.js    Microsoft Graph API共通ヘルパー（ページング・ETag対応）
-src/js/store.js           データモデル（商品マスタ／在庫／出庫）/ Graph経由でのSharePoint永続化 / 検索・集計・バリデーション
+src/js/store.js           データモデル（商品マスタ／在庫／出庫／出荷先マスタ）/ Graph経由でのSharePoint永続化 / 検索・集計・バリデーション
 src/js/ui.js              タブ切替・テーブル生成・トースト・確認ダイアログ・表示整形・CSV読み込み
 src/js/inventory.js       在庫一覧（通常品、明細 / 商品まとめ）＋検索＋選択
 src/js/products.js        商品管理（通常品の商品マスタの登録・編集・削除）
+src/js/destinations.js    出荷先マスタ（出荷先コード・小番・出荷先名1/2の登録・編集・削除、CSV一括登録）
 src/js/inbound.js         入庫（通常品、商品コード/製品名の自由入力＋数量・入庫した人など）
 src/js/inbound-history.js 入庫履歴（通常品、在庫中・出庫済みを問わず一覧表示＋数量等の編集）
 src/js/scanner.js         バーコード読み取り（カメラ。BarcodeDetector API、無ければ vendor/zxing.min.js にフォールバック）
 src/js/vendor/            CDNを使わず取り込んだ外部ライブラリ（zxing.min.js、msal-browser.min.js。詳細は vendor/README.md）
-src/js/shipping.js        出庫（通常品、必須項目チェック）
+src/js/shipping.js        出庫（通常品、必須項目チェック、出荷先マスタからの自動入力）
 src/js/history.js         出庫履歴（通常品）・キャンセル
 src/js/filter-products.js フィルター商品管理（フィルター品の商品マスタの登録・編集・削除）
 src/js/filter-inbound.js  フィルター入庫（フィルター品、製造番号・入荷日付）
 src/js/filter-inbound-history.js フィルター入庫履歴（在庫中・出庫済みを問わず一覧表示＋製造番号等の編集）
-src/js/filter-shipping.js フィルター出庫（在庫の選択＋出庫フォームを1画面に統合）
+src/js/filter-shipping.js フィルター出庫（在庫の選択＋出庫フォームを1画面に統合、出荷先マスタからの自動入力）
 src/js/filter-history.js  フィルター出庫履歴・キャンセル
 src/js/app.js             起動処理（サインイン確認 → データ読み込み → 各画面初期化）
 ```
 
 読み込み順は
-`msal-browser → auth → graph-client → store → ui → inventory → products → filter-products → scanner → inbound → inbound-history → filter-inbound → filter-inbound-history → shipping → filter-shipping → history → filter-history → app`。
+`msal-browser → auth → graph-client → store → ui → inventory → products → destinations → filter-products → scanner → inbound → inbound-history → filter-inbound → filter-inbound-history → shipping → filter-shipping → history → filter-history → app`。
 `src/js/scanner.js` は `inbound.js` より前に読み込む。`src/js/app.js` が `DOMContentLoaded` で初期化し、
 サインイン済みアカウントがあれば `App.store.load()`（Graphからの読み込み、非同期）を待ってから各画面を初期化する。
 
@@ -227,6 +228,7 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 | Items | productId / quantity / serialNo / orderNo / arrivalDate / receivedBy / remarks / stockType / status / registeredAt | ProductId / Quantity / SerialNo / OrderNo / ArrivalDate / ReceivedBy / Remarks / StockType / Status / RegisteredAt（すべて表示名と一致） |
 | Shipments | itemId / shippedBy / orderTo / endUser / remarks / shippedAt / status / cancelledAt | ItemId / ShippedBy / OrderTo / EndUser / Remarks / ShippedAt / Status / CancelledAt（すべて表示名と一致） |
 | Shipments | destinationCode / destinationSubCode / destinationName1 / destinationName2 / orderNumber1〜3 | DestinationCode / DestinationSubCode / DestinationName1 / DestinationName2 / OrderNumber1〜3（すべて表示名と一致） |
+| Destinations | destinationCode / destinationSubCode / destinationName1 / destinationName2 / createdAt | DestinationCode / DestinationSubCode / DestinationName1 / DestinationName2 / CreatedAt（想定。列名は表示名と一致させる想定で作成しているが、Items/Shipmentsと同様に表示名でリスト自体の名前解決ができない場合は`graph-client.js`の`LIST_IDS`にGUIDを追加する） |
 
 ## store.js の公開関数
 
@@ -236,7 +238,7 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 
 | 関数 | 役割 | 同期/Promise |
 | --- | --- | --- |
-| `load()` | Products/Items/ShipmentsをすべてSharePointから読み込む | Promise |
+| `load()` | Products/Items/Shipments/DestinationsをすべてSharePointから読み込む | Promise |
 | `listProducts(category)` | 商品マスタを商品コード順で返す。`category`（'normal'/'filter'）で絞り込み可 | 同期 |
 | `getProduct(id)` / `getProductByCode(code, category)` | 商品マスタ1件を取得 | 同期 |
 | `productUsage(id)` | 指定した商品の使用状況（在庫数・出庫済み数・合計）を返す。削除前の警告表示に使う | 同期 |
@@ -259,6 +261,9 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 | `cancelShipment(id)` | 出庫をキャンセルし、商品を在庫に戻す | Promise |
 | `updateShipment(id, data)` | 出庫履歴の内容（出庫した人・出庫日・出荷先・受注番号・備考。SHIPMENT_FIELDS）を編集する。何を出庫したか自体（商品・数量）は対象外。状態を問わず編集できる | Promise |
 | `deleteShipment(id)` | キャンセル済みの出庫履歴を削除する（出庫済みのままは削除不可） | Promise |
+| `listDestinations()` | 出荷先マスタを出荷先コード・小番順で返す | 同期 |
+| `findDestination(code, subCode)` | 出荷先コード・小番の完全一致で出荷先を探す（出庫フォームの自動入力用）。無ければ`null` | 同期 |
+| `addDestination(data)` / `updateDestination(id, data)` / `deleteDestination(id)` | 出荷先マスタの登録・更新・削除（コード・小番の組み合わせが重複できない） | Promise |
 
 バリデーションは `store.js` に集約している（画面側では二重に持たない）。
 `PRODUCT_FIELDS` / `SHIPMENT_FIELDS` に必須項目とラベルを定義し、エラーメッセージにも使う
@@ -274,6 +279,7 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 | 出庫 | 対象商品の確認・除外、出庫情報の入力、出庫 |
 | 出庫履歴 | 状態・キーワードでの絞り込み、内容の編集、キャンセル、複数商品をまとめて出庫した場合のグループ表示（開閉） |
 | 商品管理 | 商品マスタ（商品コード・製品名）の登録・編集・削除、使用状況の確認 |
+| 出荷先マスタ | 出荷先（出荷先コード・小番・出荷先名1/2）の登録・編集・削除、CSVからの一括登録 |
 | フィルター入庫 | フィルター商品の選択、製造番号・入荷日付の入力、バーコード読み取り |
 | フィルター入庫履歴 | 入庫したフィルター品の一覧（在庫中・出庫済みを問わず表示）、製造番号・入荷日・備考の編集 |
 | フィルター出庫 | フィルター在庫の選択と出庫フォームを1画面に統合 |
@@ -299,9 +305,10 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 
 社内で使っている会計/販売システム（別製品）のCSV取込機能に出庫実績を取り込めるようにするため、
 出庫・フィルター出庫の両画面に出荷先コード・小番、出荷先名1/2、受注番号1〜3を追加した。
-自由記述の項目で、候補一覧からの入力補完や、出荷先コード⇔名前の自動連携はまだ無い（出荷先の
-一覧をどう管理するかが未確定のため、いったん自由入力のみで導入した）。将来的に出荷先マスタが
-用意できたら、入力補完・自動連携を追加する想定。受注番号1〜3・出荷先コード・小番は、
+自由記述の項目のため、当初は候補一覧からの入力補完や出荷先コード⇔名前の自動連携が無かったが、
+後に「出荷先マスタ」（[destinations.js](../src/js/destinations.js)）を追加し、登録済みの
+出荷先コード・小番を入力すると出荷先名1/2が自動入力されるようになった（詳細は後述の
+「出庫画面：出荷先マスタからの自動入力」を参照）。受注番号1〜3・出荷先コード・小番は、
 `shipping.js`（フィルター出庫は`filter-shipping.js`）で「-」区切りの複数枠（`.split-field`）
 として入力する見た目にしている。
 
@@ -322,6 +329,30 @@ CSV化する（画面に描画済みのDOMを読み取るのではなく、デ�
 記録は引き続き参照できる（新規の出庫では単に空になる）。汎用の「CSVダウンロード」
 （`onExportCsv()`）は受注先・エンドユーザーの列をそのまま残しているため、新しい出庫では
 その列が空欄になる。
+
+### 出庫画面：出荷先マスタからの自動入力
+
+出荷先コード・小番を毎回自由入力するのは手間で入力ミスも起きやすいため、あらかじめ出荷先を
+登録しておき、出庫フォームで入力すると出荷先名1/2を自動入力できるようにした。
+
+- **出荷先マスタ画面**（`destinations.js`、`#view-destinations`）: `products.js`（商品管理）と
+  ほぼ同じ構成で、出荷先コード（必須）・出荷先小番/出荷先名1/出荷先名2（任意）の登録・編集・
+  削除フォームと、CSVからの一括登録（`App.ui.parseCsvFile()`を使用、列順は「出荷先コード・
+  出荷先小番・出荷先名1・出荷先名2」）を持つ。出荷先コード・小番の組み合わせが一意になるよう
+  `store.js`の`validateDestination()`で重複チェックする（コードが同じでも小番が違えば別の
+  出荷先として登録できる）。
+- **store.js**: `destinations`をメモリキャッシュとして持ち、`listDestinations()`（一覧）・
+  `findDestination(code, subCode)`（コード・小番の完全一致検索、出庫フォームの自動入力用）・
+  `addDestination`/`updateDestination`/`deleteDestination`（Promise、SharePointのDestinations
+  リストを操作）を提供する。出荷先を削除しても、過去の出庫履歴（Shipmentsに保存済みの
+  destinationName1/2等）には影響しない（履歴側は登録時点の入力値をそのまま保持しているため）。
+- **出庫・フィルター出庫フォーム**: 出荷先コード欄に`<datalist>`（`refreshDestinations()`が
+  出荷先マスタの登録・更新・削除や画面表示のたびに作り直す）を付けて候補を出す。出荷先コード・
+  小番のどちらかを変更すると`syncDestinationName()`が走り、その組み合わせに完全一致する
+  出荷先があれば出荷先名1/2を自動入力する（**出荷先名1/2に既に値が入っていても上書きする** —
+  「入庫画面：商品コード・製品名の自由入力」で修正した`syncProductCode()`と同じ考え方で、
+  登録済みの別の出荷先を選び直した場合は追従すべきため）。一致しない場合（未登録の組み合わせ）
+  は何もせず、自由入力のまま出庫できる。
 
 ### 出庫履歴・フィルター出庫履歴：複数商品のまとめ表示
 
