@@ -193,25 +193,32 @@ App.history = (function () {
    * 列の順序（出荷日・出荷先コード・出荷先小番・出荷先名1・出荷先名2・受注番号1〜3・商品コード・
    * フリー在庫分数量）は先方の取込画面の仕様に合わせている。今表示している絞り込み・並び順の
    * まま出力する。
+   * 同じ商品が複数のバッチに分かれて出庫されていると出庫記録も複数に分かれるが、そのまま出力すると
+   * 先方システムの取込時に同じ出庫のはずが複数の伝票に分かれてしまう。そのため、同じ出庫操作
+   * （groupShipmentRows）の中で同じ商品（groupRowsByProduct）はフリー在庫分数量を合算し、
+   * 1商品＝1行にまとめてから出力する（画面上のまとめ表示の内訳と同じ集約）。
    */
   function onExportExternalCsv() {
     var rows = App.store.listShipments(currentFilter(), 'normal', sortOrder);
     var csvRows = [
       ['出荷日', '出荷先コード', '出荷先小番', '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '商品コード', 'フリー在庫分数量']
     ];
-    rows.forEach(function (row) {
-      csvRows.push([
-        formatExternalDate(row.shippedAt),
-        row.destinationCode || '',
-        row.destinationSubCode || '',
-        row.destinationName1 || '',
-        row.destinationName2 || '',
-        row.orderNumber1 || '',
-        row.orderNumber2 || '',
-        row.orderNumber3 || '',
-        row.productCode,
-        row.quantity
-      ]);
+    App.store.groupShipmentRows(rows).forEach(function (group) {
+      groupRowsByProduct(group.rows).forEach(function (productGroup) {
+        var row = productGroup.rows[0];
+        csvRows.push([
+          formatExternalDate(row.shippedAt),
+          row.destinationCode || '',
+          row.destinationSubCode || '',
+          row.destinationName1 || '',
+          row.destinationName2 || '',
+          row.orderNumber1 || '',
+          row.orderNumber2 || '',
+          row.orderNumber3 || '',
+          productGroup.productCode,
+          productGroup.totalQty
+        ]);
+      });
     });
     App.ui.downloadCsv('出荷CSV_' + todayStamp() + '.csv', csvRows);
   }
@@ -233,6 +240,26 @@ App.history = (function () {
 
         render();
         App.ui.toast('出庫履歴を更新しました。', 'success');
+      });
+    });
+  }
+
+  /**
+   * まとめ表示の内訳で、同じ商品が複数バッチに分かれて1行に集約されている場合の編集。
+   * 同じ出庫操作の中の同じ商品なので、出庫した人・出荷先・受注番号・備考は元々すべてのバッチで
+   * 共通のはず（代表として1件目の内容をダイアログの初期値にする）。保存した内容を、対象の
+   * バッチすべてに同じ値でまとめて反映する。
+   */
+  function onEditGroup(rows) {
+    App.ui.editShipment(rows[0]).then(function (values) {
+      if (!values) return;
+
+      runBulk(rows, function (id) { return App.store.updateShipment(id, values); }).then(function (summary) {
+        render();
+        if (summary.successCount > 0) {
+          App.ui.toast(summary.successCount + '件の出庫履歴をまとめて更新しました。', 'success');
+        }
+        if (summary.firstError) App.ui.toast(summary.firstError, 'error');
       });
     });
   }
@@ -390,6 +417,11 @@ App.history = (function () {
       tr.appendChild(actionCell(productGroup.rows[0]));
     } else {
       var cell = App.ui.el('td', 'col-action');
+      var editButton = App.ui.el('button', 'btn btn--ghost btn--sm', '編集');
+      editButton.type = 'button';
+      editButton.addEventListener('click', function () { onEditGroup(productGroup.rows); });
+      cell.appendChild(editButton);
+
       var shippedRows = productGroup.rows.filter(function (r) { return r.status === 'shipped'; });
       var cancelledRows = productGroup.rows.filter(function (r) { return r.status === 'cancelled'; });
       if (shippedRows.length > 0) {
