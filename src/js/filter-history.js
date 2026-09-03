@@ -152,19 +152,22 @@ App.filterHistory = (function () {
 
   /**
    * 今表示している絞り込み・並び順のまま、フィルター出庫履歴をCSVでダウンロードする。
-   * 出庫した人以降の列は出庫履歴（history.js）のCSVダウンロードと同じ項目・順序に揃えている。
+   * 出庫履歴（history.js）のCSVダウンロードと完全に同じ列構成・順序にしている。フィルター品には
+   * 保管場所の概念が無いため常に空欄、数量の概念も無い（1行＝1個）ため常に1を入れる。製造番号は
+   * この列構成には含まれない（出庫履歴に合わせて列を揃えることを優先し、製造番号は対象外にした）。
    */
   function onExportCsv() {
     var rows = App.store.listFilterShipments(currentFilter(), sortOrder);
     var csvRows = [
-      ['商品コード', '製品名', '製造番号', '入荷日', '出庫した人', '出荷先コード', '出荷先小番',
+      ['商品コード', '製品名', '保管場所', '数量', '入荷日', '出庫した人', '出荷先コード', '出荷先小番',
         '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '備考', '出庫日時', '状態']
     ];
     rows.forEach(function (row) {
       csvRows.push([
         row.productCode,
         row.productName,
-        row.serialNo,
+        '',
+        1,
         row.arrivalDate || '',
         row.shippedBy,
         row.destinationCode || '',
