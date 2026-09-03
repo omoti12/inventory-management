@@ -6,7 +6,7 @@ App.filterInbound = (function () {
   'use strict';
 
   var CATEGORY = 'filter';
-  var INPUT_NAMES = ['productId', 'serialNo', 'arrivalDate', 'remarks'];
+  var INPUT_NAMES = ['productId', 'serialNo', 'quantity', 'arrivalDate', 'remarks'];
 
   var form, select, emptyNotice, submitButton;
 
@@ -59,11 +59,9 @@ App.filterInbound = (function () {
       }
 
       App.ui.clearFieldErrors(form);
-      App.ui.toast(
-        'フィルター在庫を登録しました：' +
-        result.item.productCode + ' / 製造番号 ' + result.item.serialNo,
-        'success'
-      );
+      var message = 'フィルター在庫を登録しました：' + result.item.productCode + ' / 製造番号 ' + result.item.serialNo;
+      if (result.count > 1) message += '（' + result.count + '個）';
+      App.ui.toast(message, 'success');
 
       App.filterShipping.render();
       form.reset();

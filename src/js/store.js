@@ -441,6 +441,31 @@ App.store = (function () {
     return order.map(function (key) { return map[key]; });
   }
 
+  /**
+   * 在庫中のフィルター商品を商品マスタ単位でまとめ、件数（製造番号の数）と該当する
+   * 在庫のIDを付けて返す。フィルター品は数量の概念が無く1行＝1個のため、通常品の
+   * groupInStock() と違い quantity を合算せず単純に件数を数える。
+   */
+  function groupFilterInStock(filter) {
+    var map = {};
+    var order = [];
+    listFilterInStock(filter).forEach(function (row) {
+      if (!map[row.productId]) {
+        map[row.productId] = {
+          productId: row.productId,
+          productCode: row.productCode,
+          productName: row.productName,
+          count: 0,
+          itemIds: []
+        };
+        order.push(row.productId);
+      }
+      map[row.productId].count += 1;
+      map[row.productId].itemIds.push(row.id);
+    });
+    return order.map(function (key) { return map[key]; });
+  }
+
   function getItem(id) {
     var item = findItem(id);
     return item ? decorate(item) : null;
@@ -687,9 +712,25 @@ App.store = (function () {
   }
 
   /**
+   * 数量欄の入力を「登録する件数」として解釈する（空欄・不正値・1未満は1件として扱う）。
+   * フィルター品の登録は1件＝1つの製造番号の物として扱うが、同じ製造番号のものが
+   * まとめて何個も入荷することがあるため、その数だけ同じ内容の入庫記録を作れるようにする。
+   */
+  function toRegistrationCount(value) {
+    var raw = text(value);
+    if (raw === '') return 1;
+    var n = parseInt(raw, 10);
+    return isNaN(n) || n < 1 ? 1 : n;
+  }
+
+  /**
    * フィルター品を入庫登録する（フィルター商品管理から選んだ商品・製造番号・入荷日付が必須）。
+   * 数量（任意入力。省略時は1）を指定すると、同じ製造番号・入荷日・備考の入庫記録をその数だけ
+   * まとめて登録する（同じ製造番号のものが複数個まとめて入荷した場合のため。1件ごとに独立した
+   * 在庫の行として登録するので、後から個別に出庫・キャンセル・削除できる）。
    * SharePointへの登録を待つ必要があるため、Promise を返す。
-   * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
+   * 戻り値: { ok: true, item（最後の1件）, items（登録した全件）, count }
+   *       / { ok: false, errors: { フィールド名: メッセージ } }
    */
   function addFilterItem(data) {
     var input = data || {};
@@ -708,19 +749,40 @@ App.store = (function () {
       return Promise.resolve({ ok: false, errors: errors });
     }
 
-    var item = {
-      productId: text(input.productId),
-      serialNo: text(input.serialNo),
-      arrivalDate: text(input.arrivalDate),
-      remarks: text(input.remarks),
-      stockType: 'filter',
-      status: 'in_stock',
-      registeredAt: new Date().toISOString()
-    };
-    return App.graph.createItem('Items', itemToFields(item)).then(function (created) {
-      var savedItem = itemFromGraphItem(created);
-      items.push(savedItem);
-      return { ok: true, item: decorate(savedItem) };
+    var count = toRegistrationCount(input.quantity);
+    var productId = text(input.productId);
+    var serialNo = text(input.serialNo);
+    var arrivalDate = text(input.arrivalDate);
+    var remarks = text(input.remarks);
+    var savedItems = [];
+
+    var chain = Promise.resolve();
+    for (var i = 0; i < count; i++) {
+      chain = chain.then(function () {
+        var item = {
+          productId: productId,
+          serialNo: serialNo,
+          arrivalDate: arrivalDate,
+          remarks: remarks,
+          stockType: 'filter',
+          status: 'in_stock',
+          registeredAt: new Date().toISOString()
+        };
+        return App.graph.createItem('Items', itemToFields(item)).then(function (created) {
+          var savedItem = itemFromGraphItem(created);
+          items.push(savedItem);
+          savedItems.push(savedItem);
+        });
+      });
+    }
+
+    return chain.then(function () {
+      return {
+        ok: true,
+        item: decorate(savedItems[savedItems.length - 1]),
+        items: savedItems.map(decorate),
+        count: savedItems.length
+      };
     }).catch(function (err) {
       return { ok: false, errors: { productId: 'SharePointへの登録に失敗しました：' + err.message } };
     });
@@ -1196,6 +1258,7 @@ App.store = (function () {
     listInStock: listInStock,
     listFilterInStock: listFilterInStock,
     groupInStock: groupInStock,
+    groupFilterInStock: groupFilterInStock,
     getItem: getItem,
     getItems: getItems,
     listInboundHistory: listInboundHistory,

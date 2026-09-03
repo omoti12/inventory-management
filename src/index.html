@@ -642,10 +642,14 @@
 
     <div class="card">
       <div class="card__head">
+        <div class="tabs tabs--sub" id="filter-inventory-modes">
+          <button type="button" class="tab" data-mode="group">商品まとめ</button>
+          <button type="button" class="tab" data-mode="detail">明細</button>
+        </div>
         <p class="count" id="filter-inventory-count">該当 0 個</p>
       </div>
 
-      <div class="table-wrap">
+      <div class="table-wrap" id="filter-inventory-detail-wrap" hidden>
         <table class="table">
           <thead>
             <tr>
@@ -658,6 +662,21 @@
             </tr>
           </thead>
           <tbody id="filter-inventory-body"></tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap" id="filter-inventory-group-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="filter-inventory-group-select-all" aria-label="すべて選択"></th>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th class="col-num">在庫件数</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="filter-inventory-group-body"></tbody>
         </table>
       </div>
     </div>
@@ -712,6 +731,14 @@
               <button type="button" class="btn btn--ghost btn--sm" id="filter-inbound-scan-btn">バーコードを読み取る</button>
             </div>
             <p class="form-error" data-error-for="serialNo"></p>
+          </div>
+
+          <div class="form-field">
+            <label for="filter-inbound-quantity">
+              数量 <span class="optional">任意（同じ製造番号のものが複数個ある場合）</span>
+            </label>
+            <input type="number" id="filter-inbound-quantity" name="quantity" min="1" step="1" placeholder="例：1">
+            <p class="form-error" data-error-for="quantity"></p>
           </div>
 
           <div class="form-field">
