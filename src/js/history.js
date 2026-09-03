@@ -290,7 +290,8 @@ App.history = (function () {
     var tr = App.ui.el('tr', 'row--batch-summary row-clickable');
 
     var toggleCell = App.ui.el('td');
-    var toggleButton = App.ui.el('button', 'batch-toggle', (expanded ? '▼ ' : '▶ ') + group.rows.length + '件の商品をまとめて出庫');
+    var productCount = groupRowsByProduct(group.rows).length;
+    var toggleButton = App.ui.el('button', 'batch-toggle', (expanded ? '▼ ' : '▶ ') + productCount + '件の商品をまとめて出庫');
     toggleButton.type = 'button';
     toggleButton.addEventListener('click', function () { toggleGroup(group.key); });
     toggleCell.appendChild(toggleButton);
@@ -337,14 +338,44 @@ App.history = (function () {
     return tr;
   }
 
-  /** まとめ表示の内訳行（商品ごと）。 */
-  function renderGroupChildRow(row) {
+  /**
+   * まとめ表示の内訳を作る際、同じ商品が複数のバッチ（在庫の行）に分かれて出庫されていると
+   * 出庫履歴もバッチの数だけ別々の記録になる。内訳表示でそれを商品単位でまとめ直し、
+   * 数量を合算した1行として見せるための下ごしらえ（バッチが1つだけの商品はそのまま1件）。
+   */
+  function groupRowsByProduct(rows) {
+    var map = {};
+    var order = [];
+    rows.forEach(function (row) {
+      var key = row.productId || row.productCode;
+      if (!map[key]) {
+        map[key] = {
+          productCode: row.productCode,
+          productName: row.productName,
+          storageLocation: row.storageLocation,
+          arrivalDate: row.arrivalDate,
+          sameArrivalDate: true,
+          totalQty: 0,
+          rows: []
+        };
+        order.push(key);
+      }
+      var g = map[key];
+      if (g.arrivalDate !== row.arrivalDate) g.sameArrivalDate = false;
+      g.totalQty += parseInt(row.quantity, 10) || 0;
+      g.rows.push(row);
+    });
+    return order.map(function (key) { return map[key]; });
+  }
+
+  /** まとめ表示の内訳行（商品ごと。同じ商品が複数バッチにまたがる場合は数量を合算した1行にする）。 */
+  function renderGroupChildRow(productGroup) {
     var tr = App.ui.el('tr', 'row--batch-child');
-    tr.appendChild(App.ui.el('td', null, row.productCode));
-    tr.appendChild(App.ui.el('td', null, row.productName));
-    tr.appendChild(App.ui.el('td', null, row.storageLocation || '—'));
-    tr.appendChild(App.ui.el('td', 'col-num', row.quantity + ' 個'));
-    tr.appendChild(App.ui.el('td', null, row.arrivalDate || '—'));
+    tr.appendChild(App.ui.el('td', null, productGroup.productCode));
+    tr.appendChild(App.ui.el('td', null, productGroup.productName));
+    tr.appendChild(App.ui.el('td', null, productGroup.storageLocation || '—'));
+    tr.appendChild(App.ui.el('td', 'col-num', productGroup.totalQty + ' 個'));
+    tr.appendChild(App.ui.el('td', null, productGroup.sameArrivalDate ? (productGroup.arrivalDate || '—') : '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
@@ -352,10 +383,29 @@ App.history = (function () {
     tr.appendChild(App.ui.el('td', null, '—'));
 
     var statusCell = App.ui.el('td');
-    statusCell.appendChild(statusBadge(row.status));
+    statusCell.appendChild(statusBadge(groupStatus(productGroup.rows)));
     tr.appendChild(statusCell);
 
-    tr.appendChild(actionCell(row));
+    if (productGroup.rows.length === 1) {
+      tr.appendChild(actionCell(productGroup.rows[0]));
+    } else {
+      var cell = App.ui.el('td', 'col-action');
+      var shippedRows = productGroup.rows.filter(function (r) { return r.status === 'shipped'; });
+      var cancelledRows = productGroup.rows.filter(function (r) { return r.status === 'cancelled'; });
+      if (shippedRows.length > 0) {
+        var cancelButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'まとめてキャンセル');
+        cancelButton.type = 'button';
+        cancelButton.addEventListener('click', function () { onBulkCancel(shippedRows); });
+        cell.appendChild(cancelButton);
+      }
+      if (cancelledRows.length > 0) {
+        var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'まとめて削除');
+        deleteButton.type = 'button';
+        deleteButton.addEventListener('click', function () { onBulkDelete(cancelledRows); });
+        cell.appendChild(deleteButton);
+      }
+      tr.appendChild(cell);
+    }
     return tr;
   }
 
@@ -384,8 +434,8 @@ App.history = (function () {
       var expanded = !!expandedGroups[group.key];
       body.appendChild(renderGroupSummary(group, expanded));
       if (expanded) {
-        group.rows.forEach(function (row) {
-          body.appendChild(renderGroupChildRow(row));
+        groupRowsByProduct(group.rows).forEach(function (productGroup) {
+          body.appendChild(renderGroupChildRow(productGroup));
         });
       }
     });
