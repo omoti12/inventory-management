@@ -7,7 +7,7 @@ App.filterHistory = (function () {
 
   var COLUMNS = 11;
 
-  var searchForm, body, countLabel, sortButton, sortArrow, exportButton;
+  var searchForm, body, countLabel, sortButton, sortArrow, exportButton, exportExternalButton;
   var sortOrder = 'desc';
   /* まとめ表示の開閉状態。キーは groupShipmentRows() の group.key。再描画をまたいで維持する。 */
   var expandedGroups = {};
@@ -16,6 +16,14 @@ App.filterHistory = (function () {
     var d = new Date();
     var pad = function (n) { return n < 10 ? '0' + n : String(n); };
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  /** 外部システム用CSVの日付欄に合わせた「YYYY/M/D」形式（0埋めしない）。 */
+  function formatExternalDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
   }
 
   function currentFilter() {
@@ -152,22 +160,19 @@ App.filterHistory = (function () {
 
   /**
    * 今表示している絞り込み・並び順のまま、フィルター出庫履歴をCSVでダウンロードする。
-   * 出庫履歴（history.js）のCSVダウンロードと完全に同じ列構成・順序にしている。フィルター品には
-   * 保管場所の概念が無いため常に空欄、数量の概念も無い（1行＝1個）ため常に1を入れる。製造番号は
-   * この列構成には含まれない（出庫履歴に合わせて列を揃えることを優先し、製造番号は対象外にした）。
+   * 出庫した人以降の列は出庫履歴（history.js）のCSVダウンロードと同じ項目・順序に揃えている。
    */
   function onExportCsv() {
     var rows = App.store.listFilterShipments(currentFilter(), sortOrder);
     var csvRows = [
-      ['商品コード', '製品名', '保管場所', '数量', '入荷日', '出庫した人', '出荷先コード', '出荷先小番',
+      ['商品コード', '製品名', '製造番号', '入荷日', '出庫した人', '出荷先コード', '出荷先小番',
         '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '備考', '出庫日時', '状態']
     ];
     rows.forEach(function (row) {
       csvRows.push([
         row.productCode,
         row.productName,
-        '',
-        1,
+        row.serialNo,
         row.arrivalDate || '',
         row.shippedBy,
         row.destinationCode || '',
@@ -183,6 +188,34 @@ App.filterHistory = (function () {
       ]);
     });
     App.ui.downloadCsv('フィルター出庫履歴_' + todayStamp() + '.csv', csvRows);
+  }
+
+  /**
+   * 社内の会計/販売システムの出荷CSV取込機能にそのまま読み込ませる形式でダウンロードする
+   * （出庫履歴のonExportExternalCsv()と同じ列構成）。フィルター品には数量の概念が無く
+   * 1行＝1個のため、フリー在庫分数量には常に1を入れる。今表示している絞り込み・並び順の
+   * まま出力する。
+   */
+  function onExportExternalCsv() {
+    var rows = App.store.listFilterShipments(currentFilter(), sortOrder);
+    var csvRows = [
+      ['出荷日', '出荷先コード', '出荷先小番', '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '商品コード', 'フリー在庫分数量']
+    ];
+    rows.forEach(function (row) {
+      csvRows.push([
+        formatExternalDate(row.shippedAt),
+        row.destinationCode || '',
+        row.destinationSubCode || '',
+        row.destinationName1 || '',
+        row.destinationName2 || '',
+        row.orderNumber1 || '',
+        row.orderNumber2 || '',
+        row.orderNumber3 || '',
+        row.productCode,
+        1
+      ]);
+    });
+    App.ui.downloadCsv('フィルター出荷CSV_' + todayStamp() + '.csv', csvRows);
   }
 
   /**
@@ -361,6 +394,7 @@ App.filterHistory = (function () {
     sortButton = document.getElementById('filter-history-sort-date');
     sortArrow = document.getElementById('filter-history-sort-arrow');
     exportButton = document.getElementById('filter-history-export-csv');
+    exportExternalButton = document.getElementById('filter-history-export-external-csv');
 
     var onInput = App.ui.debounce(render, 200);
     searchForm.addEventListener('input', onInput);
@@ -368,6 +402,7 @@ App.filterHistory = (function () {
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); render(); });
     sortButton.addEventListener('click', toggleSort);
     exportButton.addEventListener('click', onExportCsv);
+    exportExternalButton.addEventListener('click', onExportExternalCsv);
   }
 
   App.views['filter-history'] = { onShow: render };
