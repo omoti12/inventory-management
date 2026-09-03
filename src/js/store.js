@@ -53,6 +53,17 @@ App.store = (function () {
     return isNaN(n) || n < 1 ? 0 : n;
   }
 
+  /**
+   * 数量欄の入力が有効か（空でなく、0以上の整数か）を判定する。在庫が無い状態でも
+   * 入庫記録自体は登録できるよう、0は有効な数量として扱う（空欄・負の数・数値以外は無効）。
+   */
+  function isValidQuantityInput(value) {
+    var raw = text(value);
+    if (raw === '') return false;
+    var n = parseInt(raw, 10);
+    return !isNaN(n) && n >= 0;
+  }
+
   /* --- 読み込み ----------------------------------------------------------- */
 
   /**
@@ -509,8 +520,8 @@ App.store = (function () {
         Remarks: text(input.remarks)
       };
     } else {
-      if (toQuantity(input.quantity) === 0) {
-        errors.quantity = '数量を1以上で入力してください。';
+      if (!isValidQuantityInput(input.quantity)) {
+        errors.quantity = '数量を0以上の整数で入力してください。';
       }
       if (!text(input.receivedBy)) {
         errors.receivedBy = '入庫した人を入力してください。';
@@ -612,6 +623,8 @@ App.store = (function () {
 
   /**
    * 通常品を入庫登録する（商品コード・製品名は自由入力可。数量・入庫した人が必須）。
+   * 数量は0以上の整数であれば登録できる（在庫がまだ無い状態でも入庫記録自体は先に
+   * 登録しておきたい場合のため。0個の在庫は出庫対象にはならない）。
    * 製造番号・受注番号は入庫画面では扱わない（在庫一覧の表示・検索用の項目）。
    * 新しい商品コードの場合はSharePointへの商品登録を待つ必要があるため、Promise を返す。
    * 戻り値: { ok: true, item } / { ok: false, errors: { フィールド名: メッセージ } }
@@ -633,8 +646,8 @@ App.store = (function () {
     if (!text(input.productName) && !productId) {
       errors.productName = '製品名を入力してください。';
     }
-    if (toQuantity(input.quantity) === 0) {
-      errors.quantity = '数量を1以上で入力してください。';
+    if (!isValidQuantityInput(input.quantity)) {
+      errors.quantity = '数量を0以上の整数で入力してください。';
     }
     if (!text(input.receivedBy)) {
       errors.receivedBy = '入庫した人を入力してください。';
@@ -1076,6 +1089,19 @@ App.store = (function () {
       .sort(compareDestinations);
   }
 
+  /**
+   * 出荷先名1だけが一致する出荷先を、コード・小番の昇順ですべて返す（出庫フォームで
+   * 出荷先コードより先に出荷先名を入力した時点の自動入力用）。見つからなければ空配列。
+   */
+  function findDestinationsByName(destinationName1) {
+    var name = norm(destinationName1);
+    if (!name) return [];
+    return destinations
+      .filter(function (d) { return norm(d.destinationName1) === name; })
+      .slice()
+      .sort(compareDestinations);
+  }
+
   function compareDestinations(a, b) {
     if (a.destinationCode !== b.destinationCode) return a.destinationCode < b.destinationCode ? -1 : 1;
     return a.destinationSubCode < b.destinationSubCode ? -1 : a.destinationSubCode > b.destinationSubCode ? 1 : 0;
@@ -1188,6 +1214,7 @@ App.store = (function () {
     listDestinations: listDestinations,
     findDestination: findDestination,
     findDestinationsByCode: findDestinationsByCode,
+    findDestinationsByName: findDestinationsByName,
     addDestination: addDestination,
     updateDestination: updateDestination,
     deleteDestination: deleteDestination

@@ -10,6 +10,7 @@ App.filterShipping = (function () {
   var targetIds = [];
   var form, itemsBody, countLabel, submitButton, hint;
   var destinationCodeField, destinationSubCodeField, destinationCodeList;
+  var destinationName1Field, destinationName1List;
 
   /** 入荷日が古いものから先に出庫する（入荷日不明のものは後ろに回す）。 */
   function byArrivalDateAsc(a, b) {
@@ -106,15 +107,25 @@ App.filterShipping = (function () {
     });
   }
 
-  /** 出荷先マスタの登録・更新・削除に追従して、出荷先コードの候補一覧を作り直す。 */
+  /** 出荷先マスタの登録・更新・削除に追従して、出荷先コード・出荷先名1の候補一覧を作り直す。 */
   function refreshDestinations() {
     var destinations = App.store.listDestinations();
     App.ui.clear(destinationCodeList);
+    App.ui.clear(destinationName1List);
+    var seenNames = {};
     destinations.forEach(function (destination) {
-      var option = App.ui.el('option', null, null);
-      option.value = destination.destinationCode;
-      option.label = destination.destinationName1;
-      destinationCodeList.appendChild(option);
+      var codeOption = App.ui.el('option', null, null);
+      codeOption.value = destination.destinationCode;
+      codeOption.label = destination.destinationName1;
+      destinationCodeList.appendChild(codeOption);
+
+      /* 出荷先名1は同じ名前の出荷先（小番違い）が複数あり得るので、候補には重複させない。 */
+      var nameKey = destination.destinationName1.trim().toLowerCase();
+      if (!nameKey || seenNames[nameKey]) return;
+      seenNames[nameKey] = true;
+      var nameOption = App.ui.el('option', null, null);
+      nameOption.value = destination.destinationName1;
+      destinationName1List.appendChild(nameOption);
     });
   }
 
@@ -162,6 +173,30 @@ App.filterShipping = (function () {
     var destination = App.store.findDestination(code, destinationSubCodeField.value.trim());
     if (!destination) return;
     fillDestinationName(destination);
+  }
+
+  function fillDestinationCode(destination) {
+    destinationCodeField.value = destination.destinationCode;
+    destinationSubCodeField.value = destination.destinationSubCode;
+    form.elements.destinationName2.value = destination.destinationName2;
+    fireInput(destinationCodeField);
+    fireInput(destinationSubCodeField);
+    fireInput(form.elements.destinationName2);
+  }
+
+  /**
+   * 出荷先名1を先に入力/変更した時点で呼ぶ（コード・小番より先に名前で選ぶ場合の入り口）。
+   * その名前に一致する出荷先があれば、出荷先コード・小番・出荷先名2をまとめて自動入力する
+   * （同じ名前で複数の出荷先がある場合は、コード・小番の昇順で一番先頭のものを仮に採用する。
+   * 違っていれば出荷先コード・小番を直せば上のsyncDestinationFromCode/SubCodeが正しい方に
+   * 合わせ直す）。一致しなければ何もしない（自由入力のまま）。
+   */
+  function syncDestinationFromName() {
+    var name = form.elements.destinationName1.value.trim();
+    if (!name) return;
+    var matches = App.store.findDestinationsByName(name);
+    if (matches.length === 0) return;
+    fillDestinationCode(matches[0]);
   }
 
   function render() {
@@ -234,9 +269,12 @@ App.filterShipping = (function () {
     destinationCodeField = document.getElementById('filter-shipping-destination-code');
     destinationSubCodeField = document.getElementById('filter-shipping-destination-sub-code');
     destinationCodeList = document.getElementById('filter-shipping-destination-code-list');
+    destinationName1Field = document.getElementById('filter-shipping-destination-name1');
+    destinationName1List = document.getElementById('filter-shipping-destination-name1-list');
 
     destinationCodeField.addEventListener('change', syncDestinationFromCode);
     destinationSubCodeField.addEventListener('change', syncDestinationFromSubCode);
+    destinationName1Field.addEventListener('change', syncDestinationFromName);
     refreshDestinations();
 
     form.addEventListener('submit', onSubmit);
