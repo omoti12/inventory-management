@@ -150,11 +150,15 @@ App.filterHistory = (function () {
     render();
   }
 
-  /** 今表示している絞り込み・並び順のまま、フィルター出庫履歴をCSVでダウンロードする。 */
+  /**
+   * 今表示している絞り込み・並び順のまま、フィルター出庫履歴をCSVでダウンロードする。
+   * 出庫した人以降の列は出庫履歴（history.js）のCSVダウンロードと同じ項目・順序に揃えている。
+   */
   function onExportCsv() {
     var rows = App.store.listFilterShipments(currentFilter(), sortOrder);
     var csvRows = [
-      ['商品コード', '製品名', '製造番号', '入荷日', '出庫した人', '受注先', 'エンドユーザー', '備考', '出庫日時', '状態']
+      ['商品コード', '製品名', '製造番号', '入荷日', '出庫した人', '出荷先コード', '出荷先小番',
+        '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '備考', '出庫日時', '状態']
     ];
     rows.forEach(function (row) {
       csvRows.push([
@@ -163,8 +167,13 @@ App.filterHistory = (function () {
         row.serialNo,
         row.arrivalDate || '',
         row.shippedBy,
-        row.orderTo,
-        row.endUser,
+        row.destinationCode || '',
+        row.destinationSubCode || '',
+        row.destinationName1 || '',
+        row.destinationName2 || '',
+        row.orderNumber1 || '',
+        row.orderNumber2 || '',
+        row.orderNumber3 || '',
         row.remarks || '',
         App.ui.formatDateTime(row.shippedAt),
         row.status === 'cancelled' ? 'キャンセル' : '出庫済み'

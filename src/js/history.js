@@ -162,7 +162,8 @@ App.history = (function () {
   function onExportCsv() {
     var rows = App.store.listShipments(currentFilter(), 'normal', sortOrder);
     var csvRows = [
-      ['商品コード', '製品名', '保管場所', '数量', '入荷日', '出庫した人', '受注先', 'エンドユーザー', '備考', '出庫日時', '状態']
+      ['商品コード', '製品名', '保管場所', '数量', '入荷日', '出庫した人', '出荷先コード', '出荷先小番',
+        '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '備考', '出庫日時', '状態']
     ];
     rows.forEach(function (row) {
       csvRows.push([
@@ -172,8 +173,13 @@ App.history = (function () {
         row.quantity,
         row.arrivalDate || '',
         row.shippedBy,
-        row.orderTo,
-        row.endUser,
+        row.destinationCode || '',
+        row.destinationSubCode || '',
+        row.destinationName1 || '',
+        row.destinationName2 || '',
+        row.orderNumber1 || '',
+        row.orderNumber2 || '',
+        row.orderNumber3 || '',
         row.remarks || '',
         App.ui.formatDateTime(row.shippedAt),
         row.status === 'cancelled' ? 'キャンセル' : '出庫済み'
