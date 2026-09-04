@@ -65,7 +65,7 @@
 ## ファイル構成
 
 ```
-src/index.html            14画面ぶんの section とタブナビ
+src/index.html            14画面ぶんの section とタブナビ（月次締めのみタブでなくヘッダーのボタンから開く）
 src/css/style.css         デザイントークン（CSS変数）＋レイアウト＋コンポーネント
 src/js/auth.js            Microsoft 365サインイン（MSAL Browser）とトークン取得
 src/js/graph-client.js    Microsoft Graph API共通ヘルパー（ページング・ETag対応）
@@ -739,6 +739,12 @@ CSV出力（`onExportCsv()`/`onExportExternalCsv()`）はこのグループ化�
 - **専用のJSモジュールが無い他の画面と同様の軽量な作り**：`App.views['month-locks']`は
   `onShow: render`だけを持つ最小限の登録で、他の画面（商品管理・出荷先マスタ等）と同じ
   パターンに沿っている。
+- **タブには置かず、ヘッダーのボタンから開く**：当初は「その他」というタブグループを新設して
+  そこに置いていたが、タブの行数が増えてメニュー全体が縦に広がり邪魔になる、というフィード
+  バックを受けて変更した。`app.js`が`#app-month-locks`ボタン（`🔄 更新`ボタンの隣）に
+  `App.ui.showView('month-locks')`を直接バインドしている。`#main-tabs .tab`ではないため
+  `showView()`のタブハイライト処理の対象外だが、たまにしか使わない管理操作なので
+  アクティブ状態を示さなくても実用上問題ない。
 
 ## 今後の申し送り
 

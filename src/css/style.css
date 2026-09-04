@@ -775,6 +775,12 @@ select:disabled {
     padding-right: var(--space-4);
   }
 
+  /* ヘッダー右側のボタン数が増えても、タイトルが押しつぶされて縦に一文字ずつ
+     折り返さないよう、収まらなければ下の行に回す。 */
+  .app-header__top { flex-wrap: wrap; row-gap: var(--space-2); }
+  .app-title { flex-shrink: 0; }
+  .app-account { flex-wrap: wrap; row-gap: var(--space-2); }
+
   .tabs { gap: var(--space-4); overflow-x: auto; }
 
   .action-bar {
