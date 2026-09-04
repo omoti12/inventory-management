@@ -6,9 +6,11 @@ App.filterShipping = (function () {
   'use strict';
 
   var TARGET_COLUMNS = 6;
+  var SEARCH_COLUMNS = 5;
 
   var targetIds = [];
   var form, itemsBody, countLabel, submitButton, hint;
+  var searchForm, searchBody;
   var destinationCodeField, destinationSubCodeField, destinationCodeList;
   var destinationName1Field, destinationName1List;
 
@@ -61,7 +63,7 @@ App.filterShipping = (function () {
     submitButton.disabled = missing.length > 0 || count === 0;
 
     if (count === 0) {
-      hint.textContent = 'フィルター在庫一覧から出庫する商品を選択してください。';
+      hint.textContent = '下の検索から追加するか、フィルター在庫一覧から出庫する商品を選択してください。';
     } else if (missing.length > 0) {
       hint.textContent = '未入力：' + missing.map(function (f) { return f.label; }).join('、');
     } else {
@@ -80,7 +82,7 @@ App.filterShipping = (function () {
     countLabel.textContent = items.length + ' 個';
 
     if (items.length === 0) {
-      itemsBody.appendChild(App.ui.emptyRow(TARGET_COLUMNS, '出庫する商品が選択されていません。フィルター在庫一覧から選択してください。'));
+      itemsBody.appendChild(App.ui.emptyRow(TARGET_COLUMNS, '出庫する商品が選択されていません。下の検索から追加するか、フィルター在庫一覧から選択してください。'));
       return;
     }
 
@@ -104,6 +106,56 @@ App.filterShipping = (function () {
       tr.appendChild(actionCell);
 
       itemsBody.appendChild(tr);
+    });
+  }
+
+  function searchFilter() {
+    var data = new FormData(searchForm);
+    return {
+      productCode: data.get('productCode') || '',
+      productName: data.get('productName') || '',
+      serialNo: data.get('serialNo') || ''
+    };
+  }
+
+  /**
+   * まだ出庫リストに入れていないフィルター在庫を検索結果として表示する。フィルター品は
+   * 数量の概念が無く1行＝1個（＝1製造番号）のため、shipping.js の在庫検索と違い数量入力は
+   * 無く、「追加」ボタンでその1件をそのまま出庫対象に加える。
+   */
+  function renderSearch() {
+    var available = App.store.listFilterInStock(searchFilter())
+      .filter(function (item) { return targetIds.indexOf(item.id) === -1; });
+
+    App.ui.clear(searchBody);
+
+    if (available.length === 0) {
+      searchBody.appendChild(App.ui.emptyRow(SEARCH_COLUMNS, '該当する在庫がありません。'));
+      return;
+    }
+
+    available.forEach(function (item) {
+      var tr = App.ui.el('tr');
+      [
+        item.productCode,
+        item.productName,
+        item.serialNo,
+        item.arrivalDate || '—'
+      ].forEach(function (value) {
+        tr.appendChild(App.ui.el('td', null, value));
+      });
+
+      var actionCell = App.ui.el('td', 'col-action');
+      var addButton = App.ui.el('button', 'btn btn--ghost btn--sm', '追加');
+      addButton.type = 'button';
+      addButton.addEventListener('click', function () {
+        if (targetIds.indexOf(item.id) === -1) targetIds.push(item.id);
+        render();
+      });
+      actionCell.appendChild(addButton);
+      tr.appendChild(actionCell);
+
+      searchBody.appendChild(tr);
     });
   }
 
@@ -201,6 +253,7 @@ App.filterShipping = (function () {
 
   function render() {
     renderTargets();
+    renderSearch();
     updateSubmitState();
   }
 
@@ -266,6 +319,8 @@ App.filterShipping = (function () {
     countLabel = document.getElementById('filter-shipping-count');
     submitButton = document.getElementById('filter-shipping-submit');
     hint = document.getElementById('filter-shipping-hint');
+    searchForm = document.getElementById('filter-shipping-search');
+    searchBody = document.getElementById('filter-shipping-search-body');
     destinationCodeField = document.getElementById('filter-shipping-destination-code');
     destinationSubCodeField = document.getElementById('filter-shipping-destination-sub-code');
     destinationCodeList = document.getElementById('filter-shipping-destination-code-list');
@@ -276,6 +331,11 @@ App.filterShipping = (function () {
     destinationSubCodeField.addEventListener('change', syncDestinationFromSubCode);
     destinationName1Field.addEventListener('change', syncDestinationFromName);
     refreshDestinations();
+
+    var onSearchInput = App.ui.debounce(renderSearch, 200);
+    searchForm.addEventListener('input', onSearchInput);
+    searchForm.addEventListener('submit', function (event) { event.preventDefault(); renderSearch(); });
+    searchForm.addEventListener('reset', function () { setTimeout(renderSearch, 0); });
 
     form.addEventListener('submit', onSubmit);
     form.addEventListener('input', function (event) {

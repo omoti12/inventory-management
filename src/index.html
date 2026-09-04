@@ -47,12 +47,12 @@
       <div class="tabs-group">
         <span class="tabs-group__label">フィルター</span>
         <div class="tabs">
-          <button type="button" class="tab" data-view="filter-inventory">フィルター在庫一覧</button>
-          <button type="button" class="tab" data-view="filter-inbound">フィルター入庫</button>
-          <button type="button" class="tab" data-view="filter-inbound-history">フィルター入庫履歴</button>
-          <button type="button" class="tab" data-view="filter-shipping">フィルター出庫</button>
-          <button type="button" class="tab" data-view="filter-history">フィルター出庫履歴</button>
-          <button type="button" class="tab" data-view="filter-products">フィルター商品管理</button>
+          <button type="button" class="tab" data-view="filter-inventory" aria-label="フィルター在庫一覧">在庫一覧</button>
+          <button type="button" class="tab" data-view="filter-inbound" aria-label="フィルター入庫">入庫</button>
+          <button type="button" class="tab" data-view="filter-inbound-history" aria-label="フィルター入庫履歴">入庫履歴</button>
+          <button type="button" class="tab" data-view="filter-shipping" aria-label="フィルター出庫">出庫</button>
+          <button type="button" class="tab" data-view="filter-history" aria-label="フィルター出庫履歴">出庫履歴</button>
+          <button type="button" class="tab" data-view="filter-products" aria-label="フィルター商品管理">商品管理</button>
         </div>
       </div>
     </nav>
@@ -496,17 +496,6 @@
 
     <div class="card">
       <div class="card__head">
-        <h3 class="card__title">CSVから一括登録</h3>
-      </div>
-      <p class="muted">1行目は見出し行として読み飛ばします。1列目に商品コード、2列目に製品名を入れてください。既に登録済みの商品コードはスキップされます。</p>
-      <div class="form__foot">
-        <input type="file" id="products-import-file" accept=".csv,text/csv">
-        <button type="button" class="btn btn--primary" id="products-import-btn">取り込む</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card__head">
         <h3 class="card__title">登録済みの商品</h3>
         <p class="count" id="products-count">0 件</p>
       </div>
@@ -524,6 +513,17 @@
           </thead>
           <tbody id="products-body"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">CSVから一括登録</h3>
+      </div>
+      <p class="muted">1行目は見出し行として読み飛ばします。1列目に商品コード、2列目に製品名を入れてください。既に登録済みの商品コードはスキップされます。</p>
+      <div class="form__foot">
+        <input type="file" id="products-import-file" accept=".csv,text/csv">
+        <button type="button" class="btn btn--primary" id="products-import-btn">取り込む</button>
       </div>
     </div>
   </section>
@@ -571,17 +571,6 @@
 
     <div class="card">
       <div class="card__head">
-        <h3 class="card__title">CSVから一括登録</h3>
-      </div>
-      <p class="muted">1行目は見出し行として読み飛ばします。1列目に出荷先コード、2列目に出荷先小番、3列目に出荷先名1、4列目に出荷先名2を入れてください。既に登録済みのコード・小番の組み合わせはスキップされます。</p>
-      <div class="form__foot">
-        <input type="file" id="destinations-import-file" accept=".csv,text/csv">
-        <button type="button" class="btn btn--primary" id="destinations-import-btn">取り込む</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card__head">
         <h3 class="card__title">登録済みの出荷先</h3>
         <p class="count" id="destinations-count">0 件</p>
       </div>
@@ -598,6 +587,17 @@
           </thead>
           <tbody id="destinations-body"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">CSVから一括登録</h3>
+      </div>
+      <p class="muted">1行目は見出し行として読み飛ばします。1列目に出荷先コード、2列目に出荷先小番、3列目に出荷先名1、4列目に出荷先名2を入れてください。既に登録済みのコード・小番の組み合わせはスキップされます。</p>
+      <div class="form__foot">
+        <input type="file" id="destinations-import-file" accept=".csv,text/csv">
+        <button type="button" class="btn btn--primary" id="destinations-import-btn">取り込む</button>
       </div>
     </div>
   </section>
@@ -840,7 +840,7 @@
     <div class="view__head">
       <div>
         <h2 class="view__title">フィルター出庫</h2>
-        <p class="view__desc">フィルター在庫一覧で選んだ商品に出庫情報を入力します。</p>
+        <p class="view__desc">この画面で在庫を検索して追加するか、フィルター在庫一覧で選んだ商品に出庫情報を入力します。</p>
       </div>
     </div>
 
@@ -862,6 +862,45 @@
             </tr>
           </thead>
           <tbody id="filter-shipping-items-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">在庫を検索して追加</h3>
+      </div>
+      <form class="search" id="filter-shipping-search" autocomplete="off">
+        <div class="search__grid">
+          <div class="form-field">
+            <label for="filter-shipping-search-code">商品コード</label>
+            <input type="text" id="filter-shipping-search-code" name="productCode" placeholder="例：F-100">
+          </div>
+          <div class="form-field">
+            <label for="filter-shipping-search-name">製品名</label>
+            <input type="text" id="filter-shipping-search-name" name="productName" placeholder="例：エアフィルター">
+          </div>
+          <div class="form-field">
+            <label for="filter-shipping-search-serial">製造番号</label>
+            <input type="text" id="filter-shipping-search-serial" name="serialNo" placeholder="例：0001">
+          </div>
+        </div>
+        <div class="search__foot">
+          <button type="reset" class="btn btn--ghost">条件をクリア</button>
+        </div>
+      </form>
+      <div class="table-wrap table-wrap--scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th>製造番号</th>
+              <th>入荷日</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="filter-shipping-search-body"></tbody>
         </table>
       </div>
     </div>
@@ -1060,17 +1099,6 @@
 
     <div class="card">
       <div class="card__head">
-        <h3 class="card__title">CSVから一括登録</h3>
-      </div>
-      <p class="muted">1行目は見出し行として読み飛ばします。1列目に商品コード、2列目に製品名を入れてください。既に登録済みの商品コードはスキップされます。</p>
-      <div class="form__foot">
-        <input type="file" id="filter-products-import-file" accept=".csv,text/csv">
-        <button type="button" class="btn btn--primary" id="filter-products-import-btn">取り込む</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card__head">
         <h3 class="card__title">登録済みのフィルター商品</h3>
         <p class="count" id="filter-products-count">0 件</p>
       </div>
@@ -1088,6 +1116,17 @@
           </thead>
           <tbody id="filter-products-body"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">CSVから一括登録</h3>
+      </div>
+      <p class="muted">1行目は見出し行として読み飛ばします。1列目に商品コード、2列目に製品名を入れてください。既に登録済みの商品コードはスキップされます。</p>
+      <div class="form__foot">
+        <input type="file" id="filter-products-import-file" accept=".csv,text/csv">
+        <button type="button" class="btn btn--primary" id="filter-products-import-btn">取り込む</button>
       </div>
     </div>
   </section>
