@@ -67,6 +67,7 @@ App.init = function () {
       App.filterShipping.init();
       App.history.init();
       App.filterHistory.init();
+      App.monthLocks.init();
 
       /* 再読み込みしても直前に開いていた画面に戻れるよう、覚えていた画面名があればそれを
          開く（無効な画面名や記録が無ければ showView() が失敗するので在庫一覧にする）。 */

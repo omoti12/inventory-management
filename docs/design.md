@@ -65,7 +65,7 @@
 ## ファイル構成
 
 ```
-src/index.html            13画面ぶんの section とタブナビ
+src/index.html            14画面ぶんの section とタブナビ
 src/css/style.css         デザイントークン（CSS変数）＋レイアウト＋コンポーネント
 src/js/auth.js            Microsoft 365サインイン（MSAL Browser）とトークン取得
 src/js/graph-client.js    Microsoft Graph API共通ヘルパー（ページング・ETag対応）
@@ -85,11 +85,12 @@ src/js/filter-inbound.js  フィルター入庫（フィルター品、製造番
 src/js/filter-inbound-history.js フィルター入庫履歴（在庫中・出庫済みを問わず一覧表示＋製造番号等の編集）
 src/js/filter-shipping.js フィルター出庫（在庫の選択＋出庫フォームを1画面に統合、出荷先マスタからの自動入力）
 src/js/filter-history.js  フィルター出庫履歴・キャンセル
+src/js/month-locks.js     月次締め（対象月の入庫・出庫記録を編集・削除・キャンセル不可にする／解除する）
 src/js/app.js             起動処理（サインイン確認 → データ読み込み → 各画面初期化）
 ```
 
 読み込み順は
-`msal-browser → auth → graph-client → store → ui → inventory → products → destinations → filter-products → scanner → inbound → inbound-history → filter-inbound → filter-inbound-history → shipping → filter-shipping → history → filter-history → app`。
+`msal-browser → auth → graph-client → store → ui → inventory → products → destinations → filter-products → scanner → inbound → inbound-history → filter-inbound → filter-inbound-history → shipping → filter-shipping → history → filter-history → month-locks → app`。
 `src/js/scanner.js` は `inbound.js` より前に読み込む。`src/js/app.js` が `DOMContentLoaded` で初期化し、
 サインイン済みアカウントがあれば `App.store.load()`（Graphからの読み込み、非同期）を待ってから各画面を初期化する。
 
@@ -314,6 +315,7 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 | Shipments | itemId / shippedBy / orderTo / endUser / remarks / shippedAt / status / cancelledAt | ItemId / ShippedBy / OrderTo / EndUser / Remarks / ShippedAt / Status / CancelledAt（すべて表示名と一致） |
 | Shipments | destinationCode / destinationSubCode / destinationName1 / destinationName2 / orderNumber1〜3 | DestinationCode / DestinationSubCode / DestinationName1 / DestinationName2 / OrderNumber1〜3（すべて表示名と一致） |
 | Destinations | destinationCode / destinationSubCode / destinationName1 / destinationName2 / createdAt | DestinationCode / DestinationSubCode / DestinationName1 / DestinationName2 / CreatedAt（想定。列名は表示名と一致させる想定で作成しているが、Items/Shipmentsと同様に表示名でリスト自体の名前解決ができない場合は`graph-client.js`の`LIST_IDS`にGUIDを追加する） |
+| MonthLocks | yearMonth / lockedAt / lockedBy | YearMonth（1行テキスト、"YYYY-MM"） / LockedAt（日付と時刻） / LockedBy（1行テキスト、任意）。Destinations同様、表示名で名前解決できなければ`LIST_IDS`にGUIDを追加する。月次締め機能（後述）用に追加したリストで、まだ作成していない環境でも起動できるよう`load()`は読み込み失敗を握りつぶす |
 
 ## store.js の公開関数
 
@@ -352,6 +354,9 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 | `findDestination(code, subCode)` | 出荷先コード・小番の完全一致で出荷先を探す（出庫フォームの自動入力用）。無ければ`null` | 同期 |
 | `findDestinationsByCode(code)` | 出荷先コードだけの一致を、小番の昇順ですべて返す（出庫フォームでコードのみ入力した時点の自動入力用） | 同期 |
 | `addDestination(data)` / `updateDestination(id, data)` / `deleteDestination(id)` | 出荷先マスタの登録・更新・削除（コード・小番の組み合わせが重複できない） | Promise |
+| `listMonthLocks()` | 締め済みの月（"YYYY-MM"）を新しい順で返す | 同期 |
+| `isMonthLocked(dateIso)` | 渡した日時（ISO文字列）が締め済みの月に含まれるかを返す。`updateItem`/`deleteItem`/`updateShipment`/`deleteShipment`/`cancelShipment`の内部ガードにも使う | 同期 |
+| `lockMonth(yearMonth, lockedBy)` / `unlockMonth(id)` | 月次締めの登録・解除 | Promise |
 
 バリデーションは `store.js` に集約している（画面側では二重に持たない）。
 `PRODUCT_FIELDS` / `SHIPMENT_FIELDS` に必須項目とラベルを定義し、エラーメッセージにも使う
@@ -374,6 +379,7 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 | フィルター出庫 | 在庫の検索・追加、フィルター在庫一覧からの選択、出庫フォームを1画面に統合 |
 | フィルター出庫履歴 | フィルター品の出庫実績の一覧・内容の編集・キャンセル、複数商品をまとめて出庫した場合のグループ表示（開閉） |
 | フィルター商品管理 | フィルター品の商品マスタの登録・編集・削除（チェックボックスでの複数選択・一括削除も可） |
+| 月次締め | 対象月（年月）を選んで入庫・出庫記録（通常品・フィルター品とも）を編集・削除・キャンセル不可にする。締め済みの月の一覧・解除もここで行う |
 
 ### メインメニュー：通常/フィルターの2段タブとラベルの省略
 
@@ -701,6 +707,39 @@ CSV出力（`onExportCsv()`/`onExportExternalCsv()`）はこのグループ化�
 `inbound.js` の `startCopy()` が、在庫一覧の「コピー」から商品コード・製品名・数量・入荷日・備考を
 入庫フォームへそのまま引き継ぐ。
 
+## 月次締め
+
+会計ソフト等への取り込みが終わった月の記録を、後から誤って編集・削除して数字が合わなくなる
+のを防ぐための機能（`month-locks.js`、SharePointの新規リスト`MonthLocks`）。
+
+- **「何月分の記録か」の判定基準**：入荷日・出庫日のような任意入力の業務日付ではなく、
+  必ず値が入っている**登録日時**（Itemsの`registeredAt`、Shipmentsの`shippedAt`。どちらも
+  登録・出庫した瞬間のタイムスタンプ）を使う。`store.js`の`isMonthLocked(dateIso)`が
+  日時の先頭7文字（`"YYYY-MM"`）を切り出して締め済みの月の集合と照合する。締めるのは
+  常に過去の月なので、新規登録（登録日時＝今）が締め済み扱いになることはない。
+- **ガードの場所**：`updateItem`/`deleteItem`/`cancelShipment`/`updateShipment`/`deleteShipment`
+  それぞれの先頭で対象の登録日時／出庫日時をチェックし、締め済みなら他の条件を見るより前に
+  `{ ok: false, message: '...月次締め済みのため...できません。' }`で即座に拒否する。UIのボタンを
+  隠しているだけでなく、Store層でも必ず弾くようにしている（他の削除条件と同じ二重防御の考え方）。
+- **対象範囲**：入庫・出庫とも通常品・フィルター品の両方が対象。商品管理・出荷先マスタ・
+  在庫一覧など、月の概念を持たない画面や、商品・出荷先マスタ自体の登録・編集・削除には
+  影響しない（対象はあくまで個々の入庫・出庫の記録）。
+- **UI側の見せ方**：`inbound-history.js`/`filter-inbound-history.js`は「編集」「削除」ボタンの
+  代わりに「🔒 締め済み」を表示する（`isDeletable(row)`にも締め判定を組み込み、一括削除の
+  チェックボックスにも対象外として反映される）。`history.js`/`filter-history.js`の
+  `actionCell()`・まとめ表示の見出し行・内訳行（商品ごとにまとめた行）でも同様に
+  「編集」「キャンセル」「削除」の代わりに同じ表示にする。まとめ表示のグループ内の行は
+  すべて同じ出庫日時（＝同じ月）を共有するため、グループの先頭行だけ見れば締め判定が足りる。
+- **月次締め画面**（`month-locks.js`）：対象月（`<input type="month">`）を選んで「この月を締める」
+  →確認ダイアログ→`App.store.lockMonth(yearMonth, lockedBy)`（`lockedBy`はサインイン中の
+  `App.auth.getAccount()`の表示名）。締め済みの月の一覧には「締めた日時」「締めた人」を表示し、
+  「解除する」で`unlockMonth(id)`を呼ぶ（間違えて締めてしまった場合の訂正用）。締め・解除の
+  どちらも、既に表示されているかもしれない4つの履歴画面（入庫履歴・フィルター入庫履歴・
+  出庫履歴・フィルター出庫履歴）を明示的に`render()`し直し、その場で🔒表示が反映されるようにする。
+- **専用のJSモジュールが無い他の画面と同様の軽量な作り**：`App.views['month-locks']`は
+  `onShow: render`だけを持つ最小限の登録で、他の画面（商品管理・出荷先マスタ等）と同じ
+  パターンに沿っている。
+
 ## 今後の申し送り
 
 - **バーコード読み取り**：`BarcodeDetector` API と `getUserMedia` で実装済み（フィルター在庫一覧・フィルター入庫の製造番号）。1Dバーコード各種とQRコードの両方を対象とする。`BarcodeDetector` が使えない環境（Windows/Mac の Chrome など）では `src/js/vendor/zxing.min.js`（[zxing-js](https://github.com/zxing-js/library)、Apache-2.0）にフォールバックする。誤読対策として同じ値が連続で読めたときだけ確定し、ネイティブ検出が機能しない端末では自動でZXingに切り替える。
@@ -726,4 +765,5 @@ CSV出力（`onExportCsv()`/`onExportExternalCsv()`）はこのグループ化�
 - **部分出庫**：対応済み。`shipping.js` の在庫検索から出荷したい数量を指定すると、
   `store.js` の `allocateForShipment()` が古いバッチから必要数だけ確保し、端数が出る場合は
   バッチを分割してSharePointに書き込む。
-- **担当者名**：現状は自由入力。表記ゆれが問題になるなら候補リストからの選択を検討する。
+- **担当者名**：対応済み。出庫した人・入庫した人とも、決まった社員（現状10名）の固定`<select>`
+  にして表記ゆれを無くした（詳細は「出庫した人・入庫した人：固定メンバーからの選択」を参照）。
