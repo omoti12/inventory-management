@@ -230,6 +230,7 @@
         </form>
         <div class="head-actions">
           <p class="count" id="inbound-history-count">0 件</p>
+          <button type="button" class="btn btn--danger btn--sm" id="inbound-history-bulk-delete" disabled>選択した件を削除</button>
         </div>
       </div>
 
@@ -237,6 +238,7 @@
         <table class="table">
           <thead>
             <tr>
+              <th class="col-check"><input type="checkbox" id="inbound-history-select-all" aria-label="すべて選択"></th>
               <th>商品コード</th>
               <th>製品名</th>
               <th>保管場所</th>
@@ -500,12 +502,16 @@
     <div class="card">
       <div class="card__head">
         <h3 class="card__title">登録済みの商品</h3>
-        <p class="count" id="products-count">0 件</p>
+        <div class="head-actions">
+          <p class="count" id="products-count">0 件</p>
+          <button type="button" class="btn btn--danger btn--sm" id="products-bulk-delete" disabled>選択した件を削除</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
+              <th class="col-check"><input type="checkbox" id="products-select-all" aria-label="すべて選択"></th>
               <th>商品コード</th>
               <th>製品名</th>
               <th>保管場所</th>
@@ -575,12 +581,16 @@
     <div class="card">
       <div class="card__head">
         <h3 class="card__title">登録済みの出荷先</h3>
-        <p class="count" id="destinations-count">0 件</p>
+        <div class="head-actions">
+          <p class="count" id="destinations-count">0 件</p>
+          <button type="button" class="btn btn--danger btn--sm" id="destinations-bulk-delete" disabled>選択した件を削除</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
+              <th class="col-check"><input type="checkbox" id="destinations-select-all" aria-label="すべて選択"></th>
               <th>出荷先コード</th>
               <th>出荷先小番</th>
               <th>出荷先名1</th>
@@ -816,6 +826,7 @@
         </form>
         <div class="head-actions">
           <p class="count" id="filter-inbound-history-count">0 件</p>
+          <button type="button" class="btn btn--danger btn--sm" id="filter-inbound-history-bulk-delete" disabled>選択した件を削除</button>
         </div>
       </div>
 
@@ -823,6 +834,7 @@
         <table class="table">
           <thead>
             <tr>
+              <th class="col-check"><input type="checkbox" id="filter-inbound-history-select-all" aria-label="すべて選択"></th>
               <th>商品コード</th>
               <th>製品名</th>
               <th>製造番号</th>
@@ -1110,13 +1122,17 @@
     <div class="card">
       <div class="card__head">
         <h3 class="card__title">登録済みのフィルター商品</h3>
-        <p class="count" id="filter-products-count">0 件</p>
+        <div class="head-actions">
+          <p class="count" id="filter-products-count">0 件</p>
+          <button type="button" class="btn btn--danger btn--sm" id="filter-products-bulk-delete" disabled>選択した件を削除</button>
+        </div>
       </div>
 
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
+              <th class="col-check"><input type="checkbox" id="filter-products-select-all" aria-label="すべて選択"></th>
               <th>商品コード</th>
               <th>製品名</th>
               <th class="col-num">在庫数</th>
