@@ -318,11 +318,15 @@ App.shipping = (function () {
     updateSubmitState();
   }
 
+  function resetForm() {
+    form.reset();
+    App.ui.clearFieldErrors(form);
+  }
+
   /** 在庫一覧から呼ばれる。 */
   function start(ids) {
     targetIds = ids.slice();
-    form.reset();
-    App.ui.clearFieldErrors(form);
+    resetForm();
     render();
   }
 
@@ -357,8 +361,7 @@ App.shipping = (function () {
         }
 
         targetIds = [];
-        form.reset();
-        App.ui.clearFieldErrors(form);
+        resetForm();
         App.inventory.clearSelection();
         App.inventory.render();
         App.history.render();
@@ -428,7 +431,10 @@ App.shipping = (function () {
     onShow: function () {
       refreshDestinations();
       render();
-    }
+    },
+    /* 入力途中で他の画面に移動した時は、その入力を残さず消す（戻ってきた時に古い入力が
+       残って混乱しないように）。選択中の対象商品（targetIds）はそのまま保持する。 */
+    onHide: resetForm
   };
 
   return { init: init, start: start, render: render, refreshDestinations: refreshDestinations };
