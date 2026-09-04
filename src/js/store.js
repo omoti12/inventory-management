@@ -753,10 +753,29 @@ App.store = (function () {
   }
 
   /**
+   * 製造番号の末尾の数字部分を offset だけ増やした値を返す（連番登録用）。
+   * 例: nextSerialNo('62---100007', 1) === '62---100008'。
+   * 元の桁数は0埋めで維持し、繰り上がりで桁が増える場合（999→1000等）はそのまま桁を増やす。
+   * 末尾に数字が無い場合はoffsetを無視してそのまま返す（呼び出し前にバリデーション済みの前提）。
+   */
+  function nextSerialNo(base, offset) {
+    var match = /^(.*?)(\d+)$/.exec(base);
+    if (!match) return base;
+    var prefix = match[1];
+    var digits = match[2];
+    var nextDigits = String(parseInt(digits, 10) + offset);
+    while (nextDigits.length < digits.length) nextDigits = '0' + nextDigits;
+    return prefix + nextDigits;
+  }
+
+  /**
    * フィルター品を入庫登録する（フィルター商品管理から選んだ商品・製造番号・入荷日付が必須）。
-   * 数量（任意入力。省略時は1）を指定すると、同じ製造番号・入荷日・備考の入庫記録をその数だけ
-   * まとめて登録する（同じ製造番号のものが複数個まとめて入荷した場合のため。1件ごとに独立した
-   * 在庫の行として登録するので、後から個別に出庫・キャンセル・削除できる）。
+   * 数量（任意入力。省略時は1）を指定すると、その数だけ入庫記録をまとめて登録する。
+   * 通常は同じ製造番号・入荷日・備考をそのまま複製する（同じ製造番号のものが複数個まとめて
+   * 入荷した場合のため）が、`sequential`が真の場合は製造番号の末尾の数字を1件ごとに1ずつ
+   * 増やして登録する（例: 62---100007 を数量15で登録すると 62---100007〜62---100021 の
+   * 15件になる。末尾が数字の連番管理をしている製造番号向け）。いずれも1件ごとに独立した
+   * 在庫の行として登録するので、後から個別に出庫・キャンセル・削除できる。
    * SharePointへの登録を待つ必要があるため、Promise を返す。
    * 戻り値: { ok: true, item（最後の1件）, items（登録した全件）, count }
    *       / { ok: false, errors: { フィールド名: メッセージ } }
@@ -772,6 +791,8 @@ App.store = (function () {
     }
     if (!text(input.serialNo)) {
       errors.serialNo = '製造番号を入力してください。';
+    } else if (input.sequential && !/\d+$/.test(text(input.serialNo))) {
+      errors.sequential = '連番登録には、末尾が数字の製造番号を入力してください。';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -781,6 +802,7 @@ App.store = (function () {
     var count = toRegistrationCount(input.quantity);
     var productId = text(input.productId);
     var serialNo = text(input.serialNo);
+    var sequential = !!input.sequential;
     var arrivalDate = text(input.arrivalDate);
     var remarks = text(input.remarks);
     var savedItems = [];
@@ -788,9 +810,10 @@ App.store = (function () {
     var chain = Promise.resolve();
     for (var i = 0; i < count; i++) {
       chain = chain.then(function () {
+        var index = savedItems.length;
         var item = {
           productId: productId,
-          serialNo: serialNo,
+          serialNo: sequential ? nextSerialNo(serialNo, index) : serialNo,
           arrivalDate: arrivalDate,
           remarks: remarks,
           stockType: 'filter',

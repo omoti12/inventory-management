@@ -741,6 +741,11 @@
             <input type="number" id="filter-inbound-quantity" name="quantity" min="1" step="1" placeholder="例：1">
             <p class="form-error" data-error-for="quantity"></p>
             <p class="form-note">同じ製造番号のものが複数個ある場合に入力してください。</p>
+            <label class="checkbox">
+              <input type="checkbox" id="filter-inbound-sequential" name="sequential">
+              製造番号の末尾を連番にして登録する（例：62---100007 → 62---100008 → …）
+            </label>
+            <p class="form-error" data-error-for="sequential"></p>
           </div>
 
           <div class="form-field">
