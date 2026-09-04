@@ -12,6 +12,7 @@ App.init = function () {
   var accountName = document.getElementById('app-account-name');
   var signOutButton = document.getElementById('app-sign-out');
   var refreshButton = document.getElementById('app-refresh');
+  var monthLocksButton = document.getElementById('app-month-locks');
 
   function showSigninError(message) {
     signinError.textContent = message;
@@ -27,6 +28,12 @@ App.init = function () {
 
   signOutButton.addEventListener('click', function () {
     App.auth.signOut();
+  });
+
+  /* 月次締めはタブの通常メニューには置かず、たまにしか使わない管理操作としてヘッダーに置く
+     （タブの本数が増えてメニューが幅広になり邪魔になるのを避けるため）。 */
+  monthLocksButton.addEventListener('click', function () {
+    App.ui.showView('month-locks');
   });
 
   /**
