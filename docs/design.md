@@ -305,7 +305,7 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 | `listInboundHistory(filter, sortOrder)` | 通常品の入庫履歴を、在庫中・出庫済みを問わず全件返す | 同期 |
 | `listFilterInboundHistory(filter, sortOrder)` | フィルター品の入庫履歴を、在庫中・出庫済みを問わず全件返す | 同期 |
 | `updateItem(id, data)` | 入庫記録を編集する（通常品は数量・入荷日・入庫した人・備考、フィルター品は製造番号・入荷日・備考） | Promise |
-| `deleteItem(id)` | 入庫記録を削除する（在庫中のものだけ削除可能。出庫済みは削除不可） | Promise |
+| `deleteItem(id)` | 入庫記録を削除する（在庫中のものだけ削除可能。出庫済みは削除不可。ただし参照先の商品マスタが削除済みの場合は状態を問わず削除可能） | Promise |
 | `allocateForShipment(productId, quantity)` | 古いバッチ順に数量を確保する。バッチ分割が必要なら在庫を分けてSharePointに書き込む | Promise |
 | `addItem(data)` | 通常品を入庫登録する（商品コード自由入力・数量・入庫した人を検証） | Promise |
 | `addFilterItem(data)` | フィルター品を入庫登録する（商品選択・製造番号・入荷日付を検証）。数量（任意、省略時1）を指定すると同じ内容の記録をその数だけまとめて登録する | Promise |
@@ -530,6 +530,17 @@ CSV出力（`onExportCsv()`/`onExportExternalCsv()`）はこのグループ化�
 エラーにはならないため、気づかないまま在庫の実数が合わなくなる恐れがある）。そのため
 出庫済みの記録は削除できないようにしている。`inbound-history.js`/`filter-inbound-history.js`
 は、行の状態が「在庫中」の時だけ「削除」ボタンを表示する（「出庫済み」の行は「編集」のみ）。
+
+ただし、参照している商品マスタ自体が既に削除されている記録（一覧で商品コードが
+「(削除済み商品)」と表示される行、`decorate()`が付与する`productDeleted`フラグが真の行）は、
+状態を問わず削除できる。商品が無くなっている以上、その入庫記録を残しても復元できる在庫
+としての意味を持たず（上記の「在庫復元」の心配も存在しない）、単なる履歴のゴミとして
+片付けられないと使い勝手が悪いため。`store.js`の`deleteItem(id)`は、対象Itemの
+`productId`で商品マスタを引けた場合（`productExists`）にだけ`in_stock`限定の制約をかけ、
+商品が見つからない場合はその制約を素通りする。`inbound-history.js`/
+`filter-inbound-history.js`側も、削除ボタンの表示条件を
+`row.status === 'in_stock' || row.productDeleted`とし、商品削除済みの行なら
+「出庫済み」であっても削除ボタンを表示する。
 
 ### 入庫画面：商品コード・製品名の自由入力
 
