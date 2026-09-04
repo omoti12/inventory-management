@@ -118,39 +118,86 @@ App.filterShipping = (function () {
     };
   }
 
-  /**
-   * まだ出庫リストに入れていないフィルター在庫を検索結果として表示する。フィルター品は
-   * 数量の概念が無く1行＝1個（＝1製造番号）のため、shipping.js の在庫検索と違い数量入力は
-   * 無く、「追加」ボタンでその1件をそのまま出庫対象に加える。
-   */
-  function renderSearch() {
+  /** まだ出庫リストに入れていないフィルター在庫を、商品コード単位でまとめて集計する。 */
+  function searchGroups() {
     var available = App.store.listFilterInStock(searchFilter())
       .filter(function (item) { return targetIds.indexOf(item.id) === -1; });
 
+    var map = {};
+    var order = [];
+    available.forEach(function (item) {
+      if (!map[item.productId]) {
+        map[item.productId] = {
+          productId: item.productId,
+          productCode: item.productCode,
+          productName: item.productName,
+          count: 0,
+          itemIds: []
+        };
+        order.push(item.productId);
+      }
+      map[item.productId].count += 1;
+      map[item.productId].itemIds.push(item.id);
+    });
+    return order.map(function (key) { return map[key]; });
+  }
+
+  /**
+   * 指定商品コードの在庫から、入荷日が古いものから順に指定数量ぶんを出庫対象に加える
+   * （shipping.js の allocateForShipment と違い、フィルター品はバッチ分割の概念が無く
+   * 1件＝1製造番号のまま対象に加えるだけでよい）。
+   */
+  function addGroupToTargets(productId, quantity) {
+    var group = searchGroups().filter(function (g) { return g.productId === productId; })[0];
+    if (!group) return;
+    var ids = App.store.getItems(group.itemIds)
+      .sort(byArrivalDateAsc)
+      .slice(0, quantity)
+      .map(function (item) { return item.id; });
+    ids.forEach(function (id) { if (targetIds.indexOf(id) === -1) targetIds.push(id); });
+    render();
+  }
+
+  /**
+   * 商品まとめの一覧として検索結果を表示し、出庫したい個数を指定して追加できるようにする
+   * （通常の出庫の在庫検索と同じ操作感）。製造番号で絞り込めば特定の1件だけを対象にできる。
+   */
+  function renderSearch() {
+    var groups = searchGroups();
+
     App.ui.clear(searchBody);
 
-    if (available.length === 0) {
+    if (groups.length === 0) {
       searchBody.appendChild(App.ui.emptyRow(SEARCH_COLUMNS, '該当する在庫がありません。'));
       return;
     }
 
-    available.forEach(function (item) {
+    groups.forEach(function (group) {
       var tr = App.ui.el('tr');
-      [
-        item.productCode,
-        item.productName,
-        item.serialNo,
-        item.arrivalDate || '—'
-      ].forEach(function (value) {
-        tr.appendChild(App.ui.el('td', null, value));
-      });
+      tr.appendChild(App.ui.el('td', null, group.productCode));
+      tr.appendChild(App.ui.el('td', null, group.productName));
+      tr.appendChild(App.ui.el('td', 'col-num', group.count + ' 個'));
+
+      var qtyCell = App.ui.el('td', 'col-num');
+      var qtyInput = App.ui.el('input');
+      qtyInput.type = 'number';
+      qtyInput.min = '0';
+      qtyInput.max = String(group.count);
+      qtyInput.step = '1';
+      qtyInput.value = '0';
+      qtyInput.style.width = '80px';
+      qtyInput.setAttribute('aria-label', group.productCode + ' の出庫したい個数');
+      qtyCell.appendChild(qtyInput);
+      tr.appendChild(qtyCell);
 
       var actionCell = App.ui.el('td', 'col-action');
       var addButton = App.ui.el('button', 'btn btn--ghost btn--sm', '追加');
       addButton.type = 'button';
       addButton.addEventListener('click', function () {
-        if (targetIds.indexOf(item.id) === -1) targetIds.push(item.id);
-        render();
+        var qty = parseInt(qtyInput.value, 10);
+        if (!qty || qty < 1) return;
+        if (qty > group.count) qty = group.count;
+        addGroupToTargets(group.productId, qty);
       });
       actionCell.appendChild(addButton);
       tr.appendChild(actionCell);
