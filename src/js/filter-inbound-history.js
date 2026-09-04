@@ -12,9 +12,10 @@ App.filterInboundHistory = (function () {
   var editingId = null;
   var selectedIds = {};
 
-  /** 個別の削除ボタンと同じ条件（在庫中、または参照商品が削除済み）の行だけ選択・削除できる。 */
+  /** 個別の削除ボタンと同じ条件（在庫中、または参照商品が削除済み）の行だけ選択・削除できる。
+   *  月次締め済みの記録は、この条件を満たしていても選択・削除できない。 */
   function isDeletable(row) {
-    return row.status === 'in_stock' || row.productDeleted;
+    return (row.status === 'in_stock' || row.productDeleted) && !App.store.isMonthLocked(row.registeredAt);
   }
 
   /** 複数件に対して同じStore操作を順番に実行し、成功件数と最初のエラーメッセージをまとめる。 */
@@ -225,16 +226,23 @@ App.filterInboundHistory = (function () {
       tr.appendChild(statusCell2);
 
       var actionCell2 = App.ui.el('td', 'col-action');
-      var editButton = App.ui.el('button', 'btn btn--ghost btn--sm', '編集');
-      editButton.type = 'button';
-      editButton.addEventListener('click', function () { startEdit(row.id); });
-      actionCell2.appendChild(editButton);
 
-      if (row.status === 'in_stock' || row.productDeleted) {
-        var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', '削除');
-        deleteButton.type = 'button';
-        deleteButton.addEventListener('click', function () { onDelete(row); });
-        actionCell2.appendChild(deleteButton);
+      if (App.store.isMonthLocked(row.registeredAt)) {
+        var lockedNotice = App.ui.el('span', 'muted', '🔒 締め済み');
+        lockedNotice.title = 'この記録は月次締め済みのため編集・削除できません。';
+        actionCell2.appendChild(lockedNotice);
+      } else {
+        var editButton = App.ui.el('button', 'btn btn--ghost btn--sm', '編集');
+        editButton.type = 'button';
+        editButton.addEventListener('click', function () { startEdit(row.id); });
+        actionCell2.appendChild(editButton);
+
+        if (isDeletable(row)) {
+          var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', '削除');
+          deleteButton.type = 'button';
+          deleteButton.addEventListener('click', function () { onDelete(row); });
+          actionCell2.appendChild(deleteButton);
+        }
       }
       tr.appendChild(actionCell2);
     }

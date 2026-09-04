@@ -18,7 +18,8 @@ App.ui = (function () {
   'filter-inbound-history',
   'filter-shipping',
   'filter-history',
-  'filter-products'
+  'filter-products',
+  'month-locks'
   ];
   var currentView = null;
 

@@ -230,6 +230,14 @@ App.filterHistory = (function () {
   /** 1商品ぶんの行の操作セル（編集/キャンセル/削除）を作る。単独行・まとめ表示の内訳行の両方で使う。 */
   function actionCell(row) {
     var cell = App.ui.el('td', 'col-action');
+
+    if (App.store.isMonthLocked(row.shippedAt)) {
+      var lockedNotice = App.ui.el('span', 'muted', '🔒 締め済み');
+      lockedNotice.title = 'この記録は月次締め済みのため編集・キャンセル・削除できません。';
+      cell.appendChild(lockedNotice);
+      return cell;
+    }
+
     var editButton = App.ui.el('button', 'btn btn--ghost btn--sm', '編集');
     editButton.type = 'button';
     editButton.addEventListener('click', function () { onEdit(row); });
@@ -316,8 +324,8 @@ App.filterHistory = (function () {
     tr.appendChild(statusCell);
 
     var actionsCell = App.ui.el('td', 'col-action');
-    var shippedRows = group.rows.filter(function (r) { return r.status === 'shipped'; });
-    var cancelledRows = group.rows.filter(function (r) { return r.status === 'cancelled'; });
+    var shippedRows = group.rows.filter(function (r) { return r.status === 'shipped' && !App.store.isMonthLocked(r.shippedAt); });
+    var cancelledRows = group.rows.filter(function (r) { return r.status === 'cancelled' && !App.store.isMonthLocked(r.shippedAt); });
     if (shippedRows.length > 0) {
       var bulkCancelButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'まとめてキャンセル');
       bulkCancelButton.type = 'button';
@@ -329,6 +337,12 @@ App.filterHistory = (function () {
       bulkDeleteButton.type = 'button';
       bulkDeleteButton.addEventListener('click', function () { onBulkDelete(cancelledRows); });
       actionsCell.appendChild(bulkDeleteButton);
+    }
+    /* 同じ出庫操作内の行はすべて同じ出庫日時（＝同じ月）を共有するため、先頭行だけ見れば足りる。 */
+    if (App.store.isMonthLocked(group.rows[0].shippedAt)) {
+      var groupLockedNotice = App.ui.el('span', 'muted', '🔒 締め済み');
+      groupLockedNotice.title = 'この記録は月次締め済みのため編集・キャンセル・削除できません。';
+      actionsCell.appendChild(groupLockedNotice);
     }
     tr.appendChild(actionsCell);
 

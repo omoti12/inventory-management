@@ -55,6 +55,12 @@
           <button type="button" class="tab" data-view="filter-products" aria-label="フィルター商品管理">商品管理</button>
         </div>
       </div>
+      <div class="tabs-group">
+        <span class="tabs-group__label">その他</span>
+        <div class="tabs">
+          <button type="button" class="tab" data-view="month-locks">月次締め</button>
+        </div>
+      </div>
     </nav>
   </div>
 </header>
@@ -1193,6 +1199,57 @@
     </div>
   </section>
 
+  <!-- ============ 月次締め ============ -->
+  <section class="view" id="view-month-locks" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">月次締め</h2>
+        <p class="view__desc">
+          締めた月の入庫・出庫記録（通常品・フィルター品とも）は、編集・削除・キャンセルができなくなります。
+          会計ソフトなどへの取り込みが終わった月を締めておくと、後から数字が誤って変わってしまうのを防げます。
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">月を締める</h3>
+      </div>
+      <div class="card__body">
+        <div class="form__grid">
+          <div class="form-field">
+            <label for="month-locks-input">対象の月</label>
+            <input type="month" id="month-locks-input">
+            <p class="form-error" id="month-locks-error"></p>
+          </div>
+        </div>
+        <div class="form__foot">
+          <button type="button" class="btn btn--primary" id="month-locks-submit">この月を締める</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">締め済みの月</h3>
+        <p class="count" id="month-locks-count">0 件</p>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>対象月</th>
+              <th>締めた日時</th>
+              <th>締めた人</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="month-locks-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <footer class="app-footer">
@@ -1322,6 +1379,7 @@
 <script src="js/filter-shipping.js"></script>
 <script src="js/history.js"></script>
 <script src="js/filter-history.js"></script>
+<script src="js/month-locks.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

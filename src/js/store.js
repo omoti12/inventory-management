@@ -12,6 +12,7 @@ App.store = (function () {
   var items = [];
   var shipments = [];
   var destinations = [];
+  var monthLocks = [];
 
   /* 商品マスタの必須項目。商品コードは一意。 */
   var PRODUCT_FIELDS = [
@@ -85,6 +86,11 @@ App.store = (function () {
       return App.graph.listItems('Destinations').catch(function () { return []; });
     }).then(function (graphItems) {
       destinations = graphItems.map(destinationFromGraphItem);
+      /* MonthLocksリストは月次締め機能用に後から追加したもので、まだ作成していない環境
+         でも起動できるよう、Destinations同様に読み込み失敗を握りつぶして空扱いにする。 */
+      return App.graph.listItems('MonthLocks').catch(function () { return []; });
+    }).then(function (graphItems) {
+      monthLocks = graphItems.map(monthLockFromGraphItem);
     });
   }
 
@@ -531,6 +537,9 @@ App.store = (function () {
   function updateItem(id, data) {
     var item = findItem(id);
     if (!item) return Promise.resolve({ ok: false, message: '対象の入庫記録が見つかりません。' });
+    if (isMonthLocked(item.registeredAt)) {
+      return Promise.resolve({ ok: false, message: 'この記録は月次締め済みのため編集できません。' });
+    }
 
     var input = data || {};
     var errors = {};
@@ -590,6 +599,9 @@ App.store = (function () {
   function deleteItem(id) {
     var item = findItem(id);
     if (!item) return Promise.resolve({ ok: false, message: '対象の入庫記録が見つかりません。' });
+    if (isMonthLocked(item.registeredAt)) {
+      return Promise.resolve({ ok: false, message: 'この記録は月次締め済みのため削除できません。' });
+    }
 
     var productExists = !!findProduct(item.productId);
     if (productExists && item.status !== 'in_stock') {
@@ -1047,6 +1059,9 @@ App.store = (function () {
     if (!shipment || shipment.status !== 'shipped') {
       return Promise.resolve({ ok: false, message: 'この出庫はキャンセルできません。' });
     }
+    if (isMonthLocked(shipment.shippedAt)) {
+      return Promise.resolve({ ok: false, message: 'この記録は月次締め済みのためキャンセルできません。' });
+    }
 
     var item = findItem(shipment.itemId);
     var cancelledAt = new Date().toISOString();
@@ -1081,6 +1096,9 @@ App.store = (function () {
   function updateShipment(id, data) {
     var shipment = getShipment(id);
     if (!shipment) return Promise.resolve({ ok: false, message: '対象の出庫履歴が見つかりません。' });
+    if (isMonthLocked(shipment.shippedAt)) {
+      return Promise.resolve({ ok: false, message: 'この記録は月次締め済みのため編集できません。' });
+    }
 
     var input = data || {};
     var errors = {};
@@ -1130,6 +1148,9 @@ App.store = (function () {
     var shipment = getShipment(shipmentId);
     if (!shipment || shipment.status !== 'cancelled') {
       return Promise.resolve({ ok: false, message: 'キャンセル済みの出庫履歴だけ削除できます。' });
+    }
+    if (isMonthLocked(shipment.shippedAt)) {
+      return Promise.resolve({ ok: false, message: 'この記録は月次締め済みのため削除できません。' });
     }
 
     return App.graph.deleteItem('Shipments', shipmentId).then(function () {
@@ -1295,6 +1316,81 @@ App.store = (function () {
     });
   }
 
+  /* --- 月次締め ------------------------------------------------------------
+     一度確定して会計ソフト等に取り込んだ月の記録を、後から誤って編集・削除して
+     数字が合わなくなることを防ぐための機能。「何月分の記録か」は、入荷日・出庫日のような
+     任意入力の業務日付ではなく、必ず値が入っている登録日時（Itemsの registeredAt /
+     Shipmentsの shippedAt。どちらも登録・出庫した瞬間のタイムスタンプ）で判定する。
+     締めるのは常に過去の月なので、新規登録（登録日時=今）が締め済み扱いになることはない。
+     通常品・フィルター品どちらの入庫・出庫にも同じ判定を使う。 -------------------------- */
+
+  function monthLockFromGraphItem(graphItem) {
+    var f = graphItem.fields || {};
+    return {
+      id: String(graphItem.id),
+      yearMonth: f.YearMonth || '',
+      lockedAt: f.LockedAt || '',
+      lockedBy: f.LockedBy || ''
+    };
+  }
+
+  function monthLockToFields(yearMonth, lockedBy) {
+    return {
+      YearMonth: text(yearMonth),
+      LockedAt: new Date().toISOString(),
+      LockedBy: text(lockedBy)
+    };
+  }
+
+  /** 締め済みの月を新しい順で返す。 */
+  function listMonthLocks() {
+    return monthLocks.slice().sort(function (a, b) {
+      return a.yearMonth < b.yearMonth ? 1 : a.yearMonth > b.yearMonth ? -1 : 0;
+    });
+  }
+
+  /**
+   * 渡した日時（ISO文字列。時刻部分があっても先頭7文字＝年月だけを見る）が
+   * 締め済みの月に含まれるかどうかを返す。空文字列や不正な値はfalse（＝締めなし扱い）。
+   */
+  function isMonthLocked(dateIso) {
+    var yearMonth = text(dateIso).slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(yearMonth)) return false;
+    return monthLocks.some(function (m) { return m.yearMonth === yearMonth; });
+  }
+
+  /** 指定した月（"YYYY-MM"）を締める。既に締め済みなら失敗を返す。Promiseを返す。 */
+  function lockMonth(yearMonth, lockedBy) {
+    var ym = text(yearMonth);
+    if (!/^\d{4}-\d{2}$/.test(ym)) {
+      return Promise.resolve({ ok: false, message: '月を選択してください。' });
+    }
+    if (monthLocks.some(function (m) { return m.yearMonth === ym; })) {
+      return Promise.resolve({ ok: false, message: 'この月はすでに締め済みです。' });
+    }
+
+    return App.graph.createItem('MonthLocks', monthLockToFields(ym, lockedBy)).then(function (created) {
+      var lock = monthLockFromGraphItem(created);
+      monthLocks.push(lock);
+      return { ok: true, lock: lock };
+    }).catch(function (err) {
+      return { ok: false, message: 'SharePointへの登録に失敗しました：' + err.message };
+    });
+  }
+
+  /** 締めを解除する（間違えて締めてしまった場合の取り消し用）。Promiseを返す。 */
+  function unlockMonth(id) {
+    var lock = monthLocks.filter(function (m) { return m.id === id; })[0];
+    if (!lock) return Promise.resolve({ ok: false, message: '対象の締め処理が見つかりません。' });
+
+    return App.graph.deleteItem('MonthLocks', id).then(function () {
+      monthLocks = monthLocks.filter(function (m) { return m.id !== id; });
+      return { ok: true };
+    }).catch(function (err) {
+      return { ok: false, message: 'SharePointからの削除に失敗しました：' + err.message };
+    });
+  }
+
   return {
     PRODUCT_FIELDS: PRODUCT_FIELDS,
     SHIPMENT_FIELDS: SHIPMENT_FIELDS,
@@ -1333,6 +1429,10 @@ App.store = (function () {
     findDestinationsByName: findDestinationsByName,
     addDestination: addDestination,
     updateDestination: updateDestination,
-    deleteDestination: deleteDestination
+    deleteDestination: deleteDestination,
+    listMonthLocks: listMonthLocks,
+    isMonthLocked: isMonthLocked,
+    lockMonth: lockMonth,
+    unlockMonth: unlockMonth
   };
 })();
