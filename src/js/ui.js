@@ -343,9 +343,31 @@ App.ui = (function () {
 
   /* --- 画面切替 -------------------------------------------------------- */
 
+  var LAST_VIEW_KEY = 'inventory-app:last-view';
+
+  /** 再読み込み後に同じ画面へ戻れるよう、直前に開いていた画面名を覚えておく。 */
+  function rememberView(name) {
+    try {
+      localStorage.setItem(LAST_VIEW_KEY, name);
+    } catch (e) {
+      /* プライベートブラウジングなどでlocalStorageが使えなくても致命的ではないため無視する。 */
+    }
+  }
+
+  /** 記憶していた画面名を返す（無ければ null）。 */
+  function getRememberedView() {
+    try {
+      return localStorage.getItem(LAST_VIEW_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /** 未知の画面名（VIEWSに無い）が渡された場合は何もせず false を返す。 */
   function showView(name) {
-    if (VIEWS.indexOf(name) === -1) return;
+    if (VIEWS.indexOf(name) === -1) return false;
     currentView = name;
+    rememberView(name);
 
     VIEWS.forEach(function (view) {
       document.getElementById('view-' + view).hidden = view !== name;
@@ -359,6 +381,7 @@ App.ui = (function () {
     var view = App.views[name];
     if (view && typeof view.onShow === 'function') view.onShow();
     window.scrollTo(0, 0);
+    return true;
   }
 
   function getCurrentView() {
@@ -399,6 +422,7 @@ App.ui = (function () {
     editShipment: editShipment,
     showView: showView,
     getCurrentView: getCurrentView,
+    getRememberedView: getRememberedView,
     refreshCurrentView: refreshCurrentView,
     init: init
   };

@@ -134,19 +134,27 @@ App.filterInboundHistory = (function () {
     return tr;
   }
 
+  /**
+   * 一覧を丸ごと作り直すと、編集中の行のボタンなどフォーカスが当たっていた要素がDOMから
+   * 消えるため、ブラウザによってはページの先頭までスクロールが飛んでしまう。編集ボタンを
+   * 押しただけなのに一番上に戻るのを防ぐため、再描画の前後でスクロール位置を保持する。
+   */
   function render() {
+    var scrollY = window.scrollY;
+
     var rows = App.store.listFilterInboundHistory(currentFilter(), sortOrder);
     App.ui.clear(body);
     countLabel.textContent = rows.length + ' 件';
 
     if (rows.length === 0) {
       body.appendChild(App.ui.emptyRow(COLUMNS, '該当する入庫履歴がありません。'));
-      return;
+    } else {
+      rows.forEach(function (row) {
+        body.appendChild(renderRow(row));
+      });
     }
 
-    rows.forEach(function (row) {
-      body.appendChild(renderRow(row));
-    });
+    window.scrollTo(0, scrollY);
   }
 
   function init() {
