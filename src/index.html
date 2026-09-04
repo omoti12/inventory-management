@@ -846,67 +846,6 @@
 
     <div class="card">
       <div class="card__head">
-        <h3 class="card__title">出庫する商品</h3>
-        <p class="count" id="filter-shipping-count">0 個</p>
-      </div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>商品コード</th>
-              <th>製品名</th>
-              <th>製造番号</th>
-              <th>入荷日</th>
-              <th>備考</th>
-              <th class="col-action">操作</th>
-            </tr>
-          </thead>
-          <tbody id="filter-shipping-items-body"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card__head">
-        <h3 class="card__title">在庫を検索して追加</h3>
-      </div>
-      <form class="search" id="filter-shipping-search" autocomplete="off">
-        <div class="search__grid">
-          <div class="form-field">
-            <label for="filter-shipping-search-code">商品コード</label>
-            <input type="text" id="filter-shipping-search-code" name="productCode" placeholder="例：F-100">
-          </div>
-          <div class="form-field">
-            <label for="filter-shipping-search-name">製品名</label>
-            <input type="text" id="filter-shipping-search-name" name="productName" placeholder="例：エアフィルター">
-          </div>
-          <div class="form-field">
-            <label for="filter-shipping-search-serial">製造番号</label>
-            <input type="text" id="filter-shipping-search-serial" name="serialNo" placeholder="例：0001">
-          </div>
-        </div>
-        <div class="search__foot">
-          <button type="reset" class="btn btn--ghost">条件をクリア</button>
-        </div>
-      </form>
-      <div class="table-wrap table-wrap--scroll">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>商品コード</th>
-              <th>製品名</th>
-              <th class="col-num">在庫数</th>
-              <th class="col-num">出庫したい個数</th>
-              <th class="col-action">操作</th>
-            </tr>
-          </thead>
-          <tbody id="filter-shipping-search-body"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card__head">
         <h3 class="card__title">出庫情報</h3>
       </div>
       <form class="form" id="filter-shipping-form" autocomplete="off" novalidate>
@@ -969,6 +908,67 @@
           <button type="submit" class="btn btn--primary" id="filter-shipping-submit" disabled>出庫する</button>
         </div>
       </form>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">出庫する商品</h3>
+        <p class="count" id="filter-shipping-count">0 個</p>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th>製造番号</th>
+              <th>入荷日</th>
+              <th>備考</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="filter-shipping-items-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__head">
+        <h3 class="card__title">在庫を検索して追加</h3>
+      </div>
+      <form class="search" id="filter-shipping-search" autocomplete="off">
+        <div class="search__grid">
+          <div class="form-field">
+            <label for="filter-shipping-search-code">商品コード</label>
+            <input type="text" id="filter-shipping-search-code" name="productCode" placeholder="例：F-100">
+          </div>
+          <div class="form-field">
+            <label for="filter-shipping-search-name">製品名</label>
+            <input type="text" id="filter-shipping-search-name" name="productName" placeholder="例：エアフィルター">
+          </div>
+          <div class="form-field">
+            <label for="filter-shipping-search-serial">製造番号</label>
+            <input type="text" id="filter-shipping-search-serial" name="serialNo" placeholder="例：0001">
+          </div>
+        </div>
+        <div class="search__foot">
+          <button type="reset" class="btn btn--ghost">条件をクリア</button>
+        </div>
+      </form>
+      <div class="table-wrap table-wrap--scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品コード</th>
+              <th>製品名</th>
+              <th class="col-num">在庫数</th>
+              <th class="col-num">出庫したい個数</th>
+              <th class="col-action">操作</th>
+            </tr>
+          </thead>
+          <tbody id="filter-shipping-search-body"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
