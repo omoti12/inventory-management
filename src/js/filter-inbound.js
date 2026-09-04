@@ -48,6 +48,11 @@ App.filterInbound = (function () {
     if (submitButton) submitButton.disabled = empty;
   }
 
+  function resetForm() {
+    form.reset();
+    App.ui.clearFieldErrors(form);
+  }
+
   function onSubmit(event) {
     event.preventDefault();
 
@@ -73,7 +78,7 @@ App.filterInbound = (function () {
       App.ui.toast(message, 'success');
 
       App.filterShipping.render();
-      form.reset();
+      resetForm();
     });
   }
 
@@ -114,7 +119,10 @@ App.filterInbound = (function () {
   App.views['filter-inbound'] = {
     onShow: function () {
       refreshProducts();
-    }
+    },
+    /* 入力途中で他の画面に移動した時は、その入力を残さず消す（戻ってきた時に古い入力が
+       残って混乱しないように）。 */
+    onHide: resetForm
   };
 
   return {

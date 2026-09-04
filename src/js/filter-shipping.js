@@ -292,7 +292,17 @@ App.filterShipping = (function () {
    */
   function syncDestinationFromName() {
     var name = form.elements.destinationName1.value.trim();
-    if (!name) return;
+    if (!name) {
+      /* 出荷先名を消して選び直そうとしている時に、古い出荷先コード・小番・出荷先名2が
+         残ったままだと紛らわしいので一緒に消す（間違った出荷先のまま出庫してしまう事故を防ぐ）。 */
+      destinationCodeField.value = '';
+      destinationSubCodeField.value = '';
+      form.elements.destinationName2.value = '';
+      fireInput(destinationCodeField);
+      fireInput(destinationSubCodeField);
+      fireInput(form.elements.destinationName2);
+      return;
+    }
     var matches = App.store.findDestinationsByName(name);
     if (matches.length === 0) return;
     fillDestinationCode(matches[0]);
