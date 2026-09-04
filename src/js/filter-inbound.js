@@ -17,6 +17,8 @@ App.filterInbound = (function () {
     INPUT_NAMES.forEach(function (name) {
       result[name] = data.get(name) || '';
     });
+    /* チェックボックスは未チェック時 FormData に含まれないため、get()の有無で真偽値にする。 */
+    result.sequential = data.get('sequential') === 'on';
 
     return result;
   }
@@ -59,8 +61,15 @@ App.filterInbound = (function () {
       }
 
       App.ui.clearFieldErrors(form);
-      var message = 'フィルター在庫を登録しました：' + result.item.productCode + ' / 製造番号 ' + result.item.serialNo;
-      if (result.count > 1) message += '（' + result.count + '個）';
+      var message = 'フィルター在庫を登録しました：' + result.item.productCode + ' / ';
+      if (result.count > 1 && data.sequential) {
+        var firstSerial = result.items[0].serialNo;
+        var lastSerial = result.items[result.items.length - 1].serialNo;
+        message += '製造番号 ' + firstSerial + ' 〜 ' + lastSerial + '（' + result.count + '個）';
+      } else {
+        message += '製造番号 ' + result.item.serialNo;
+        if (result.count > 1) message += '（' + result.count + '個）';
+      }
       App.ui.toast(message, 'success');
 
       App.filterShipping.render();
