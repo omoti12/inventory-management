@@ -6,15 +6,32 @@ App.views = App.views || {};
 App.destinations = (function () {
   'use strict';
 
-  var COLUMNS = 5;
+  var COLUMNS = 6;
   var FIELD_NAMES = ['destinationCode', 'destinationSubCode', 'destinationName1', 'destinationName2'];
   var form, body, countLabel, formTitle, submitButton, cancelEditButton;
-  var importInput, importButton;
+  var importInput, importButton, selectAllCheckbox, bulkDeleteButton;
   var editingId = null;
+  var selectedIds = {};
 
   function summarizeCodes(codes) {
     if (codes.length <= 10) return codes.join('、');
     return codes.slice(0, 10).join('、') + ' 他' + (codes.length - 10) + '件';
+  }
+
+  /** 複数件に対して同じStore操作を順番に実行し、成功件数と最初のエラーメッセージをまとめる。 */
+  function runBulk(ids, action) {
+    var successCount = 0;
+    var firstError = null;
+    return ids.reduce(function (chain, id) {
+      return chain.then(function () {
+        return action(id).then(function (result) {
+          if (result.ok) successCount += 1;
+          else if (!firstError) firstError = result.message;
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      return { successCount: successCount, firstError: firstError };
+    });
   }
 
   /**
@@ -139,6 +156,40 @@ App.destinations = (function () {
     });
   }
 
+  /** ヘッダーの全選択チェックボックスと、一括削除ボタンの有効/無効・件数表示を今の選択状況に合わせる。 */
+  function syncSelectionUi(destinations) {
+    var total = destinations.length;
+    var checked = destinations.filter(function (d) { return !!selectedIds[d.id]; }).length;
+
+    selectAllCheckbox.checked = total > 0 && checked === total;
+    selectAllCheckbox.indeterminate = checked > 0 && checked < total;
+    bulkDeleteButton.disabled = checked === 0;
+    bulkDeleteButton.textContent = checked > 0 ? '選択した' + checked + '件を削除' : '選択した件を削除';
+  }
+
+  function onBulkDelete() {
+    var ids = Object.keys(selectedIds);
+    if (ids.length === 0) return;
+
+    App.ui.confirm({
+      title: '出荷先の削除',
+      message: '選択した' + ids.length + '件の出荷先を削除します。過去の出庫履歴には影響しません。よろしいですか？',
+      okLabel: '削除する',
+      danger: true
+    }).then(function (approved) {
+      if (!approved) return;
+
+      runBulk(ids, App.store.deleteDestination).then(function (summary) {
+        selectedIds = {};
+        if (editingId && ids.indexOf(editingId) !== -1) setEditMode(null);
+        render();
+        refreshShippingForms();
+        if (summary.successCount > 0) App.ui.toast(summary.successCount + '件の出荷先をまとめて削除しました。', 'success');
+        if (summary.firstError) App.ui.toast(summary.firstError, 'error');
+      });
+    });
+  }
+
   function render() {
     var destinations = App.store.listDestinations();
     App.ui.clear(body);
@@ -146,11 +197,25 @@ App.destinations = (function () {
 
     if (destinations.length === 0) {
       body.appendChild(App.ui.emptyRow(COLUMNS, '出荷先がまだ登録されていません。上のフォームまたはCSVから登録してください。'));
+      syncSelectionUi(destinations);
       return;
     }
 
     destinations.forEach(function (destination) {
       var tr = App.ui.el('tr', editingId === destination.id ? 'row-editing' : null);
+
+      var checkCell = App.ui.el('td', 'col-check');
+      var checkbox = App.ui.el('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = !!selectedIds[destination.id];
+      checkbox.setAttribute('aria-label', destination.destinationCode + 'を選択');
+      checkbox.addEventListener('change', function () {
+        if (checkbox.checked) selectedIds[destination.id] = true;
+        else delete selectedIds[destination.id];
+        syncSelectionUi(destinations);
+      });
+      checkCell.appendChild(checkbox);
+      tr.appendChild(checkCell);
 
       tr.appendChild(App.ui.el('td', null, destination.destinationCode));
       tr.appendChild(App.ui.el('td', null, destination.destinationSubCode || '—'));
@@ -172,6 +237,8 @@ App.destinations = (function () {
       tr.appendChild(actionCell);
       body.appendChild(tr);
     });
+
+    syncSelectionUi(destinations);
   }
 
   function onSubmit(event) {
@@ -209,8 +276,20 @@ App.destinations = (function () {
     cancelEditButton = document.getElementById('destinations-cancel-edit');
     importInput = document.getElementById('destinations-import-file');
     importButton = document.getElementById('destinations-import-btn');
+    selectAllCheckbox = document.getElementById('destinations-select-all');
+    bulkDeleteButton = document.getElementById('destinations-bulk-delete');
 
     importButton.addEventListener('click', onImport);
+
+    selectAllCheckbox.addEventListener('change', function () {
+      var destinations = App.store.listDestinations();
+      destinations.forEach(function (destination) {
+        if (selectAllCheckbox.checked) selectedIds[destination.id] = true;
+        else delete selectedIds[destination.id];
+      });
+      render();
+    });
+    bulkDeleteButton.addEventListener('click', onBulkDelete);
 
     form.addEventListener('submit', onSubmit);
     form.addEventListener('input', function (event) {

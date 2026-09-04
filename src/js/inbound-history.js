@@ -5,11 +5,33 @@ App.views = App.views || {};
 App.inboundHistory = (function () {
   'use strict';
 
-  var COLUMNS = 10;
+  var COLUMNS = 11;
 
-  var searchForm, body, countLabel, sortButton, sortArrow;
+  var searchForm, body, countLabel, sortButton, sortArrow, selectAllCheckbox, bulkDeleteButton;
   var sortOrder = 'desc';
   var editingId = null;
+  var selectedIds = {};
+
+  /** 個別の削除ボタンと同じ条件（在庫中、または参照商品が削除済み）の行だけ選択・削除できる。 */
+  function isDeletable(row) {
+    return row.status === 'in_stock' || row.productDeleted;
+  }
+
+  /** 複数件に対して同じStore操作を順番に実行し、成功件数と最初のエラーメッセージをまとめる。 */
+  function runBulk(ids, action) {
+    var successCount = 0;
+    var firstError = null;
+    return ids.reduce(function (chain, id) {
+      return chain.then(function () {
+        return action(id).then(function (result) {
+          if (result.ok) successCount += 1;
+          else if (!firstError) firstError = result.message;
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      return { successCount: successCount, firstError: firstError };
+    });
+  }
 
   function currentFilter() {
     var data = new FormData(searchForm);
@@ -91,10 +113,63 @@ App.inboundHistory = (function () {
     });
   }
 
+  /** 選択して一括削除するための行チェックボックス（個別削除できる行だけ選択できる）。 */
+  function checkCell(row) {
+    var cell = App.ui.el('td', 'col-check');
+    if (editingId === row.id || !isDeletable(row)) return cell;
+
+    var checkbox = App.ui.el('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = !!selectedIds[row.id];
+    checkbox.setAttribute('aria-label', row.productCode + ' / ' + row.productName + 'を選択');
+    checkbox.addEventListener('change', function () {
+      if (checkbox.checked) selectedIds[row.id] = true;
+      else delete selectedIds[row.id];
+      syncSelectionUi();
+    });
+    cell.appendChild(checkbox);
+    return cell;
+  }
+
+  /** ヘッダーの全選択チェックボックスと、一括削除ボタンの有効/無効・件数表示を今の選択状況に合わせる。 */
+  function syncSelectionUi() {
+    var deletableRows = App.store.listInboundHistory(currentFilter(), sortOrder).filter(isDeletable);
+    var total = deletableRows.length;
+    var checked = deletableRows.filter(function (row) { return !!selectedIds[row.id]; }).length;
+
+    selectAllCheckbox.checked = total > 0 && checked === total;
+    selectAllCheckbox.indeterminate = checked > 0 && checked < total;
+    bulkDeleteButton.disabled = checked === 0;
+    bulkDeleteButton.textContent = checked > 0 ? '選択した' + checked + '件を削除' : '選択した件を削除';
+  }
+
+  function onBulkDelete() {
+    var ids = Object.keys(selectedIds);
+    if (ids.length === 0) return;
+
+    App.ui.confirm({
+      title: '入庫履歴の削除',
+      message: ids.length + '件の入庫記録をまとめて削除します。元に戻せません。よろしいですか？',
+      okLabel: '削除する',
+      danger: true
+    }).then(function (approved) {
+      if (!approved) return;
+
+      runBulk(ids, App.store.deleteItem).then(function (summary) {
+        selectedIds = {};
+        render();
+        App.inventory.render();
+        if (summary.successCount > 0) App.ui.toast(summary.successCount + '件の入庫履歴をまとめて削除しました。', 'success');
+        if (summary.firstError) App.ui.toast(summary.firstError, 'error');
+      });
+    });
+  }
+
   /** 表示用のセルを作る（編集中の行だけ入力欄にする）。 */
   function renderRow(row) {
     var tr = App.ui.el('tr', editingId === row.id ? 'row-editing' : null);
 
+    tr.appendChild(checkCell(row));
     tr.appendChild(App.ui.el('td', null, row.productCode));
     tr.appendChild(App.ui.el('td', null, row.productName));
     tr.appendChild(App.ui.el('td', null, row.storageLocation || '—'));
@@ -202,6 +277,7 @@ App.inboundHistory = (function () {
       });
     }
 
+    syncSelectionUi();
     window.scrollTo(0, scrollY);
   }
 
@@ -211,12 +287,24 @@ App.inboundHistory = (function () {
     countLabel = document.getElementById('inbound-history-count');
     sortButton = document.getElementById('inbound-history-sort-date');
     sortArrow = document.getElementById('inbound-history-sort-arrow');
+    selectAllCheckbox = document.getElementById('inbound-history-select-all');
+    bulkDeleteButton = document.getElementById('inbound-history-bulk-delete');
 
     var onInput = App.ui.debounce(render, 200);
     searchForm.addEventListener('input', onInput);
     searchForm.addEventListener('change', render);
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); render(); });
     sortButton.addEventListener('click', toggleSort);
+
+    selectAllCheckbox.addEventListener('change', function () {
+      var deletableRows = App.store.listInboundHistory(currentFilter(), sortOrder).filter(isDeletable);
+      deletableRows.forEach(function (row) {
+        if (selectAllCheckbox.checked) selectedIds[row.id] = true;
+        else delete selectedIds[row.id];
+      });
+      render();
+    });
+    bulkDeleteButton.addEventListener('click', onBulkDelete);
   }
 
   App.views['inbound-history'] = { onShow: render };

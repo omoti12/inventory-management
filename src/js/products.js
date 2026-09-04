@@ -6,15 +6,32 @@ App.products = (function () {
   'use strict';
 
   var CATEGORY = 'normal';
-  var COLUMNS = 6;
+  var COLUMNS = 7;
   var FIELD_NAMES = ['productCode', 'productName', 'storageLocation'];
   var form, body, countLabel, formTitle, submitButton, cancelEditButton;
-  var importInput, importButton;
+  var importInput, importButton, selectAllCheckbox, bulkDeleteButton;
   var editingId = null;
+  var selectedIds = {};
 
   function summarizeCodes(codes) {
     if (codes.length <= 10) return codes.join('、');
     return codes.slice(0, 10).join('、') + ' 他' + (codes.length - 10) + '件';
+  }
+
+  /** 複数件に対して同じStore操作を順番に実行し、成功件数と最初のエラーメッセージをまとめる。 */
+  function runBulk(ids, action) {
+    var successCount = 0;
+    var firstError = null;
+    return ids.reduce(function (chain, id) {
+      return chain.then(function () {
+        return action(id).then(function (result) {
+          if (result.ok) successCount += 1;
+          else if (!firstError) firstError = result.message;
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      return { successCount: successCount, firstError: firstError };
+    });
   }
 
   /** CSVの行を1件ずつ順番に登録する（重複チェックが最新の登録状況を見られるよう直列に実行）。 */
@@ -129,6 +146,56 @@ App.products = (function () {
     });
   }
 
+  /** ヘッダーの全選択チェックボックスと、一括削除ボタンの有効/無効・件数表示を今の選択状況に合わせる。 */
+  function syncSelectionUi(products) {
+    var total = products.length;
+    var checked = products.filter(function (p) { return !!selectedIds[p.id]; }).length;
+
+    selectAllCheckbox.checked = total > 0 && checked === total;
+    selectAllCheckbox.indeterminate = checked > 0 && checked < total;
+    bulkDeleteButton.disabled = checked === 0;
+    bulkDeleteButton.textContent = checked > 0 ? '選択した' + checked + '件を削除' : '選択した件を削除';
+  }
+
+  function onBulkDelete() {
+    var ids = Object.keys(selectedIds);
+    if (ids.length === 0) return;
+
+    var usedCount = 0, totalInStock = 0, totalShipped = 0;
+    ids.forEach(function (id) {
+      var usage = App.store.productUsage(id);
+      if (usage.total > 0) usedCount++;
+      totalInStock += usage.inStock;
+      totalShipped += usage.shipped;
+    });
+
+    var message = '選択した' + ids.length + '件の商品を削除します。';
+    if (usedCount > 0) {
+      message += 'うち' + usedCount + '件は在庫・出庫履歴で使われています（在庫 合計' + totalInStock +
+        ' 個・出庫済み 合計' + totalShipped + ' 個）。削除すると、それらの在庫一覧・出庫履歴の表示は' +
+        '「(削除済み商品)」になります。';
+    }
+    message += 'それでも削除しますか？';
+
+    App.ui.confirm({
+      title: '商品の削除',
+      message: message,
+      okLabel: '削除する',
+      danger: true
+    }).then(function (approved) {
+      if (!approved) return;
+
+      runBulk(ids, App.store.deleteProduct).then(function (summary) {
+        selectedIds = {};
+        if (editingId && ids.indexOf(editingId) !== -1) setEditMode(null);
+        render();
+        App.inbound.refreshProducts();
+        if (summary.successCount > 0) App.ui.toast(summary.successCount + '件の商品をまとめて削除しました。', 'success');
+        if (summary.firstError) App.ui.toast(summary.firstError, 'error');
+      });
+    });
+  }
+
   function render() {
     var products = App.store.listProducts(CATEGORY);
     App.ui.clear(body);
@@ -136,12 +203,26 @@ App.products = (function () {
 
     if (products.length === 0) {
       body.appendChild(App.ui.emptyRow(COLUMNS, '商品がまだ登録されていません。上のフォームから登録してください。'));
+      syncSelectionUi(products);
       return;
     }
 
     products.forEach(function (product) {
       var usage = App.store.productUsage(product.id);
       var tr = App.ui.el('tr', editingId === product.id ? 'row-editing' : null);
+
+      var checkCell = App.ui.el('td', 'col-check');
+      var checkbox = App.ui.el('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = !!selectedIds[product.id];
+      checkbox.setAttribute('aria-label', product.productCode + ' ' + product.productName + 'を選択');
+      checkbox.addEventListener('change', function () {
+        if (checkbox.checked) selectedIds[product.id] = true;
+        else delete selectedIds[product.id];
+        syncSelectionUi(products);
+      });
+      checkCell.appendChild(checkbox);
+      tr.appendChild(checkCell);
 
       tr.appendChild(App.ui.el('td', null, product.productCode));
       tr.appendChild(App.ui.el('td', null, product.productName));
@@ -168,6 +249,8 @@ App.products = (function () {
       tr.appendChild(actionCell);
       body.appendChild(tr);
     });
+
+    syncSelectionUi(products);
   }
 
   function onSubmit(event) {
@@ -206,8 +289,20 @@ App.products = (function () {
     cancelEditButton = document.getElementById('products-cancel-edit');
     importInput = document.getElementById('products-import-file');
     importButton = document.getElementById('products-import-btn');
+    selectAllCheckbox = document.getElementById('products-select-all');
+    bulkDeleteButton = document.getElementById('products-bulk-delete');
 
     importButton.addEventListener('click', onImport);
+
+    selectAllCheckbox.addEventListener('change', function () {
+      var products = App.store.listProducts(CATEGORY);
+      products.forEach(function (product) {
+        if (selectAllCheckbox.checked) selectedIds[product.id] = true;
+        else delete selectedIds[product.id];
+      });
+      render();
+    });
+    bulkDeleteButton.addEventListener('click', onBulkDelete);
 
     form.addEventListener('submit', onSubmit);
     form.addEventListener('input', function (event) {
