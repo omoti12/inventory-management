@@ -33,6 +33,15 @@
 - **サインイン**: `src/js/auth.js`（`App.auth`）が MSAL Browser（`src/js/vendor/msal-browser.min.js`）
   でEntra ID（Azure AD）にサインインする。`loginRedirect` 方式。MSAL v3は `initialize()` の完了を
   待たずに他のAPIを呼ぶとエラーになるため、`ready()` で毎回ラップしている。
+- **アクセス許可のスコープ**: `SCOPES`（[auth.js:13](../src/js/auth.js)）は委任された
+  `Sites.Selected` + `User.Read`。以前はテナント内の全SharePointサイトに読み書きできる
+  `Sites.ReadWrite.All` を使っていたが、権限を最小限にするため`Sites.Selected`に絞り込んだ
+  （2026年9月）。`Sites.Selected`は「委任されたアクセス許可」として追加し、かつ対象サイト
+  （このアプリが使うSharePointサイト）に対して、Graph APIの`POST /sites/{siteId}/permissions`で
+  このアプリのクライアントID宛に`roles: ["write"]`を個別に付与しておく必要がある（Entra ID側で
+  権限を追加するだけでは、どのサイトに触れていいかは決まらない）。この個別付与は
+  Graph Explorer（https://developer.microsoft.com/en-us/graph/graph-explorer）等から
+  管理者権限のあるアカウントで一度実行すればよく、コード側の変更は不要。
 - **Graph呼び出し**: `src/js/graph-client.js`（`App.graph`）が全リスト共通のfetchラッパー
   （認証ヘッダー付与・ページング・ETag対応）を提供する。`App.store` はこれ経由でのみSharePointに触れる。
 - **サイト参照**: `nittoairtech.sharepoint.com:/sites/p:` というパスベース参照を使い、事前のサイトID取得を省略している。

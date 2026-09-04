@@ -9,8 +9,11 @@ App.auth = (function () {
   var CLIENT_ID = 'fa8aef46-d043-4cc9-b53b-eda6fbba44ee';
   var TENANT_ID = 'af7492bd-a0bf-4293-949e-31c368901fe8';
   var REDIRECT_URI = 'https://omoti12.github.io/inventory-management/src/index.html';
-  /* Sites.ReadWrite.All: SharePointリストの読み書き。User.Read: サインイン中の名前表示用。 */
-  var SCOPES = ['Sites.ReadWrite.All', 'User.Read'];
+  /* Sites.Selected: 個別に許可した特定のSharePointサイト（在庫管理用サイト）だけへの読み書き。
+     テナント内の全サイトに触れられるSites.ReadWrite.Allより権限を絞るため、こちらに変更している
+     （対象サイトへの実際のアクセス許可は、Graph APIの/sites/{id}/permissionsで別途付与済み）。
+     User.Read: サインイン中の名前表示用。 */
+  var SCOPES = ['Sites.Selected', 'User.Read'];
 
   var client = null;
   var account = null;
