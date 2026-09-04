@@ -18,8 +18,7 @@ App.ui = (function () {
   'filter-inbound-history',
   'filter-shipping',
   'filter-history',
-  'filter-products',
-  'help'
+  'filter-products'
   ];
   var currentView = null;
 
