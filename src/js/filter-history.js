@@ -5,12 +5,19 @@ App.views = App.views || {};
 App.filterHistory = (function () {
   'use strict';
 
-  var COLUMNS = 11;
+  var COLUMNS = 12;
 
   var searchForm, body, countLabel, sortButton, sortArrow, exportExternalButton;
+  var selectAllCheckbox, monthInput, selectMonthButton;
   var sortOrder = 'desc';
   /* まとめ表示の開閉状態。キーは groupShipmentRows() の group.key。再描画をまたいで維持する。 */
   var expandedGroups = {};
+  /**
+   * CSV出力対象として選んだ出庫操作（groupShipmentRows() の group.key）。まとめ表示の1行が
+   * そのまま1つの出庫操作に対応するため、選択の単位も「まとめ行（出庫操作）ごと」にしている
+   * （内訳の商品単位では選べない）。再描画をまたいで維持する。
+   */
+  var selectedGroups = {};
 
   function todayStamp() {
     var d = new Date();
@@ -159,13 +166,26 @@ App.filterHistory = (function () {
   }
 
   /**
+   * チェックボックスで選んだ出庫操作だけに絞り込む。何も選んでいなければ何も絞らず
+   * そのまま返す（今まで通り、絞り込み条件に合う全件を出力する）。
+   */
+  function selectedRowsOnly(rows) {
+    if (Object.keys(selectedGroups).length === 0) return rows;
+    var selected = [];
+    App.store.groupShipmentRows(rows).forEach(function (group) {
+      if (selectedGroups[group.key]) selected = selected.concat(group.rows);
+    });
+    return selected;
+  }
+
+  /**
    * 社内の会計/販売システムの出荷CSV取込機能にそのまま読み込ませる形式でダウンロードする
    * （出庫履歴のonExportExternalCsv()と同じ列構成）。フィルター品には数量の概念が無く
    * 1行＝1個のため、フリー在庫分数量には常に1を入れる。今表示している絞り込み・並び順の
-   * まま出力する。
+   * まま出力する。チェックボックスで一部の出庫操作だけ選んでいれば、その分だけを出力する。
    */
   function onExportExternalCsv() {
-    var rows = App.store.listFilterShipments(currentFilter(), sortOrder);
+    var rows = selectedRowsOnly(App.store.listFilterShipments(currentFilter(), sortOrder));
     var csvRows = [
       ['出荷日', '出荷先コード', '出荷先小番', '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '商品コード', 'フリー在庫分数量']
     ];
@@ -229,9 +249,25 @@ App.filterHistory = (function () {
     return cell;
   }
 
+  /** 選択チェックボックスのセルを作る（1出庫操作＝1個。まとめ行・単独行のどちらでも使う）。 */
+  function selectCell(key) {
+    var cell = App.ui.el('td', 'col-check');
+    var checkbox = App.ui.el('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = isGroupSelected(key);
+    checkbox.setAttribute('aria-label', 'CSV出力の対象として選択');
+    checkbox.addEventListener('change', function () {
+      toggleGroupSelection(key, checkbox.checked);
+      render();
+    });
+    cell.appendChild(checkbox);
+    return cell;
+  }
+
   /** 出庫操作1件ぶん（商品が1つだけ）を、まとめ表示にせずそのまま1行で表示する。 */
-  function renderSingleRow(row) {
+  function renderSingleRow(row, key) {
     var tr = App.ui.el('tr');
+    tr.appendChild(selectCell(key));
     [
       row.productCode,
       row.productName,
@@ -257,6 +293,8 @@ App.filterHistory = (function () {
   /** まとめ表示の見出し行（クリックで内訳の開閉）。 */
   function renderGroupSummary(group, expanded) {
     var tr = App.ui.el('tr', 'row--batch-summary row-clickable');
+
+    tr.appendChild(selectCell(group.key));
 
     var toggleCell = App.ui.el('td');
     var toggleButton = App.ui.el('button', 'batch-toggle', (expanded ? '▼ ' : '▶ ') + group.rows.length + '件の商品をまとめて出庫');
@@ -295,7 +333,7 @@ App.filterHistory = (function () {
     tr.appendChild(actionsCell);
 
     tr.addEventListener('click', function (event) {
-      if (event.target.closest('button')) return;
+      if (event.target.closest('button, input')) return;
       toggleGroup(group.key);
     });
 
@@ -305,6 +343,7 @@ App.filterHistory = (function () {
   /** まとめ表示の内訳行（商品ごと）。 */
   function renderGroupChildRow(row) {
     var tr = App.ui.el('tr', 'row--batch-child');
+    tr.appendChild(App.ui.el('td', 'col-check')); /* 内訳は出庫操作単位の選択に含まれるため、ここでは選ばせない。 */
     tr.appendChild(App.ui.el('td', null, row.productCode));
     tr.appendChild(App.ui.el('td', null, row.productName));
     tr.appendChild(App.ui.el('td', null, row.serialNo));
@@ -328,11 +367,47 @@ App.filterHistory = (function () {
     render();
   }
 
+  function isGroupSelected(key) {
+    return !!selectedGroups[key];
+  }
+
+  function toggleGroupSelection(key, checked) {
+    if (checked) selectedGroups[key] = true;
+    else delete selectedGroups[key];
+  }
+
+  /** ヘッダーの全選択チェックボックスの状態（チェック済み/一部のみ）を、今表示中の行に合わせて更新する。 */
+  function syncSelectAllCheckbox(groups) {
+    var total = groups.length;
+    var checked = groups.filter(function (g) { return isGroupSelected(g.key); }).length;
+    selectAllCheckbox.checked = total > 0 && checked === total;
+    selectAllCheckbox.indeterminate = checked > 0 && checked < total;
+  }
+
+  /**
+   * 指定した年月（YYYY-MM）の出庫操作だけを選択状態にする（今の選択は入れ替える）。
+   * 今の絞り込み条件（状態・キーワード）に関係なく、全期間のデータから月で絞って選ぶ。
+   */
+  function selectMonth(yyyyMm) {
+    if (!yyyyMm) return;
+    var allRows = App.store.listFilterShipments({}, sortOrder);
+    var allGroups = App.store.groupShipmentRows(allRows);
+    selectedGroups = {};
+    allGroups.forEach(function (group) {
+      if (String(group.shippedAt || '').slice(0, 7) === yyyyMm) {
+        selectedGroups[group.key] = true;
+      }
+    });
+    render();
+  }
+
   function render() {
     var rows = App.store.listFilterShipments(currentFilter(), sortOrder);
     var groups = App.store.groupShipmentRows(rows);
     App.ui.clear(body);
-    countLabel.textContent = rows.length + ' 件';
+    var selectedCount = Object.keys(selectedGroups).length;
+    countLabel.textContent = rows.length + ' 件' + (selectedCount > 0 ? '（' + selectedCount + '件の出庫操作を選択中）' : '');
+    syncSelectAllCheckbox(groups);
 
     if (groups.length === 0) {
       body.appendChild(App.ui.emptyRow(COLUMNS, '該当する出庫履歴がありません。'));
@@ -341,7 +416,7 @@ App.filterHistory = (function () {
 
     groups.forEach(function (group) {
       if (group.rows.length === 1) {
-        body.appendChild(renderSingleRow(group.rows[0]));
+        body.appendChild(renderSingleRow(group.rows[0], group.key));
         return;
       }
 
@@ -362,6 +437,9 @@ App.filterHistory = (function () {
     sortButton = document.getElementById('filter-history-sort-date');
     sortArrow = document.getElementById('filter-history-sort-arrow');
     exportExternalButton = document.getElementById('filter-history-export-external-csv');
+    selectAllCheckbox = document.getElementById('filter-history-select-all');
+    monthInput = document.getElementById('filter-history-select-month');
+    selectMonthButton = document.getElementById('filter-history-select-month-btn');
 
     var onInput = App.ui.debounce(render, 200);
     searchForm.addEventListener('input', onInput);
@@ -369,6 +447,13 @@ App.filterHistory = (function () {
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); render(); });
     sortButton.addEventListener('click', toggleSort);
     exportExternalButton.addEventListener('click', onExportExternalCsv);
+
+    selectAllCheckbox.addEventListener('change', function () {
+      var groups = App.store.groupShipmentRows(App.store.listFilterShipments(currentFilter(), sortOrder));
+      groups.forEach(function (group) { toggleGroupSelection(group.key, selectAllCheckbox.checked); });
+      render();
+    });
+    selectMonthButton.addEventListener('click', function () { selectMonth(monthInput.value); });
   }
 
   App.views['filter-history'] = { onShow: render };
