@@ -151,8 +151,21 @@ App.ui = (function () {
 
   /* --- CSV出力 ------------------------------------------------------------ */
 
+  /**
+   * 備考など自由入力の値が「=」「+」「-」「@」で始まっていると、そのCSVをExcel等で開いた時に
+   * 数式として実行されてしまう（CSVインジェクション）。危険性のある先頭文字にはシングルクォート
+   * を1つ足して文字列として扱わせ、数式として解釈されないようにする。
+   */
+  function neutralizeFormulaPrefix(str) {
+    if (/^[=+\-@\t\r]/.test(str)) {
+      return "'" + str;
+    }
+    return str;
+  }
+
   function escapeCsvField(value) {
     var str = value === null || value === undefined ? '' : String(value);
+    str = neutralizeFormulaPrefix(str);
     if (/[",\r\n]/.test(str)) {
       return '"' + str.replace(/"/g, '""') + '"';
     }
