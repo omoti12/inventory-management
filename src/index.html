@@ -278,7 +278,8 @@
         <div class="form__grid">
           <div class="form-field">
             <label for="shipping-person">出庫した人 <span class="req">必須</span></label>
-            <input type="text" id="shipping-person" name="shippedBy" placeholder="例：日東太郎">
+            <input type="text" id="shipping-person" name="shippedBy" placeholder="例：日東太郎" list="shipping-person-list">
+            <datalist id="shipping-person-list"></datalist>
             <p class="form-error" data-error-for="shippedBy"></p>
           </div>
           <div class="form-field">
@@ -872,7 +873,8 @@
         <div class="form__grid">
           <div class="form-field">
             <label for="filter-shipping-person">出庫した人 <span class="req">必須</span></label>
-            <input type="text" id="filter-shipping-person" name="shippedBy" placeholder="例：日東太郎">
+            <input type="text" id="filter-shipping-person" name="shippedBy" placeholder="例：日東太郎" list="filter-shipping-person-list">
+            <datalist id="filter-shipping-person-list"></datalist>
             <p class="form-error" data-error-for="shippedBy"></p>
           </div>
           <div class="form-field">
@@ -1200,7 +1202,8 @@
     <div class="form__grid">
       <div class="form-field">
         <label for="shipment-edit-shipped-by">出庫した人 <span class="req">必須</span></label>
-        <input type="text" id="shipment-edit-shipped-by" name="shippedBy">
+        <input type="text" id="shipment-edit-shipped-by" name="shippedBy" list="shipment-edit-shipped-by-list">
+        <datalist id="shipment-edit-shipped-by-list"></datalist>
         <p class="form-error" data-error-for="shippedBy"></p>
       </div>
       <div class="form-field">
