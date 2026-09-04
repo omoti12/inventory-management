@@ -13,17 +13,6 @@ App.shipping = (function () {
   var searchForm, searchBody;
   var destinationCodeField, destinationSubCodeField, destinationCodeList;
   var destinationName1Field, destinationName1List;
-  var personList;
-
-  /** これまでの出庫で使われた「出庫した人」の名前で、入力欄のプルダウン候補を作り直す。 */
-  function refreshShippedByNames() {
-    App.ui.clear(personList);
-    App.store.listShippedByNames().forEach(function (name) {
-      var option = App.ui.el('option', null, null);
-      option.value = name;
-      personList.appendChild(option);
-    });
-  }
 
   /** 入荷日が古いものから先に出庫する（入荷日不明のものは後ろに回す）。 */
   function byArrivalDateAsc(a, b) {
@@ -373,7 +362,6 @@ App.shipping = (function () {
         App.inventory.clearSelection();
         App.inventory.render();
         App.history.render();
-        refreshShippedByNames();
         if (result.conflictCount) {
           App.ui.toast(
             result.count + ' 個を出庫しました。' + result.conflictQty + ' 個は別の担当者が既に出庫済みのため対象外です。',
@@ -400,13 +388,11 @@ App.shipping = (function () {
     destinationCodeList = document.getElementById('shipping-destination-code-list');
     destinationName1Field = document.getElementById('shipping-destination-name1');
     destinationName1List = document.getElementById('shipping-destination-name1-list');
-    personList = document.getElementById('shipping-person-list');
 
     destinationCodeField.addEventListener('change', syncDestinationFromCode);
     destinationSubCodeField.addEventListener('change', syncDestinationFromSubCode);
     destinationName1Field.addEventListener('change', syncDestinationFromName);
     refreshDestinations();
-    refreshShippedByNames();
 
     var onSearchInput = App.ui.debounce(renderSearch, 200);
     searchForm.addEventListener('input', onSearchInput);
@@ -441,7 +427,6 @@ App.shipping = (function () {
   App.views.shipping = {
     onShow: function () {
       refreshDestinations();
-      refreshShippedByNames();
       render();
     }
   };
