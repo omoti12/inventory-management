@@ -163,7 +163,10 @@ App.inbound = (function () {
     onShow: function () {
       refreshProducts();
       codeField.focus();
-    }
+    },
+    /* 入力途中で他の画面に移動した時は、その入力を残さず消す（戻ってきた時に古い入力が
+       残って混乱しないように）。 */
+    onHide: resetForm
   };
 
   return {

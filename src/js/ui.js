@@ -376,9 +376,16 @@ App.ui = (function () {
     }
   }
 
-  /** 未知の画面名（VIEWSに無い）が渡された場合は何もせず false を返す。 */
+  /**
+   * 未知の画面名（VIEWSに無い）が渡された場合は何もせず false を返す。
+   * 切り替え前の画面に`onHide`があれば、切り替え後に呼ぶ（入力途中のフォームを
+   * 離れたタイミングでリセットする、など画面を離れる時だけ行いたい後片付け用）。
+   * 同じ画面へのshowView呼び出し（例：コピー機能がstartCopy()の直後に呼ぶ場合）では
+   * onHideは呼ばない。
+   */
   function showView(name) {
     if (VIEWS.indexOf(name) === -1) return false;
+    var previousView = currentView;
     currentView = name;
     rememberView(name);
 
@@ -390,6 +397,11 @@ App.ui = (function () {
       tab.classList.toggle('is-active', active);
       tab.setAttribute('aria-current', active ? 'page' : 'false');
     });
+
+    if (previousView && previousView !== name) {
+      var previous = App.views[previousView];
+      if (previous && typeof previous.onHide === 'function') previous.onHide();
+    }
 
     var view = App.views[name];
     if (view && typeof view.onShow === 'function') view.onShow();
