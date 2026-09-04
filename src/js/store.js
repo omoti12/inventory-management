@@ -576,6 +576,27 @@ App.store = (function () {
   }
 
   /**
+   * 入庫記録（在庫の1行）を削除する。誤って登録してしまった記録を片付けるためのもので、
+   * deleteShipment() と同じ考え方で、既に出庫済みの記録は削除できない（出庫済みの入庫記録を
+   * 削除すると、対応する出庫履歴のキャンセル時に在庫を復元する先が無くなってしまうため）。
+   * 在庫中（status: 'in_stock'）の記録だけを対象にする。
+   */
+  function deleteItem(id) {
+    var item = findItem(id);
+    if (!item) return Promise.resolve({ ok: false, message: '対象の入庫記録が見つかりません。' });
+    if (item.status !== 'in_stock') {
+      return Promise.resolve({ ok: false, message: '在庫中の入庫記録だけ削除できます。' });
+    }
+
+    return App.graph.deleteItem('Items', id).then(function () {
+      items = items.filter(function (i) { return i.id !== id; });
+      return { ok: true };
+    }).catch(function (err) {
+      return { ok: false, message: 'SharePointからの削除に失敗しました：' + err.message };
+    });
+  }
+
+  /**
    * 指定した商品の在庫から、入荷日が古いバッチから順に指定数量ぶんを確保し、
    * 出庫対象にできる item の id 配列を返す。ちょうど数量が合わないバッチは分割し、
    * 端数は元のバッチに残したまま在庫として残す（通常品のみ。フィルター品は数量の
@@ -1264,6 +1285,7 @@ App.store = (function () {
     listInboundHistory: listInboundHistory,
     listFilterInboundHistory: listFilterInboundHistory,
     updateItem: updateItem,
+    deleteItem: deleteItem,
     allocateForShipment: allocateForShipment,
     addItem: addItem,
     addFilterItem: addFilterItem,
