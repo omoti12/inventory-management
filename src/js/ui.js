@@ -281,15 +281,6 @@ App.ui = (function () {
     var form = document.getElementById('shipment-edit-form');
 
     document.getElementById('shipment-edit-product').textContent = row.productCode + ' / ' + row.productName;
-
-    var personList = document.getElementById('shipment-edit-shipped-by-list');
-    clear(personList);
-    App.store.listShippedByNames().forEach(function (name) {
-      var option = el('option', null, null);
-      option.value = name;
-      personList.appendChild(option);
-    });
-
     form.elements.shippedBy.value = row.shippedBy || '';
     form.elements.shippedDate.value = (row.shippedAt || '').slice(0, 10);
     form.elements.destinationCode.value = row.destinationCode || '';
