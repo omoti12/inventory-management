@@ -274,6 +274,35 @@ h1, h2, h3, p { margin: 0; }
   font-weight: 600;
 }
 
+/* フォームや検索欄の無い、説明文だけのカード用（ヘルプ画面など）。 */
+.card__body {
+  padding: var(--space-5);
+  line-height: 1.7;
+}
+
+.card__body h3 {
+  font-size: 15px;
+  margin: 0 0 var(--space-2);
+}
+
+.card__body p {
+  margin: 0 0 var(--space-3);
+}
+
+.card__body ol,
+.card__body ul {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+}
+
+.card__body li {
+  margin-bottom: var(--space-2);
+}
+
+.card__body + .card__body {
+  border-top: 1px solid var(--color-border);
+}
+
 .count {
   color: var(--color-text-muted);
   font-size: 13px;
