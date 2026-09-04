@@ -1000,6 +1000,27 @@ App.store = (function () {
   }
 
   /**
+   * 「出庫した人」欄の入力候補用に、これまで出庫時に使われた名前を重複無く返す
+   * （通常品・フィルター品を問わず全件から集める）。毎回同じ数人で担当することが多いため、
+   * 一から入力し直さずプルダウンから選べるようにする。最近使われたものから順に並べる。
+   */
+  function listShippedByNames() {
+    var seen = {};
+    var names = [];
+    shipments
+      .slice()
+      .sort(function (a, b) { return a.shippedAt < b.shippedAt ? 1 : a.shippedAt > b.shippedAt ? -1 : 0; })
+      .forEach(function (shipment) {
+        var name = text(shipment.shippedBy);
+        if (name && !seen[name]) {
+          seen[name] = true;
+          names.push(name);
+        }
+      });
+    return names;
+  }
+
+  /**
    * listShipments()/listFilterShipments() が返す行を、同じ出庫操作（出庫画面での1回の送信）
    * でまとめて出庫された商品ごとにグループ化する。ship() は1回の呼び出し内で作る出庫記録
    * すべてに同じ shippedAt（と同じ shippedBy）を使うため、この2つが一致する行は同じ出庫操作
@@ -1323,6 +1344,7 @@ App.store = (function () {
     ship: ship,
     listShipments: listShipments,
     listFilterShipments: listFilterShipments,
+    listShippedByNames: listShippedByNames,
     groupShipmentRows: groupShipmentRows,
     cancelShipment: cancelShipment,
     updateShipment: updateShipment,
