@@ -28,6 +28,7 @@
       <div class="app-account" id="app-account" hidden>
         <button type="button" class="btn btn--ghost btn--sm" id="app-refresh" title="他の人が追加・変更した内容を取り込みます">🔄 更新</button>
         <button type="button" class="btn btn--ghost btn--sm" id="app-month-locks">🔒 月次締め</button>
+        <button type="button" class="btn btn--ghost btn--sm" id="app-help">❓ ヘルプ</button>
         <span class="app-account__name" id="app-account-name"></span>
         <button type="button" class="btn btn--ghost btn--sm" id="app-sign-out">サインアウト</button>
       </div>
@@ -1241,6 +1242,113 @@
           </thead>
           <tbody id="month-locks-body"></tbody>
         </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ヘルプ ============ -->
+  <section class="view" id="view-help" hidden>
+    <div class="view__head">
+      <div>
+        <h2 class="view__title">ヘルプ</h2>
+        <p class="view__desc">このシステムの使い方をまとめています。困ったときはここを見てください。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body">
+        <h3>🔰 このシステムでできること</h3>
+        <p>
+          在庫管理システムは、商品が入荷した時（入庫）と出荷した時（出庫）を記録して、
+          今どれだけ在庫があるかをいつでも確認できるようにするためのシステムです。
+          データはMicrosoft 365（SharePoint）に保存されるので、サインインさえできれば
+          パソコン・タブレット・スマートフォンなど、どの端末からでも同じ最新のデータを
+          見たり操作したりできます。
+        </p>
+        <p>
+          画面は「通常」と「フィルター」の2グループに分かれていますが、操作の考え方は
+          ほぼ同じです（違いは下の「フィルター品について」を参照）。まずは通常品を
+          例に説明します。
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body">
+        <h3>📋 基本の流れ</h3>
+        <ol>
+          <li><strong>商品管理</strong>で、商品コードと製品名を登録する（すでに登録済みの商品ならこの手順は不要）</li>
+          <li><strong>入庫</strong>で、入荷した商品・数量・入庫した人・入荷日を登録する</li>
+          <li><strong>在庫一覧</strong>で、今の在庫数を確認する</li>
+          <li><strong>出庫</strong>で、出荷する商品を選び、出庫した人・出荷先などの情報を入力して出庫する</li>
+          <li><strong>出庫履歴</strong>・<strong>入庫履歴</strong>で、過去の記録を確認したり、間違いがあれば修正・削除したりする</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body">
+        <h3>🗂 各画面の説明</h3>
+        <ul>
+          <li><strong>在庫一覧</strong>：まだ出庫されていない（＝今在庫として残っている）商品の一覧。商品コード・製品名・入荷日で検索できます。</li>
+          <li><strong>入庫</strong>：商品が入荷した時に、商品・数量・入庫した人・入荷日を登録する画面です。「入庫した人」は決まったメンバーからのプルダウン選択になっています。</li>
+          <li><strong>入庫履歴</strong>：入庫した記録の一覧。数量や入荷日などを後から修正したり、間違えて登録した記録を削除したりできます。チェックボックスで複数選んでまとめて削除することもできます。</li>
+          <li><strong>出庫</strong>：在庫一覧で選んだ商品を、出庫した人・出荷先などの情報と一緒に出庫（在庫から減らす）する画面です。</li>
+          <li><strong>出庫履歴</strong>：出庫した記録の一覧。内容の修正、キャンセル（在庫に戻す）、削除ができます。複数の商品を一度に出庫した場合は、まとめて1つの操作として表示されます。</li>
+          <li><strong>商品管理</strong>：商品コード・製品名などの商品マスタを登録・編集・削除する画面です。</li>
+          <li><strong>出荷先マスタ</strong>：よく使う出荷先をあらかじめ登録しておくと、出庫の時に出荷先コードや名前を入力するだけで残りの項目が自動で埋まります。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body">
+        <h3>🔍 フィルター品について</h3>
+        <p>
+          フィルター品は、数量ではなく1個ずつ「製造番号」で管理する商品です。使い方は
+          通常品とほぼ同じですが、上のタブの「フィルター」というグループから操作します
+          （在庫一覧・入庫・入庫履歴・出庫・出庫履歴・商品管理が、それぞれ通常品と
+          同じ形で用意されています）。製造番号の末尾が連番になっている場合は、
+          フィルター入庫の「製造番号の末尾を連番にして登録する」を使うと、数量分を
+          まとめて連番で登録できます。
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body">
+        <h3>💡 よく使う操作</h3>
+        <ul>
+          <li><strong>検索</strong>：各画面の上の方にある検索欄に入力すると、一覧がすぐに絞り込まれます。</li>
+          <li><strong>編集</strong>：一覧の「編集」ボタンを押すと、その場で内容を修正できます。</li>
+          <li><strong>削除</strong>：「削除」ボタンで1件だけ削除できます。画面によっては、行のチェックボックスで複数選んでから「選択した◯件を削除」でまとめて削除することもできます。</li>
+          <li><strong>CSV出力</strong>：出庫履歴などの画面にある「CSV出力」ボタンで、一覧の内容をファイルとしてダウンロードできます（Excelでそのまま開けます）。</li>
+          <li><strong>バーコード読み取り</strong>：フィルター品の製造番号入力欄では、スマートフォン・タブレットのカメラでバーコードを読み取って入力できます。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body">
+        <h3>🔒 月次締めについて</h3>
+        <p>
+          ヘッダーの「🔒 月次締め」ボタンから、会計ソフトなどへの取り込みが終わった月を
+          「締める」ことができます。締めた月に登録された入庫・出庫記録は、以降編集・削除・
+          キャンセルができなくなり、「🔒 締め済み」と表示されます（間違えて締めた場合は
+          「解除する」で取り消せます）。
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body">
+        <h3>🆘 困ったときは</h3>
+        <ul>
+          <li><strong>サインインできない</strong>：会社のMicrosoft 365アカウントでサインインしているか確認してください。</li>
+          <li><strong>他の人が入力した内容が反映されない</strong>：ヘッダーの「🔄 更新」ボタンを押すと、最新のデータを読み込み直します。</li>
+          <li><strong>削除ボタンが出ない・押せない</strong>：出庫済みの記録や、月次締め済みの記録など、状態によっては削除・編集できないようになっている場合があります。</li>
+          <li>それでも解決しない場合や、使い方で分からないことがあれば、管理者に相談してください。</li>
+        </ul>
       </div>
     </div>
   </section>

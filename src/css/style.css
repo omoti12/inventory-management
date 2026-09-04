@@ -274,6 +274,31 @@ h1, h2, h3, p { margin: 0; }
   font-weight: 600;
 }
 
+/* フォームや検索欄の無い、説明文だけのカード用（ヘルプ画面など）。 */
+.card__body {
+  padding: var(--space-5);
+  line-height: 1.7;
+}
+
+.card__body h3 {
+  font-size: 15px;
+  margin: 0 0 var(--space-2);
+}
+
+.card__body p {
+  margin: 0 0 var(--space-3);
+}
+
+.card__body ol,
+.card__body ul {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+}
+
+.card__body li {
+  margin-bottom: var(--space-2);
+}
+
 .count {
   color: var(--color-text-muted);
   font-size: 13px;
@@ -410,8 +435,13 @@ input[type="number"],
 textarea,
 select {
   width: 100%;
-  padding: 8px var(--space-3);
+  min-height: 44px;
+  padding: 10px var(--space-3);
   font: inherit;
+  /* 16px未満だとiPad/iPhoneのSafariがフォーカス時に自動でズームしてしまい、
+     タブレットで特に見づらく・使いづらくなるため、本文より大きめに固定する
+     （タッチ操作の対象としても44px前後の高さを確保できる）。 */
+  font-size: 16px;
   color: var(--color-text);
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);

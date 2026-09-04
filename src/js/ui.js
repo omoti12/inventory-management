@@ -19,7 +19,8 @@ App.ui = (function () {
   'filter-shipping',
   'filter-history',
   'filter-products',
-  'month-locks'
+  'month-locks',
+  'help'
   ];
   var currentView = null;
 
