@@ -155,7 +155,7 @@ App.filterInboundHistory = (function () {
       editButton.addEventListener('click', function () { startEdit(row.id); });
       actionCell2.appendChild(editButton);
 
-      if (row.status === 'in_stock') {
+      if (row.status === 'in_stock' || row.productDeleted) {
         var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', '削除');
         deleteButton.type = 'button';
         deleteButton.addEventListener('click', function () { onDelete(row); });

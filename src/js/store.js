@@ -358,13 +358,16 @@ App.store = (function () {
    * 持つ項目が異なるため、item が持つ項目をそのまま引き継いだ上で商品情報を合成する。
    */
   function decorate(item) {
-    var product = findProduct(item.productId) || {};
+    var product = findProduct(item.productId);
     return {
       id: item.id,
       productId: item.productId,
-      productCode: product.productCode || '(削除済み商品)',
-      productName: product.productName || '',
-      storageLocation: product.storageLocation || '',
+      productCode: (product && product.productCode) || '(削除済み商品)',
+      productName: (product && product.productName) || '',
+      storageLocation: (product && product.storageLocation) || '',
+      /* 参照している商品マスタが削除済みかどうか。削除済みの商品に紐づく入庫記録は
+         状態を問わず削除できるようにするため（updateItemの検証等でも使う）。 */
+      productDeleted: !product,
       quantity: item.quantity,
       receivedBy: item.receivedBy,
       remarks: item.remarks,
@@ -577,14 +580,19 @@ App.store = (function () {
 
   /**
    * 入庫記録（在庫の1行）を削除する。誤って登録してしまった記録を片付けるためのもので、
-   * deleteShipment() と同じ考え方で、既に出庫済みの記録は削除できない（出庫済みの入庫記録を
+   * deleteShipment() と同じ考え方で、既に出庫済みの記録は原則削除できない（出庫済みの入庫記録を
    * 削除すると、対応する出庫履歴のキャンセル時に在庫を復元する先が無くなってしまうため）。
-   * 在庫中（status: 'in_stock'）の記録だけを対象にする。
+   * ただし、参照している商品マスタが既に削除されている場合（一覧で「(削除済み商品)」と表示
+   * される行）は、状態を問わず削除できる。商品自体が無くなっている以上、そのItemを残しても
+   * 復元できる在庫として意味を持たない（decorate()すら商品情報を持てない）ため、
+   * 単なる履歴のゴミとして片付けられるようにしている。
    */
   function deleteItem(id) {
     var item = findItem(id);
     if (!item) return Promise.resolve({ ok: false, message: '対象の入庫記録が見つかりません。' });
-    if (item.status !== 'in_stock') {
+
+    var productExists = !!findProduct(item.productId);
+    if (productExists && item.status !== 'in_stock') {
       return Promise.resolve({ ok: false, message: '在庫中の入庫記録だけ削除できます。' });
     }
 
