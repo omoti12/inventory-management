@@ -13,6 +13,7 @@ App.init = function () {
   var signOutButton = document.getElementById('app-sign-out');
   var refreshButton = document.getElementById('app-refresh');
   var monthLocksButton = document.getElementById('app-month-locks');
+  var helpButton = document.getElementById('app-help');
 
   function showSigninError(message) {
     signinError.textContent = message;
@@ -34,6 +35,11 @@ App.init = function () {
      （タブの本数が増えてメニューが幅広になり邪魔になるのを避けるため）。 */
   monthLocksButton.addEventListener('click', function () {
     App.ui.showView('month-locks');
+  });
+
+  /* ヘルプも月次締めと同じ理由でタブには置かず、ヘッダーの操作ボタンとして置く。 */
+  helpButton.addEventListener('click', function () {
+    App.ui.showView('help');
   });
 
   /**
