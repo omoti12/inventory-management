@@ -64,6 +64,32 @@ App.filterInboundHistory = (function () {
     });
   }
 
+  /**
+   * 在庫中の入庫記録を削除する（出庫履歴の削除と同じ考え方で、出庫済みのものは削除できない。
+   * store.js の deleteItem() 側でも同じ制限をかけている）。
+   */
+  function onDelete(row) {
+    App.ui.confirm({
+      title: '入庫履歴の削除',
+      message: '「' + row.productCode + ' / 製造番号 ' + row.serialNo + '」の入庫記録を削除します。元に戻せません。よろしいですか？',
+      okLabel: '削除する',
+      danger: true
+    }).then(function (approved) {
+      if (!approved) return;
+
+      App.store.deleteItem(row.id).then(function (result) {
+        if (!result.ok) {
+          App.ui.toast(result.message, 'error');
+          return;
+        }
+
+        render();
+        App.filterInventory.render();
+        App.ui.toast('入庫履歴を削除しました。', 'success');
+      });
+    });
+  }
+
   function renderRow(row) {
     var tr = App.ui.el('tr', editingId === row.id ? 'row-editing' : null);
 
@@ -128,6 +154,13 @@ App.filterInboundHistory = (function () {
       editButton.type = 'button';
       editButton.addEventListener('click', function () { startEdit(row.id); });
       actionCell2.appendChild(editButton);
+
+      if (row.status === 'in_stock') {
+        var deleteButton = App.ui.el('button', 'btn btn--ghost btn--sm', '削除');
+        deleteButton.type = 'button';
+        deleteButton.addEventListener('click', function () { onDelete(row); });
+        actionCell2.appendChild(deleteButton);
+      }
       tr.appendChild(actionCell2);
     }
 
