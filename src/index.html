@@ -418,6 +418,8 @@
         </form>
         <div class="head-actions">
           <p class="count" id="history-count">0 件</p>
+          <input type="month" id="history-select-month" aria-label="CSV出力する月">
+          <button type="button" class="btn btn--ghost btn--sm" id="history-select-month-btn">この月を選択</button>
           <button type="button" class="btn btn--ghost btn--sm" id="history-export-csv">CSVダウンロード</button>
           <button type="button" class="btn btn--ghost btn--sm" id="history-export-external-csv">外部システム用CSV</button>
         </div>
@@ -427,6 +429,7 @@
         <table class="table">
           <thead>
             <tr>
+              <th class="col-check"><input type="checkbox" id="history-select-all" aria-label="すべてCSV出力対象に選択"></th>
               <th>商品コード</th>
               <th>製品名</th>
               <th>保管場所</th>
@@ -999,6 +1002,8 @@
         </form>
         <div class="head-actions">
           <p class="count" id="filter-history-count">0 件</p>
+          <input type="month" id="filter-history-select-month" aria-label="CSV出力する月">
+          <button type="button" class="btn btn--ghost btn--sm" id="filter-history-select-month-btn">この月を選択</button>
           <button type="button" class="btn btn--ghost btn--sm" id="filter-history-export-external-csv">外部システム用CSV</button>
         </div>
       </div>
@@ -1007,6 +1012,7 @@
         <table class="table">
           <thead>
             <tr>
+              <th class="col-check"><input type="checkbox" id="filter-history-select-all" aria-label="すべてCSV出力対象に選択"></th>
               <th>商品コード</th>
               <th>製品名</th>
               <th>製造番号</th>

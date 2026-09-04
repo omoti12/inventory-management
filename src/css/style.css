@@ -283,7 +283,13 @@ h1, h2, h3, p { margin: 0; }
 .head-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+/* 出庫履歴の「月で選択」など、head-actions内の小さな入力欄用。 */
+.head-actions input[type="month"] {
+  width: auto;
 }
 
 .notice {
