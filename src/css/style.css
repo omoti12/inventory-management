@@ -299,6 +299,83 @@ h1, h2, h3, p { margin: 0; }
   margin-bottom: var(--space-2);
 }
 
+/* --- ヘルプ画面 -------------------------------------------------------- */
+
+/* ヘッダーが画面上部に固定表示（sticky）されているため、目次のリンクで飛んだ先の
+   見出しがヘッダーの下に隠れないよう、アンカー側に余白を確保しておく。 */
+.card[id] {
+  scroll-margin-top: 180px;
+}
+
+.help-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.help-toc a {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-accent-dark);
+  background: var(--color-accent-weak);
+  border-radius: 999px;
+  padding: 6px var(--space-3);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.help-toc a:hover {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* 「基本の流れ」欄の番号付きリストを、丸背景の連番バッジ表示にする。 */
+.help-steps {
+  list-style: none;
+  counter-reset: help-step;
+  margin: 0;
+  padding-left: 0;
+}
+
+.help-steps li {
+  counter-increment: help-step;
+  position: relative;
+  padding-left: 36px;
+}
+
+.help-steps li::before {
+  content: counter(help-step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+}
+
+/* 「困ったときは」など、特に目立たせたい内容を囲む注意書き枠。 */
+.help-callout {
+  background: var(--color-accent-weak);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  padding: var(--space-4) var(--space-5);
+}
+
+.help-callout ul {
+  margin: 0;
+}
+
+.help-callout li:last-child {
+  margin-bottom: 0;
+}
+
 .count {
   color: var(--color-text-muted);
   font-size: 13px;
