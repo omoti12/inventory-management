@@ -118,12 +118,14 @@ App.store = (function () {
       remarks: f.Remarks || '',
       stockType: f.StockType === 'filter' ? 'filter' : 'normal',
       status: f.Status === 'shipped' ? 'shipped' : 'in_stock',
-      registeredAt: f.RegisteredAt || ''
+      registeredAt: f.RegisteredAt || '',
+      /* 入庫した人はフィルター品でも記録する（通常品専用の数量・受注番号とは違い、
+         誰が入庫したかはフィルター品でも同じように追跡したいため）。 */
+      receivedBy: f.ReceivedBy || ''
     };
     if (item.stockType !== 'filter') {
       item.quantity = f.Quantity != null ? toQuantity(f.Quantity) : 0;
       item.orderNo = f.OrderNo || '';
-      item.receivedBy = f.ReceivedBy || '';
     }
     return item;
   }
@@ -137,12 +139,12 @@ App.store = (function () {
       Remarks: text(item.remarks),
       StockType: item.stockType === 'filter' ? 'filter' : 'normal',
       Status: item.status === 'shipped' ? 'shipped' : 'in_stock',
-      RegisteredAt: item.registeredAt || new Date().toISOString()
+      RegisteredAt: item.registeredAt || new Date().toISOString(),
+      ReceivedBy: text(item.receivedBy)
     };
     if (item.stockType !== 'filter') {
       fields.Quantity = toQuantity(item.quantity);
       fields.OrderNo = text(item.orderNo);
-      fields.ReceivedBy = text(item.receivedBy);
     }
     return fields;
   }
@@ -531,8 +533,8 @@ App.store = (function () {
 
   /**
    * 入庫記録（在庫の1行）を編集する。入庫履歴・フィルター入庫履歴画面からの利用を想定し、
-   * 通常品なら数量・入荷日・入庫した人・備考、フィルター品なら製造番号・入荷日・備考を
-   * 更新できる（商品そのものの変更は対象外）。Promise を返す。
+   * 通常品なら数量・入荷日・入庫した人・備考、フィルター品なら製造番号・入荷日・入庫した人・
+   * 備考を更新できる（商品そのものの変更は対象外）。Promise を返す。
    */
   function updateItem(id, data) {
     var item = findItem(id);
@@ -550,10 +552,14 @@ App.store = (function () {
       if (!text(input.serialNo)) {
         errors.serialNo = '製造番号を入力してください。';
       }
+      if (!text(input.receivedBy)) {
+        errors.receivedBy = '入庫した人を入力してください。';
+      }
       if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
       fields = {
         SerialNo: text(input.serialNo),
         ArrivalDate: text(input.arrivalDate),
+        ReceivedBy: text(input.receivedBy),
         Remarks: text(input.remarks)
       };
     } else {
@@ -577,8 +583,8 @@ App.store = (function () {
         item.serialNo = fields.SerialNo;
       } else {
         item.quantity = fields.Quantity;
-        item.receivedBy = fields.ReceivedBy;
       }
+      item.receivedBy = fields.ReceivedBy;
       item.arrivalDate = fields.ArrivalDate;
       item.remarks = fields.Remarks;
       return { ok: true, item: decorate(item) };
@@ -781,7 +787,8 @@ App.store = (function () {
   }
 
   /**
-   * フィルター品を入庫登録する（フィルター商品管理から選んだ商品・製造番号・入荷日付が必須）。
+   * フィルター品を入庫登録する（フィルター商品管理から選んだ商品・製造番号・入庫した人が必須。
+   * 入荷日付は任意）。
    * 数量（任意入力。省略時は1）を指定すると、その数だけ入庫記録をまとめて登録する。
    * 通常は同じ製造番号・入荷日・備考をそのまま複製する（同じ製造番号のものが複数個まとめて
    * 入荷した場合のため）が、`sequential`が真の場合は製造番号の末尾の数字を1件ごとに1ずつ
@@ -806,6 +813,9 @@ App.store = (function () {
     } else if (input.sequential && !/\d+$/.test(text(input.serialNo))) {
       errors.sequential = '連番登録には、末尾が数字の製造番号を入力してください。';
     }
+    if (!text(input.receivedBy)) {
+      errors.receivedBy = '入庫した人を入力してください。';
+    }
 
     if (Object.keys(errors).length > 0) {
       return Promise.resolve({ ok: false, errors: errors });
@@ -816,6 +826,7 @@ App.store = (function () {
     var serialNo = text(input.serialNo);
     var sequential = !!input.sequential;
     var arrivalDate = text(input.arrivalDate);
+    var receivedBy = text(input.receivedBy);
     var remarks = text(input.remarks);
     var savedItems = [];
 
@@ -827,6 +838,7 @@ App.store = (function () {
           productId: productId,
           serialNo: sequential ? nextSerialNo(serialNo, index) : serialNo,
           arrivalDate: arrivalDate,
+          receivedBy: receivedBy,
           remarks: remarks,
           stockType: 'filter',
           status: 'in_stock',
