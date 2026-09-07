@@ -5,12 +5,35 @@ App.views = App.views || {};
 App.filterInboundHistory = (function () {
   'use strict';
 
-  var COLUMNS = 9;
+  var COLUMNS = 10;
+
+  /* 入庫した人は決まった社員のみのため、入庫履歴（inbound-history.js）と同じ固定の
+     選択肢にする。増減したらここも合わせて直す。 */
+  var STAFF_NAMES = [
+    '平澤 基至', '小池 悟', '池田 和弘', '瀧澤 太樹', '後藤 大樹',
+    '西脇 利将', '内田 由季子', '笠原 義彦', '田中 春樹', '舩山 亜由美'
+  ];
 
   var searchForm, body, countLabel, sortButton, sortArrow, selectAllCheckbox, bulkDeleteButton;
   var sortOrder = 'desc';
   var editingId = null;
   var selectedIds = {};
+
+  /** 編集行の「入庫した人」欄用に、固定メンバーの選択肢を持つ<select>を作る。 */
+  function buildReceivedByField(value) {
+    var select = App.ui.el('select');
+    var placeholder = App.ui.el('option', null, '選択してください');
+    placeholder.value = '';
+    select.appendChild(placeholder);
+    STAFF_NAMES.forEach(function (name) {
+      var option = App.ui.el('option', null, name);
+      option.value = name;
+      select.appendChild(option);
+    });
+    select.value = value || '';
+    select.setAttribute('aria-label', '入庫した人');
+    return select;
+  }
 
   /** 個別の削除ボタンと同じ条件（在庫中、または参照商品が削除済み）の行だけ選択・削除できる。
    *  月次締め済みの記録は、この条件を満たしていても選択・削除できない。 */
@@ -71,11 +94,12 @@ App.filterInboundHistory = (function () {
     var data = {
       serialNo: inputs.serialNo.value,
       arrivalDate: inputs.arrivalDate.value,
+      receivedBy: inputs.receivedBy.value,
       remarks: inputs.remarks.value
     };
     App.store.updateItem(row.id, data).then(function (result) {
       if (!result.ok) {
-        var message = result.message || (result.errors && result.errors.serialNo) || '更新に失敗しました。';
+        var message = result.message || (result.errors && (result.errors.serialNo || result.errors.receivedBy)) || '更新に失敗しました。';
         App.ui.toast(message, 'error');
         return;
       }
@@ -189,6 +213,11 @@ App.filterInboundHistory = (function () {
       dateCell.appendChild(dateInput);
       tr.appendChild(dateCell);
 
+      var byCell = App.ui.el('td');
+      var byInput = buildReceivedByField(row.receivedBy);
+      byCell.appendChild(byInput);
+      tr.appendChild(byCell);
+
       var remarksCell = App.ui.el('td', 'col-remarks');
       var remarksInput = App.ui.el('textarea');
       remarksInput.rows = 1;
@@ -207,7 +236,7 @@ App.filterInboundHistory = (function () {
       var saveButton = App.ui.el('button', 'btn btn--primary btn--sm', '保存');
       saveButton.type = 'button';
       saveButton.addEventListener('click', function () {
-        saveEdit(row, { serialNo: serialInput, arrivalDate: dateInput, remarks: remarksInput });
+        saveEdit(row, { serialNo: serialInput, arrivalDate: dateInput, receivedBy: byInput, remarks: remarksInput });
       });
       var cancelButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'キャンセル');
       cancelButton.type = 'button';
@@ -218,6 +247,7 @@ App.filterInboundHistory = (function () {
     } else {
       tr.appendChild(App.ui.el('td', null, row.serialNo || '—'));
       tr.appendChild(App.ui.el('td', null, row.arrivalDate || '—'));
+      tr.appendChild(App.ui.el('td', null, row.receivedBy || '—'));
       tr.appendChild(App.ui.el('td', 'col-remarks', row.remarks || ''));
       tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(row.registeredAt)));
 
