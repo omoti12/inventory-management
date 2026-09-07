@@ -241,16 +241,25 @@ App.destinations = (function () {
     syncSelectionUi(destinations);
   }
 
+  /**
+   * 登録・更新ボタンを押してからトースト表示までの間にもう一度押せてしまうと、全く同じ
+   * 内容が二重に登録されてしまう（Graphへの書き込みは非同期なので一瞬の隙ができる）。
+   * それを防ぐため、書き込みが終わるまでボタンを無効化する。
+   */
   function onSubmit(event) {
     event.preventDefault();
 
     var input = values();
     var wasEditing = editingId !== null;
+
+    submitButton.disabled = true;
     var promise = wasEditing
       ? App.store.updateDestination(editingId, input)
       : App.store.addDestination(input);
 
     promise.then(function (result) {
+      submitButton.disabled = false;
+
       if (!result.ok) {
         App.ui.showFieldErrors(form, result.errors);
         return;

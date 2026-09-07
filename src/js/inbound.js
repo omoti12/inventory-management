@@ -8,7 +8,7 @@ App.inbound = (function () {
   var CATEGORY = 'normal';
   var INPUT_NAMES = ['productCode', 'productName', 'quantity', 'receivedBy', 'arrivalDate', 'remarks'];
 
-  var form, codeField, nameField, codeList, nameList;
+  var form, codeField, nameField, codeList, nameList, submitButton;
   var notice, noticeText;
 
   function values() {
@@ -112,10 +112,18 @@ App.inbound = (function () {
     if (nextField) nextField.focus();
   }
 
+  /**
+   * 登録ボタンを押してからトースト表示までの間にもう一度押せてしまうと、全く同じ内容の
+   * 入庫記録が二重に登録されてしまう（Graphへの書き込みは非同期なので一瞬の隙ができる）。
+   * それを防ぐため、書き込みが終わるまでボタンを無効化する。
+   */
   function onSubmit(event) {
     event.preventDefault();
 
+    submitButton.disabled = true;
     App.store.addItem(values()).then(function (result) {
+      submitButton.disabled = false;
+
       if (!result.ok) {
         App.ui.showFieldErrors(form, result.errors);
         return;
@@ -138,6 +146,7 @@ App.inbound = (function () {
     nameList = document.getElementById('inbound-product-name-list');
     notice = document.getElementById('inbound-copy-notice');
     noticeText = document.getElementById('inbound-copy-text');
+    submitButton = document.getElementById('inbound-submit');
 
     form.addEventListener('submit', onSubmit);
     form.addEventListener('keydown', onKeydown);

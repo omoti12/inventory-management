@@ -348,7 +348,13 @@ App.filterShipping = (function () {
     }).then(function (approved) {
       if (!approved) return;
 
+      /* 確認後もう一度「出庫する」を押せてしまうと、同じ内容の出庫が二重に記録されてしまう
+         （Graphへの書き込みは非同期なので一瞬の隙ができる）。書き込みが終わるまでボタンを
+         無効化する。 */
+      submitButton.disabled = true;
       App.store.ship(targetIds, input).then(function (result) {
+        submitButton.disabled = false;
+
         if (!result.ok) {
           if (result.errors._items) App.ui.toast(result.errors._items, 'error');
           App.ui.showFieldErrors(form, result.errors);

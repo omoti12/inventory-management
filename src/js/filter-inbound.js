@@ -53,13 +53,21 @@ App.filterInbound = (function () {
     App.ui.clearFieldErrors(form);
   }
 
+  /**
+   * 登録ボタンを押してからトースト表示までの間にもう一度押せてしまうと、全く同じ内容の
+   * 入庫記録が二重に登録されてしまう（Graphへの書き込みは非同期なので一瞬の隙ができる）。
+   * それを防ぐため、書き込みが終わるまでボタンを無効化する。
+   */
   function onSubmit(event) {
     event.preventDefault();
 
     var data = values();
     data.stockType = 'filter';
 
+    submitButton.disabled = true;
     App.store.addFilterItem(data).then(function (result) {
+      submitButton.disabled = false;
+
       if (!result.ok) {
         App.ui.showFieldErrors(form, result.errors);
         return;
