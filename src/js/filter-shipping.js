@@ -403,6 +403,18 @@ App.filterShipping = (function () {
     searchForm.addEventListener('submit', function (event) { event.preventDefault(); renderSearch(); });
     searchForm.addEventListener('reset', function () { setTimeout(renderSearch, 0); });
 
+    var scanButton = document.getElementById('filter-shipping-scan-btn');
+    if (scanButton) {
+      scanButton.addEventListener('click', function () {
+        App.scanner.open().then(function (value) {
+          if (!value) return;
+          searchForm.elements.serialNo.value = value;
+          App.ui.toast('製造番号を読み取りました：' + value, 'success');
+          renderSearch();
+        });
+      });
+    }
+
     form.addEventListener('submit', onSubmit);
     form.addEventListener('input', function (event) {
       var name = event.target.name;
