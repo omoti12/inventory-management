@@ -784,6 +784,21 @@ App.store = (function () {
   }
 
   /**
+   * 指定した製造番号と完全一致する、在庫中のフィルター品を探して返す（フィルター出庫の
+   * 「製造番号ですぐ追加」用）。出庫済みのものは対象外。同じ製造番号の在庫が複数ある場合は
+   * 全件返す（呼び出し側は先頭の1件を使う）。
+   */
+  function findInStockFilterItemsBySerialNo(serialNo) {
+    var target = text(serialNo);
+    if (!target) return [];
+    return items
+      .filter(function (item) {
+        return item.stockType === 'filter' && item.status === 'in_stock' && item.serialNo === target;
+      })
+      .map(decorate);
+  }
+
+  /**
    * 製造番号の末尾の数字部分を offset だけ増やした値を返す（連番登録用）。
    * 例: nextSerialNo('62---100007', 1) === '62---100008'。
    * 元の桁数は0埋めで維持し、繰り上がりで桁が増える場合（999→1000等）はそのまま桁を増やす。
@@ -1442,6 +1457,7 @@ App.store = (function () {
     addItem: addItem,
     addFilterItem: addFilterItem,
     findFilterItemsBySerialNo: findFilterItemsBySerialNo,
+    findInStockFilterItemsBySerialNo: findInStockFilterItemsBySerialNo,
     ship: ship,
     listShipments: listShipments,
     listFilterShipments: listFilterShipments,
