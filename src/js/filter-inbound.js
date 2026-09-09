@@ -8,7 +8,7 @@ App.filterInbound = (function () {
   var CATEGORY = 'filter';
   var INPUT_NAMES = ['productId', 'serialNo', 'quantity', 'receivedBy', 'arrivalDate', 'remarks'];
 
-  var form, select, emptyNotice, submitButton;
+  var form, select, emptyNotice, submitButton, serialField, duplicateHint;
 
   function values() {
     var data = new FormData(form);
@@ -51,6 +51,37 @@ App.filterInbound = (function () {
   function resetForm() {
     form.reset();
     App.ui.clearFieldErrors(form);
+    hideDuplicateHint();
+  }
+
+  function hideDuplicateHint() {
+    duplicateHint.hidden = true;
+    duplicateHint.textContent = '';
+  }
+
+  /**
+   * 製造番号欄に入力するたび（スキャンでの入力も含む）に、その場で重複が無いか確認し、
+   * あれば欄の下に注意書きを出す。登録をブロックするものではなく、送信前に気づかせるための
+   * もの（実際の重複確認は送信時のonSubmit()側で行う）。
+   */
+  function updateDuplicateHint() {
+    var value = serialField.value.trim();
+    if (!value) {
+      hideDuplicateHint();
+      return;
+    }
+
+    var duplicates = App.store.findFilterItemsBySerialNo(value);
+    if (duplicates.length === 0) {
+      hideDuplicateHint();
+      return;
+    }
+
+    var existing = duplicates[0];
+    duplicateHint.textContent = '⚠ この製造番号はすでに登録されています（' +
+      existing.productCode + ' ' + existing.productName + '・' +
+      (existing.status === 'shipped' ? '出庫済み' : '在庫中') + '）。';
+    duplicateHint.hidden = false;
   }
 
   /**
@@ -126,10 +157,13 @@ App.filterInbound = (function () {
     select = document.getElementById('filter-inbound-product');
     emptyNotice = document.getElementById('filter-inbound-empty-notice');
     submitButton = document.getElementById('filter-inbound-submit');
+    serialField = document.getElementById('filter-inbound-serial');
+    duplicateHint = document.getElementById('filter-inbound-serial-duplicate-hint');
 
     if (!form) return;
 
     form.addEventListener('submit', onSubmit);
+    serialField.addEventListener('input', updateDuplicateHint);
 
     var toProductsButton = document.getElementById('filter-inbound-to-products');
     if (toProductsButton) {
