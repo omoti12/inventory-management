@@ -771,6 +771,19 @@ App.store = (function () {
   }
 
   /**
+   * 指定した製造番号のフィルター品が既に登録されているかどうかを調べる（在庫中・出庫済み
+   * 問わず全件から探す）。フィルター入庫の登録前チェック用で、末尾が連番の製造番号を
+   * 間違えてもう一度登録してしまう事故を防ぐために使う。
+   */
+  function findFilterItemsBySerialNo(serialNo) {
+    var target = text(serialNo);
+    if (!target) return [];
+    return items
+      .filter(function (item) { return item.stockType === 'filter' && item.serialNo === target; })
+      .map(decorate);
+  }
+
+  /**
    * 製造番号の末尾の数字部分を offset だけ増やした値を返す（連番登録用）。
    * 例: nextSerialNo('62---100007', 1) === '62---100008'。
    * 元の桁数は0埋めで維持し、繰り上がりで桁が増える場合（999→1000等）はそのまま桁を増やす。
@@ -1428,6 +1441,7 @@ App.store = (function () {
     allocateForShipment: allocateForShipment,
     addItem: addItem,
     addFilterItem: addFilterItem,
+    findFilterItemsBySerialNo: findFilterItemsBySerialNo,
     ship: ship,
     listShipments: listShipments,
     listFilterShipments: listFilterShipments,

@@ -58,12 +58,7 @@ App.filterInbound = (function () {
    * 入庫記録が二重に登録されてしまう（Graphへの書き込みは非同期なので一瞬の隙ができる）。
    * それを防ぐため、書き込みが終わるまでボタンを無効化する。
    */
-  function onSubmit(event) {
-    event.preventDefault();
-
-    var data = values();
-    data.stockType = 'filter';
-
+  function submitRegistration(data) {
     submitButton.disabled = true;
     App.store.addFilterItem(data).then(function (result) {
       submitButton.disabled = false;
@@ -87,6 +82,42 @@ App.filterInbound = (function () {
 
       App.filterShipping.render();
       resetForm();
+    });
+  }
+
+  /**
+   * 末尾が連番の製造番号（例：62---100007）は、前回どこまで登録したか忘れて同じ番号から
+   * また登録してしまう間違いが起きやすい。登録前に同じ製造番号がすでに無いか確認し、
+   * あれば警告してから確認を取る（同じ番号を意図的にまとめて登録する運用＝数量欄との
+   * 併用は引き続きできるよう、ここではブロックせず確認だけする）。
+   */
+  function onSubmit(event) {
+    event.preventDefault();
+
+    var data = values();
+    data.stockType = 'filter';
+
+    var duplicates = App.store.findFilterItemsBySerialNo(data.serialNo);
+    if (duplicates.length === 0) {
+      submitRegistration(data);
+      return;
+    }
+
+    var existing = duplicates[0];
+    var message = '製造番号「' + data.serialNo + '」は既に登録されています（' +
+      existing.productCode + ' ' + existing.productName + '・' +
+      (existing.status === 'shipped' ? '出庫済み' : '在庫中') + '）。' +
+      (duplicates.length > 1 ? 'ほかにも' + (duplicates.length - 1) + '件、同じ製造番号があります。' : '') +
+      'それでも登録しますか？';
+
+    App.ui.confirm({
+      title: '製造番号の重複',
+      message: message,
+      okLabel: '登録する',
+      danger: true
+    }).then(function (approved) {
+      if (!approved) return;
+      submitRegistration(data);
     });
   }
 
