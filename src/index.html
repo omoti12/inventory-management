@@ -915,6 +915,15 @@
       </div>
       <form class="form" id="filter-shipping-form" autocomplete="off" novalidate>
         <div class="form__grid">
+          <div class="form-field form-field--wide">
+            <label for="filter-shipping-quick-serial">製造番号ですぐ追加 <span class="optional">任意</span></label>
+            <div class="field-row">
+              <input type="text" id="filter-shipping-quick-serial" placeholder="例：0001">
+              <button type="button" class="btn btn--ghost btn--sm" id="filter-shipping-quick-scan-btn">バーコードを読み取る</button>
+              <button type="button" class="btn btn--ghost btn--sm" id="filter-shipping-quick-add-btn">追加</button>
+            </div>
+            <p class="form-note">スキャンするか製造番号を入力してEnter/追加を押すと、下の「出庫する商品」にその1件だけをすぐ追加します。</p>
+          </div>
           <div class="form-field">
             <label for="filter-shipping-person">出庫した人 <span class="req">必須</span></label>
             <select id="filter-shipping-person" name="shippedBy">

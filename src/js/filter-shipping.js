@@ -13,6 +13,36 @@ App.filterShipping = (function () {
   var searchForm, searchBody;
   var destinationCodeField, destinationSubCodeField, destinationCodeList;
   var destinationName1Field, destinationName1List;
+  var quickSerialField;
+
+  /**
+   * 「製造番号ですぐ追加」欄：製造番号を完全一致で検索し、見つかった在庫1件だけをその場で
+   * 出庫対象に追加する。下の「在庫を検索して追加」（絞り込んで数量を指定するやり方）とは
+   * 別の入り口で、バーコードを読み取ったその場で1件だけすぐ追加したい時のためのもの。
+   */
+  function quickAddBySerialNo() {
+    var value = quickSerialField.value.trim();
+    if (!value) return;
+
+    var matches = App.store.findInStockFilterItemsBySerialNo(value);
+    if (matches.length === 0) {
+      App.ui.toast('製造番号「' + value + '」の在庫が見つかりません（出庫済みか、登録されていない可能性があります）。', 'error');
+      return;
+    }
+
+    var match = matches[0];
+    if (targetIds.indexOf(match.id) !== -1) {
+      App.ui.toast('製造番号「' + value + '」は、すでに出庫対象に追加されています。', 'error');
+      quickSerialField.value = '';
+      return;
+    }
+
+    targetIds.push(match.id);
+    render();
+    App.ui.toast(match.productCode + ' / 製造番号 ' + match.serialNo + ' を出庫対象に追加しました。', 'success');
+    quickSerialField.value = '';
+    quickSerialField.focus();
+  }
 
   /** 入荷日が古いものから先に出庫する（入荷日不明のものは後ろに回す）。 */
   function byArrivalDateAsc(a, b) {
@@ -414,6 +444,27 @@ App.filterShipping = (function () {
         });
       });
     }
+
+    quickSerialField = document.getElementById('filter-shipping-quick-serial');
+    var quickScanButton = document.getElementById('filter-shipping-quick-scan-btn');
+    var quickAddButton = document.getElementById('filter-shipping-quick-add-btn');
+
+    /* バーコードスキャナーはキーボード入力として値を送った後にEnterまで送ってくることが
+       多い。<form>内の入力欄でEnterを押すと通常は送信（＝出庫する）が実行されてしまうため、
+       ここだけは横取りしてすぐ追加の処理に回す。 */
+    quickSerialField.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      quickAddBySerialNo();
+    });
+    quickAddButton.addEventListener('click', quickAddBySerialNo);
+    quickScanButton.addEventListener('click', function () {
+      App.scanner.open().then(function (value) {
+        if (!value) return;
+        quickSerialField.value = value;
+        quickAddBySerialNo();
+      });
+    });
 
     form.addEventListener('submit', onSubmit);
     form.addEventListener('input', function (event) {
