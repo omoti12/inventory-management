@@ -562,6 +562,17 @@ input.is-invalid:focus {
   color: var(--color-text-muted);
 }
 
+/* 入力し終わる前（送信前）に気づかせたい注意書き用。form-error（赤・エラー）ほど
+   強くはしないが、form-note（グレー）より目立たせたいものに使う。 */
+.form-note--warn {
+  color: #93370d;
+  font-weight: 500;
+}
+
+.form-note--warn[hidden] {
+  display: none;
+}
+
 input[readonly] {
   background: var(--color-bg);
   color: var(--color-text-muted);
