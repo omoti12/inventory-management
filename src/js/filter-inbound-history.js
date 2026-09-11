@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.filterInboundHistory = (function () {
   'use strict';
 
-  var COLUMNS = 11;
+  var COLUMNS = 10;
 
   /* 入庫した人は決まった社員のみのため、入庫履歴（inbound-history.js）と同じ固定の
      選択肢にする。増減したらここも合わせて直す。 */
@@ -19,11 +19,8 @@ App.filterInboundHistory = (function () {
   var editingId = null;
   var selectedIds = {};
 
-  /**
-   * 編集行の「入庫した人」「入力した人」欄用に、固定メンバーの選択肢を持つ<select>を作る
-   * （両方とも同じ10名の選択肢）。
-   */
-  function buildStaffField(value, ariaLabel) {
+  /** 編集行の「入庫した人」欄用に、固定メンバーの選択肢を持つ<select>を作る。 */
+  function buildReceivedByField(value) {
     var select = App.ui.el('select');
     var placeholder = App.ui.el('option', null, '選択してください');
     placeholder.value = '';
@@ -34,7 +31,7 @@ App.filterInboundHistory = (function () {
       select.appendChild(option);
     });
     select.value = value || '';
-    select.setAttribute('aria-label', ariaLabel);
+    select.setAttribute('aria-label', '入庫した人');
     return select;
   }
 
@@ -98,12 +95,11 @@ App.filterInboundHistory = (function () {
       serialNo: inputs.serialNo.value,
       arrivalDate: inputs.arrivalDate.value,
       receivedBy: inputs.receivedBy.value,
-      enteredBy: inputs.enteredBy.value,
       remarks: inputs.remarks.value
     };
     App.store.updateItem(row.id, data).then(function (result) {
       if (!result.ok) {
-        var message = result.message || (result.errors && (result.errors.serialNo || result.errors.receivedBy || result.errors.enteredBy)) || '更新に失敗しました。';
+        var message = result.message || (result.errors && (result.errors.serialNo || result.errors.receivedBy)) || '更新に失敗しました。';
         App.ui.toast(message, 'error');
         return;
       }
@@ -218,14 +214,9 @@ App.filterInboundHistory = (function () {
       tr.appendChild(dateCell);
 
       var byCell = App.ui.el('td');
-      var byInput = buildStaffField(row.receivedBy, '入庫した人');
+      var byInput = buildReceivedByField(row.receivedBy);
       byCell.appendChild(byInput);
       tr.appendChild(byCell);
-
-      var enteredByCell = App.ui.el('td');
-      var enteredByInput = buildStaffField(row.enteredBy, '入力した人');
-      enteredByCell.appendChild(enteredByInput);
-      tr.appendChild(enteredByCell);
 
       var remarksCell = App.ui.el('td', 'col-remarks');
       var remarksInput = App.ui.el('textarea');
@@ -245,7 +236,7 @@ App.filterInboundHistory = (function () {
       var saveButton = App.ui.el('button', 'btn btn--primary btn--sm', '保存');
       saveButton.type = 'button';
       saveButton.addEventListener('click', function () {
-        saveEdit(row, { serialNo: serialInput, arrivalDate: dateInput, receivedBy: byInput, enteredBy: enteredByInput, remarks: remarksInput });
+        saveEdit(row, { serialNo: serialInput, arrivalDate: dateInput, receivedBy: byInput, remarks: remarksInput });
       });
       var cancelButton = App.ui.el('button', 'btn btn--ghost btn--sm', 'キャンセル');
       cancelButton.type = 'button';
@@ -257,7 +248,6 @@ App.filterInboundHistory = (function () {
       tr.appendChild(App.ui.el('td', null, row.serialNo || '—'));
       tr.appendChild(App.ui.el('td', null, row.arrivalDate || '—'));
       tr.appendChild(App.ui.el('td', null, row.receivedBy || '—'));
-      tr.appendChild(App.ui.el('td', null, row.enteredBy || '—'));
       tr.appendChild(App.ui.el('td', 'col-remarks', row.remarks || ''));
       tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(row.registeredAt)));
 
