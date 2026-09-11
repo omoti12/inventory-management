@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.filterHistory = (function () {
   'use strict';
 
-  var COLUMNS = 12;
+  var COLUMNS = 13;
 
   var searchForm, body, countLabel, sortButton, sortArrow, exportExternalButton;
   var selectAllCheckbox, monthInput, selectMonthButton;
@@ -282,6 +282,7 @@ App.filterHistory = (function () {
       row.serialNo,
       row.arrivalDate || '—',
       row.shippedBy,
+      row.enteredBy || '—',
       row.destinationName1 || '—',
       row.destinationName2 || '—'
     ].forEach(function (value) {
@@ -314,6 +315,7 @@ App.filterHistory = (function () {
     ['—', '—', '—'].forEach(function (value) { tr.appendChild(App.ui.el('td', null, value)); });
 
     tr.appendChild(App.ui.el('td', null, group.shippedBy));
+    tr.appendChild(App.ui.el('td', null, group.enteredBy || '—'));
     tr.appendChild(App.ui.el('td', null, group.destinationName1 || '—'));
     tr.appendChild(App.ui.el('td', null, group.destinationName2 || '—'));
     tr.appendChild(App.ui.el('td', 'col-remarks', group.remarks || ''));
@@ -362,6 +364,7 @@ App.filterHistory = (function () {
     tr.appendChild(App.ui.el('td', null, row.productName));
     tr.appendChild(App.ui.el('td', null, row.serialNo));
     tr.appendChild(App.ui.el('td', null, row.arrivalDate || '—'));
+    tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));

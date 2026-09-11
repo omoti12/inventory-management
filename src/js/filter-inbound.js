@@ -6,7 +6,7 @@ App.filterInbound = (function () {
   'use strict';
 
   var CATEGORY = 'filter';
-  var INPUT_NAMES = ['productId', 'serialNo', 'quantity', 'receivedBy', 'arrivalDate', 'remarks'];
+  var INPUT_NAMES = ['productId', 'serialNo', 'quantity', 'receivedBy', 'enteredBy', 'arrivalDate', 'remarks'];
 
   var form, select, emptyNotice, submitButton, serialField, duplicateHint;
 

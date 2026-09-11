@@ -28,6 +28,7 @@ App.store = (function () {
      （values() がその両方を返す）。 */
   var SHIPMENT_FIELDS = [
     { key: 'shippedBy', label: '出庫した人' },
+    { key: 'enteredBy', label: '入力した人' },
     { key: 'shippedDate', label: '出庫日' },
     { key: 'destinationCode', label: '出荷先コード' },
     { key: 'destinationSubCode', label: '出荷先小番' },
@@ -121,7 +122,10 @@ App.store = (function () {
       registeredAt: f.RegisteredAt || '',
       /* 入庫した人はフィルター品でも記録する（通常品専用の数量・受注番号とは違い、
          誰が入庫したかはフィルター品でも同じように追跡したいため）。 */
-      receivedBy: f.ReceivedBy || ''
+      receivedBy: f.ReceivedBy || '',
+      /* 「入庫した人」（現場で実際に入庫作業をした人、自己申告）とは別に、実際にこの
+         システムを操作して登録した人を追跡するための項目。 */
+      enteredBy: f.EnteredBy || ''
     };
     if (item.stockType !== 'filter') {
       item.quantity = f.Quantity != null ? toQuantity(f.Quantity) : 0;
@@ -140,7 +144,8 @@ App.store = (function () {
       StockType: item.stockType === 'filter' ? 'filter' : 'normal',
       Status: item.status === 'shipped' ? 'shipped' : 'in_stock',
       RegisteredAt: item.registeredAt || new Date().toISOString(),
-      ReceivedBy: text(item.receivedBy)
+      ReceivedBy: text(item.receivedBy),
+      EnteredBy: text(item.enteredBy)
     };
     if (item.stockType !== 'filter') {
       fields.Quantity = toQuantity(item.quantity);
@@ -156,6 +161,7 @@ App.store = (function () {
       id: String(graphItem.id),
       itemId: f.ItemId || '',
       shippedBy: f.ShippedBy || '',
+      enteredBy: f.EnteredBy || '',
       orderTo: f.OrderTo || '',
       endUser: f.EndUser || '',
       remarks: f.Remarks || '',
@@ -178,6 +184,7 @@ App.store = (function () {
     var fields = {
       ItemId: text(shipment.itemId),
       ShippedBy: text(shipment.shippedBy),
+      EnteredBy: text(shipment.enteredBy),
       OrderTo: text(shipment.orderTo),
       EndUser: text(shipment.endUser),
       Remarks: text(shipment.remarks),
@@ -378,6 +385,7 @@ App.store = (function () {
       productDeleted: !product,
       quantity: item.quantity,
       receivedBy: item.receivedBy,
+      enteredBy: item.enteredBy,
       remarks: item.remarks,
       serialNo: item.serialNo,
       orderNo: item.orderNo,
@@ -533,8 +541,8 @@ App.store = (function () {
 
   /**
    * 入庫記録（在庫の1行）を編集する。入庫履歴・フィルター入庫履歴画面からの利用を想定し、
-   * 通常品なら数量・入荷日・入庫した人・備考、フィルター品なら製造番号・入荷日・入庫した人・
-   * 備考を更新できる（商品そのものの変更は対象外）。Promise を返す。
+   * 通常品なら数量・入荷日・入庫した人・入力した人・備考、フィルター品なら製造番号・入荷日・
+   * 入庫した人・入力した人・備考を更新できる（商品そのものの変更は対象外）。Promise を返す。
    */
   function updateItem(id, data) {
     var item = findItem(id);
@@ -555,11 +563,15 @@ App.store = (function () {
       if (!text(input.receivedBy)) {
         errors.receivedBy = '入庫した人を入力してください。';
       }
+      if (!text(input.enteredBy)) {
+        errors.enteredBy = '入力した人を入力してください。';
+      }
       if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
       fields = {
         SerialNo: text(input.serialNo),
         ArrivalDate: text(input.arrivalDate),
         ReceivedBy: text(input.receivedBy),
+        EnteredBy: text(input.enteredBy),
         Remarks: text(input.remarks)
       };
     } else {
@@ -569,11 +581,15 @@ App.store = (function () {
       if (!text(input.receivedBy)) {
         errors.receivedBy = '入庫した人を入力してください。';
       }
+      if (!text(input.enteredBy)) {
+        errors.enteredBy = '入力した人を入力してください。';
+      }
       if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
       fields = {
         Quantity: toQuantity(input.quantity),
         ArrivalDate: text(input.arrivalDate),
         ReceivedBy: text(input.receivedBy),
+        EnteredBy: text(input.enteredBy),
         Remarks: text(input.remarks)
       };
     }
@@ -585,6 +601,7 @@ App.store = (function () {
         item.quantity = fields.Quantity;
       }
       item.receivedBy = fields.ReceivedBy;
+      item.enteredBy = fields.EnteredBy;
       item.arrivalDate = fields.ArrivalDate;
       item.remarks = fields.Remarks;
       return { ok: true, item: decorate(item) };
@@ -724,6 +741,9 @@ App.store = (function () {
     if (!text(input.receivedBy)) {
       errors.receivedBy = '入庫した人を入力してください。';
     }
+    if (!text(input.enteredBy)) {
+      errors.enteredBy = '入力した人を入力してください。';
+    }
 
     if (Object.keys(errors).length > 0) {
       return Promise.resolve({ ok: false, errors: errors });
@@ -743,6 +763,7 @@ App.store = (function () {
         orderNo: text(input.orderNo),
         arrivalDate: text(input.arrivalDate),
         receivedBy: text(input.receivedBy),
+        enteredBy: text(input.enteredBy),
         remarks: text(input.remarks),
         stockType: 'normal',
         status: 'in_stock',
@@ -844,6 +865,9 @@ App.store = (function () {
     if (!text(input.receivedBy)) {
       errors.receivedBy = '入庫した人を入力してください。';
     }
+    if (!text(input.enteredBy)) {
+      errors.enteredBy = '入力した人を入力してください。';
+    }
 
     if (Object.keys(errors).length > 0) {
       return Promise.resolve({ ok: false, errors: errors });
@@ -855,6 +879,7 @@ App.store = (function () {
     var sequential = !!input.sequential;
     var arrivalDate = text(input.arrivalDate);
     var receivedBy = text(input.receivedBy);
+    var enteredBy = text(input.enteredBy);
     var remarks = text(input.remarks);
     var savedItems = [];
 
@@ -867,6 +892,7 @@ App.store = (function () {
           serialNo: sequential ? nextSerialNo(serialNo, index) : serialNo,
           arrivalDate: arrivalDate,
           receivedBy: receivedBy,
+          enteredBy: enteredBy,
           remarks: remarks,
           stockType: 'filter',
           status: 'in_stock',
@@ -950,6 +976,7 @@ App.store = (function () {
           var shipment = {
             itemId: item.id,
             shippedBy: text(input.shippedBy),
+            enteredBy: text(input.enteredBy),
             orderTo: text(input.orderTo),
             endUser: text(input.endUser),
             remarks: text(input.remarks),
@@ -1025,6 +1052,7 @@ App.store = (function () {
           itemRemarks: row.remarks || '',
           remarks: shipment.remarks || '',
           shippedBy: shipment.shippedBy,
+          enteredBy: shipment.enteredBy,
           orderTo: shipment.orderTo,
           endUser: shipment.endUser,
           destinationCode: shipment.destinationCode || '',
@@ -1070,6 +1098,7 @@ App.store = (function () {
           key: key,
           shippedAt: row.shippedAt,
           shippedBy: row.shippedBy,
+          enteredBy: row.enteredBy,
           destinationName1: row.destinationName1,
           destinationName2: row.destinationName2,
           remarks: row.remarks,
@@ -1151,6 +1180,7 @@ App.store = (function () {
 
     var fields = {
       ShippedBy: text(input.shippedBy),
+      EnteredBy: text(input.enteredBy),
       ShippedAt: text(input.shippedAt) || shipment.shippedAt,
       DestinationCode: text(input.destinationCode),
       DestinationSubCode: text(input.destinationSubCode),
@@ -1164,6 +1194,7 @@ App.store = (function () {
 
     return App.graph.updateItem('Shipments', id, fields).then(function () {
       shipment.shippedBy = fields.ShippedBy;
+      shipment.enteredBy = fields.EnteredBy;
       shipment.shippedAt = fields.ShippedAt;
       shipment.destinationCode = fields.DestinationCode;
       shipment.destinationSubCode = fields.DestinationSubCode;
