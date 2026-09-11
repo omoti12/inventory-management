@@ -62,7 +62,6 @@ App.filterShipping = (function () {
     var shippedDate = data.get('shippedDate') || '';
     return {
       shippedBy: data.get('shippedBy') || '',
-      enteredBy: data.get('enteredBy') || '',
       /* shippedDate はフォームの生の値（必須項目チェック用）。shippedAt はそれを実際の
          出庫日時（ISO日時）に変換した値で、こちらをSharePointへの保存に使う。 */
       shippedDate: shippedDate,

@@ -284,7 +284,6 @@ App.ui = (function () {
 
     document.getElementById('shipment-edit-product').textContent = row.productCode + ' / ' + row.productName;
     form.elements.shippedBy.value = row.shippedBy || '';
-    form.elements.enteredBy.value = row.enteredBy || '';
     form.elements.shippedDate.value = (row.shippedAt || '').slice(0, 10);
     form.elements.destinationCode.value = row.destinationCode || '';
     form.elements.destinationSubCode.value = row.destinationSubCode || '';
@@ -317,7 +316,6 @@ App.ui = (function () {
         var shippedDate = data.get('shippedDate') || '';
         var values = {
           shippedBy: data.get('shippedBy') || '',
-          enteredBy: data.get('enteredBy') || '',
           /* shippedDate はフォーム上の生の日付。実際に保存する shippedAt はこれを今の時刻と
              組み合わせた値にする（出庫フォームの出庫日入力と同じ扱い）。 */
           shippedDate: shippedDate,
