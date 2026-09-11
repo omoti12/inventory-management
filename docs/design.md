@@ -184,7 +184,8 @@ item = {
   id, productId,
   quantity,               // 入庫数量（1以上）
   arrivalDate,            // "YYYY-MM-DD"、任意
-  receivedBy,              // 入庫した人
+  receivedBy,              // 入庫した人（現場で実際に入庫作業をした人、自己申告）
+  enteredBy,               // 入力した人（実際にこのシステムを操作して登録した人）
   remarks,                // 備考、任意
   stockType: 'normal',
   status,                 // 'in_stock' | 'shipped'
@@ -196,6 +197,8 @@ item = {
   id, productId,
   serialNo,               // 製造番号
   arrivalDate,             // "YYYY-MM-DD"、必須
+  receivedBy,              // 入庫した人。通常品と同じ固定プルダウンから選ぶ
+  enteredBy,               // 入力した人。通常品と同じ固定プルダウンから選ぶ
   stockType: 'filter',
   status,                  // 'in_stock' | 'shipped'
   registeredAt
@@ -204,7 +207,7 @@ item = {
 // 出庫（履歴の実体。通常品・フィルター品で共通の形）
 shipment = {
   id, itemId,
-  shippedBy, orderTo, endUser,
+  shippedBy, enteredBy, orderTo, endUser,
   /* 会計/販売システムへのCSV取込用の項目（通常品のみ、すべて任意入力）。
      出荷先コード・小番、出荷先名1/2、受注番号1〜3。 */
   destinationCode, destinationSubCode, destinationName1, destinationName2,
@@ -311,8 +314,8 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 | --- | --- | --- |
 | Products | productCode | **ProductsCode**（表示名は「ProductCode」だが内部名はズレている） |
 | Products | productName / category / storageLocation / createdAt | ProductName / Category / StorageLocation / CreatedAt（すべて表示名と一致） |
-| Items | productId / quantity / serialNo / orderNo / arrivalDate / receivedBy / remarks / stockType / status / registeredAt | ProductId / Quantity / SerialNo / OrderNo / ArrivalDate / ReceivedBy / Remarks / StockType / Status / RegisteredAt（すべて表示名と一致） |
-| Shipments | itemId / shippedBy / orderTo / endUser / remarks / shippedAt / status / cancelledAt | ItemId / ShippedBy / OrderTo / EndUser / Remarks / ShippedAt / Status / CancelledAt（すべて表示名と一致） |
+| Items | productId / quantity / serialNo / orderNo / arrivalDate / receivedBy / enteredBy / remarks / stockType / status / registeredAt | ProductId / Quantity / SerialNo / OrderNo / ArrivalDate / ReceivedBy / EnteredBy / Remarks / StockType / Status / RegisteredAt（すべて表示名と一致） |
+| Shipments | itemId / shippedBy / enteredBy / orderTo / endUser / remarks / shippedAt / status / cancelledAt | ItemId / ShippedBy / EnteredBy / OrderTo / EndUser / Remarks / ShippedAt / Status / CancelledAt（すべて表示名と一致） |
 | Shipments | destinationCode / destinationSubCode / destinationName1 / destinationName2 / orderNumber1〜3 | DestinationCode / DestinationSubCode / DestinationName1 / DestinationName2 / OrderNumber1〜3（すべて表示名と一致） |
 | Destinations | destinationCode / destinationSubCode / destinationName1 / destinationName2 / createdAt | DestinationCode / DestinationSubCode / DestinationName1 / DestinationName2 / CreatedAt（想定。列名は表示名と一致させる想定で作成しているが、Items/Shipmentsと同様に表示名でリスト自体の名前解決ができない場合は`graph-client.js`の`LIST_IDS`にGUIDを追加する） |
 | MonthLocks | yearMonth / lockedAt / lockedBy | YearMonth（1行テキスト、"YYYY-MM"） / LockedAt（日付と時刻） / LockedBy（1行テキスト、任意）。Destinations同様、表示名で名前解決できなければ`LIST_IDS`にGUIDを追加する。月次締め機能（後述）用に追加したリストで、まだ作成していない環境でも起動できるよう`load()`は読み込み失敗を握りつぶす |
@@ -339,18 +342,18 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 | `getItem(id)` / `getItems(ids)` | 在庫の取得（商品マスタと合成した表示用オブジェクト） | 同期 |
 | `listInboundHistory(filter, sortOrder)` | 通常品の入庫履歴を、在庫中・出庫済みを問わず全件返す | 同期 |
 | `listFilterInboundHistory(filter, sortOrder)` | フィルター品の入庫履歴を、在庫中・出庫済みを問わず全件返す | 同期 |
-| `updateItem(id, data)` | 入庫記録を編集する（通常品は数量・入荷日・入庫した人・備考、フィルター品は製造番号・入荷日・入庫した人・備考） | Promise |
+| `updateItem(id, data)` | 入庫記録を編集する（通常品は数量・入荷日・入庫した人・入力した人・備考、フィルター品は製造番号・入荷日・入庫した人・入力した人・備考） | Promise |
 | `deleteItem(id)` | 入庫記録を削除する（在庫中のものだけ削除可能。出庫済みは削除不可。ただし参照先の商品マスタが削除済みの場合は状態を問わず削除可能） | Promise |
 | `allocateForShipment(productId, quantity)` | 古いバッチ順に数量を確保する。バッチ分割が必要なら在庫を分けてSharePointに書き込む | Promise |
-| `addItem(data)` | 通常品を入庫登録する（商品コード自由入力・数量・入庫した人を検証） | Promise |
-| `addFilterItem(data)` | フィルター品を入庫登録する（商品選択・製造番号・入庫した人を検証。入荷日付は任意）。数量（任意、省略時1）を指定すると同じ内容の記録をその数だけまとめて登録する。`sequential`が真の場合は製造番号の末尾の数字を1件ごとに増やして連番登録する | Promise |
+| `addItem(data)` | 通常品を入庫登録する（商品コード自由入力・数量・入庫した人・入力した人を検証） | Promise |
+| `addFilterItem(data)` | フィルター品を入庫登録する（商品選択・製造番号・入庫した人・入力した人を検証。入荷日付は任意）。数量（任意、省略時1）を指定すると同じ内容の記録をその数だけまとめて登録する。`sequential`が真の場合は製造番号の末尾の数字を1件ごとに増やして連番登録する | Promise |
 | `findFilterItemsBySerialNo(serialNo)` | 指定した製造番号と完全一致するフィルター品を、在庫中・出庫済み問わず全件から探して返す（フィルター入庫の登録前の重複チェック用） | 同期 |
 | `findInStockFilterItemsBySerialNo(serialNo)` | 指定した製造番号と完全一致する、在庫中のフィルター品を探して返す（フィルター出庫の「製造番号ですぐ追加」用） | 同期 |
-| `ship(itemIds, info)` | 選択した行を出庫する（出庫した人・受注先・エンドユーザーを検証）。ETag付きで在庫状態を更新し、他の担当者が先に出庫していた分は対象から除外する | Promise |
+| `ship(itemIds, info)` | 選択した行を出庫する（出庫した人・入力した人・受注先・エンドユーザーを検証）。ETag付きで在庫状態を更新し、他の担当者が先に出庫していた分は対象から除外する | Promise |
 | `listShipments(filter, stockType, sortOrder)` / `listFilterShipments(filter, sortOrder)` | 履歴を商品情報と結合して返す。`sortOrder` は `'asc'`/`'desc'`（省略時は`'desc'`＝出庫日時が新しい順） | 同期 |
 | `groupShipmentRows(rows)` | `listShipments`/`listFilterShipments` の結果を、同じ出庫操作（1回の送信）でまとめて出庫された商品ごとにグループ化する | 同期 |
 | `cancelShipment(id)` | 出庫をキャンセルし、商品を在庫に戻す | Promise |
-| `updateShipment(id, data)` | 出庫履歴の内容（出庫した人・出庫日・出荷先・受注番号・備考。SHIPMENT_FIELDS）を編集する。何を出庫したか自体（商品・数量）は対象外。状態を問わず編集できる | Promise |
+| `updateShipment(id, data)` | 出庫履歴の内容（出庫した人・入力した人・出庫日・出荷先・受注番号・備考。SHIPMENT_FIELDS）を編集する。何を出庫したか自体（商品・数量）は対象外。状態を問わず編集できる | Promise |
 | `deleteShipment(id)` | キャンセル済みの出庫履歴を削除する（出庫済みのままは削除不可） | Promise |
 | `listDestinations()` | 出荷先マスタを出荷先コード・小番順で返す | 同期 |
 | `findDestination(code, subCode)` | 出荷先コード・小番の完全一致で出荷先を探す（出庫フォームの自動入力用）。無ければ`null` | 同期 |
@@ -369,15 +372,15 @@ item が持つ項目をそのまま商品情報に合成して返すため、画
 | 画面 | 主な操作 |
 | --- | --- |
 | 在庫一覧 | 検索、商品まとめ/明細の切替、行の選択、コピー（明細のみ）、選択した商品を出庫へ（起動時は商品まとめを表示） |
-| 入庫 | 商品コード・製品名の選択/自由入力、数量・入庫した人・入荷日・備考の入力、コピー登録 |
-| 入庫履歴 | 入庫した通常品の一覧（在庫中・出庫済みを問わず表示）、数量・入荷日・入庫した人・備考の編集、在庫中の記録の削除（チェックボックスでの複数選択・一括削除も可） |
+| 入庫 | 商品コード・製品名の選択/自由入力、数量・入庫した人・入力した人・入荷日・備考の入力、コピー登録 |
+| 入庫履歴 | 入庫した通常品の一覧（在庫中・出庫済みを問わず表示）、数量・入荷日・入庫した人・入力した人・備考の編集、在庫中の記録の削除（チェックボックスでの複数選択・一括削除も可） |
 | 出庫 | 対象商品の確認・除外、出庫情報の入力、出庫 |
 | 出庫履歴 | 状態・キーワードでの絞り込み、内容の編集、キャンセル、複数商品をまとめて出庫した場合のグループ表示（開閉） |
 | 商品管理 | 商品マスタ（商品コード・製品名）の登録・編集・削除（チェックボックスでの複数選択・一括削除も可）、使用状況の確認 |
 | 出荷先マスタ | 出荷先（出荷先コード・小番・出荷先名1/2）の登録・編集・削除（チェックボックスでの複数選択・一括削除も可）、CSVからの一括登録 |
 | フィルター在庫一覧 | 検索、商品まとめ/明細の切替、行の選択、選択した商品をフィルター出庫へ（起動時は商品まとめを表示） |
-| フィルター入庫 | フィルター商品の選択、製造番号・入庫した人（固定プルダウン）・入荷日付の入力、バーコード読み取り、数量指定での複数個まとめ登録（複製／連番の選択可） |
-| フィルター入庫履歴 | 入庫したフィルター品の一覧（在庫中・出庫済みを問わず表示）、製造番号・入荷日・入庫した人・備考の編集、在庫中の記録の削除（チェックボックスでの複数選択・一括削除も可） |
+| フィルター入庫 | フィルター商品の選択、製造番号・入庫した人・入力した人（いずれも固定プルダウン）・入荷日付の入力、バーコード読み取り、数量指定での複数個まとめ登録（複製／連番の選択可） |
+| フィルター入庫履歴 | 入庫したフィルター品の一覧（在庫中・出庫済みを問わず表示）、製造番号・入荷日・入庫した人・入力した人・備考の編集、在庫中の記録の削除（チェックボックスでの複数選択・一括削除も可） |
 | フィルター出庫 | 出庫情報欄の「製造番号ですぐ追加」（バーコード読み取り対応、完全一致で1件だけ即座に追加）、在庫の検索（製造番号はバーコード読み取りに対応）・追加、フィルター在庫一覧からの選択、出庫フォームを1画面に統合 |
 | フィルター出庫履歴 | フィルター品の出庫実績の一覧・内容の編集・キャンセル、複数商品をまとめて出庫した場合のグループ表示（開閉） |
 | フィルター商品管理 | フィルター品の商品マスタの登録・編集・削除（チェックボックスでの複数選択・一括削除も可） |
@@ -442,8 +445,9 @@ descendantセレクタで参照しているだけなので、このネスト構�
 常に空欄になってしまっていた）、後に出荷先コード・小番・出荷先名1/2・受注番号1〜3の列に
 差し替えた。
 
-出庫履歴の「CSVダウンロード」は「出庫した人」より後ろの列を出荷先コード・小番・出荷先名1/2・
-受注番号1〜3・備考・出庫日時・状態にしている。フィルター出庫履歴には汎用の「CSVダウンロード」は
+出庫履歴の「CSVダウンロード」は「出庫した人」の直後に「入力した人」の列を挟み、その後ろを
+出荷先コード・小番・出荷先名1/2・受注番号1〜3・備考・出庫日時・状態にしている。
+フィルター出庫履歴には汎用の「CSVダウンロード」は
 無く、「外部システム用CSV」だけを提供している（両方あると紛らわしいため一本化した。
 外部システム用CSVの方は列構成が出庫履歴と完全に同一で、追加の対応が不要なため残した）。
 
@@ -502,38 +506,48 @@ descendantセレクタで参照しているだけなので、このネスト構�
     を空にした場合は特に連動して消さない（コードだけ一時的に空にして、後で入力し直す使い方も
     あるため）。フィルター出庫（`filter-shipping.js`）にも同じ実装がある。
 
-### 出庫した人・入庫した人：固定メンバーからの選択
+### 出庫した人・入庫した人・入力した人：固定メンバーからの選択
 
 出庫・入庫の担当者は決まった社員（現状10名）に限られるため、「出庫した人」「入庫した人」
-欄は自由入力や入力履歴からの候補ではなく、`products.js`の保管場所欄（「第一工場」
+「入力した人」欄は自由入力や入力履歴からの候補ではなく、`products.js`の保管場所欄（「第一工場」
 「本社在庫」）と同じ考え方で、選択肢を固定した`<select>`にしている。担当者が増減したら、
-下記7箇所の選択肢一覧をコード側で直接編集する（頻繁には変わらない想定のため、出荷先マスタの
-ような専用のSharePointリスト・管理画面は用意していない）。
+下記7箇所×2種類（計14個）の選択肢一覧をコード側で直接編集する（頻繁には変わらない想定のため、
+出荷先マスタのような専用のSharePointリスト・管理画面は用意していない）。
+
+「入力した人」は「入庫した人」「出庫した人」（現場で実際に入庫・出庫作業をした人、自己申告）
+とは別に、実際にこのシステムを操作して登録した人を追跡するための項目で、後から追加した
+（`store.js`の`itemFromGraphItem`/`shipmentFromGraphItem`のコメント参照）。同じ画面・
+同じ一覧行に、出庫した人/入庫した人と入力した人の2つの固定`<select>`を並べて置く形にして
+いるため、対象箇所は「出庫した人」「入庫した人」と全く同じ7箇所になる。
 
 対象は7箇所（同じ10名の選択肢一覧を、静的HTMLの`<select>`5箇所とJSで動的に組み立てる
-2箇所とにそれぞれ重複して持たせている）:
-- 出庫フォーム（`index.html`の`#shipping-person`、`name="shippedBy"`）
-- フィルター出庫フォーム（`#filter-shipping-person`、`name="shippedBy"`）
-- 出庫履歴・フィルター出庫履歴共通の編集ダイアログ（`#shipment-edit-shipped-by`、
-  `name="shippedBy"`）
-- 入庫フォーム（`#inbound-received-by`、`name="receivedBy"`）
-- フィルター入庫フォーム（`#filter-inbound-received-by`、`name="receivedBy"`）
-- 入庫履歴の一覧インライン編集（`inbound-history.js`の`buildReceivedByField(value)`が、
+2箇所とにそれぞれ重複して持たせている。各箇所に`shippedBy`/`receivedBy`用と`enteredBy`用の
+2つの`<select>`がある）:
+- 出庫フォーム（`index.html`の`#shipping-person`＝`shippedBy`、`#shipping-entered-by`＝`enteredBy`）
+- フィルター出庫フォーム（`#filter-shipping-person`＝`shippedBy`、
+  `#filter-shipping-entered-by`＝`enteredBy`）
+- 出庫履歴・フィルター出庫履歴共通の編集ダイアログ（`#shipment-edit-shipped-by`＝`shippedBy`、
+  `#shipment-edit-entered-by`＝`enteredBy`）
+- 入庫フォーム（`#inbound-received-by`＝`receivedBy`、`#inbound-entered-by`＝`enteredBy`）
+- フィルター入庫フォーム（`#filter-inbound-received-by`＝`receivedBy`、
+  `#filter-inbound-entered-by`＝`enteredBy`）
+- 入庫履歴の一覧インライン編集（`inbound-history.js`の`buildStaffField(value, ariaLabel)`が、
   行を作り直すたびに選択肢を組み立てる。一覧行はJSで動的に作られるため、フォーム系の
-  箇所のように静的HTMLに書けない）
+  箇所のように静的HTMLに書けない。`ariaLabel`を`'入庫した人'`/`'入力した人'`で切り替えて
+  同じ関数を2回呼んでいる）
 - フィルター入庫履歴の一覧インライン編集（`filter-inbound-history.js`の
-  同名の`buildReceivedByField(value)`。実装は`inbound-history.js`と同じだが、
+  同名の`buildStaffField(value, ariaLabel)`。実装は`inbound-history.js`と同じだが、
   別モジュールのため`STAFF_NAMES`ごと重複させている）
 
-`<select>`も元の`name`属性（`shippedBy`/`receivedBy`）のままなので、`FormData`で読み取る
-`shipping.js`/`filter-shipping.js`/`inbound.js`/`filter-inbound.js`の`values()`や
+`<select>`も元の`name`属性（`shippedBy`/`receivedBy`/`enteredBy`）のままなので、`FormData`で
+読み取る`shipping.js`/`filter-shipping.js`/`inbound.js`/`filter-inbound.js`の`values()`や
 `ui.js`の`editShipment()`、`inbound-history.js`/`filter-inbound-history.js`の
 `saveEdit()`側のコードは、これが`<input>`だった頃から変更していない（`select.value`も
 `input.value`と同じように読み書きできるため）。過去の履歴（この変更より前に自由入力
-されていた分、またはフィルター品でまだ入庫した人を記録していなかった頃の分）に、今の
-固定リストに無い名前や空欄が残っていても表示上は問題ない（履歴側は保存済みの文字列を
-そのまま表示するだけで、選択肢と突き合わせる処理はない）。編集時にその履歴を開いた場合、
-今の選択肢に無い名前は選択済み状態にならず、選び直しが必要になる。
+されていた分、フィルター品でまだ入庫した人を記録していなかった頃の分、または入力した人を
+まだ記録していなかった頃の分）に、今の固定リストに無い名前や空欄が残っていても表示上は
+問題ない（履歴側は保存済みの文字列をそのまま表示するだけで、選択肢と突き合わせる処理はない）。
+編集時にその履歴を開いた場合、今の選択肢に無い名前は選択済み状態にならず、選び直しが必要になる。
 
 **フィルター品も入庫した人を記録するようにした経緯**：当初はフィルター品のItemには
 `quantity`/`orderNo`/`receivedBy`を持たせない設計だった（`itemFromGraphItem`/
@@ -543,7 +557,8 @@ descendantセレクタで参照しているだけなので、このネスト構�
 引き続きフィルター品では扱わない。フィルター品は数量ではなく製造番号1件＝在庫1件で
 管理するため、この2つは今後もフィルター品には不要）。`addFilterItem(data)`・
 `updateItem(id, data)`のフィルター品分岐の両方に、通常品と同じ「入庫した人を入力して
-ください。」の必須バリデーションを追加している。
+ください。」の必須バリデーションを追加している。「入力した人」（`enteredBy`）も同じ考え方で
+最初から通常品・フィルター品共通の必須項目として追加した。
 
 ### 出庫履歴・フィルター出庫履歴：複数商品のまとめ表示
 

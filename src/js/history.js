@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.history = (function () {
   'use strict';
 
-  var COLUMNS = 13;
+  var COLUMNS = 14;
 
   var searchForm, body, countLabel, sortButton, sortArrow, exportButton, exportExternalButton;
   var selectAllCheckbox, monthInput, selectMonthButton;
@@ -185,7 +185,7 @@ App.history = (function () {
   function onExportCsv() {
     var rows = selectedRowsOnly(App.store.listShipments(currentFilter(), 'normal', sortOrder));
     var csvRows = [
-      ['商品コード', '製品名', '保管場所', '数量', '入荷日', '出庫した人', '出荷先コード', '出荷先小番',
+      ['商品コード', '製品名', '保管場所', '数量', '入荷日', '出庫した人', '入力した人', '出荷先コード', '出荷先小番',
         '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '備考', '出庫日時', '状態']
     ];
     rows.forEach(function (row) {
@@ -196,6 +196,7 @@ App.history = (function () {
         row.quantity,
         row.arrivalDate || '',
         row.shippedBy,
+        row.enteredBy || '',
         row.destinationCode || '',
         row.destinationSubCode || '',
         row.destinationName1 || '',
@@ -344,6 +345,7 @@ App.history = (function () {
       row.quantity + ' 個',
       row.arrivalDate || '—',
       row.shippedBy,
+      row.enteredBy || '—',
       row.destinationName1 || '—',
       row.destinationName2 || '—'
     ].forEach(function (value) {
@@ -380,6 +382,7 @@ App.history = (function () {
     tr.appendChild(App.ui.el('td', 'col-num', totalQty + ' 個'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, group.shippedBy));
+    tr.appendChild(App.ui.el('td', null, group.enteredBy || '—'));
     tr.appendChild(App.ui.el('td', null, group.destinationName1 || '—'));
     tr.appendChild(App.ui.el('td', null, group.destinationName2 || '—'));
     tr.appendChild(App.ui.el('td', 'col-remarks', group.remarks || ''));
@@ -460,6 +463,7 @@ App.history = (function () {
     tr.appendChild(App.ui.el('td', null, productGroup.storageLocation || '—'));
     tr.appendChild(App.ui.el('td', 'col-num', productGroup.totalQty + ' 個'));
     tr.appendChild(App.ui.el('td', null, productGroup.sameArrivalDate ? (productGroup.arrivalDate || '—') : '—'));
+    tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));

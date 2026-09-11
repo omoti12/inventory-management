@@ -6,7 +6,7 @@ App.inbound = (function () {
   'use strict';
 
   var CATEGORY = 'normal';
-  var INPUT_NAMES = ['productCode', 'productName', 'quantity', 'receivedBy', 'arrivalDate', 'remarks'];
+  var INPUT_NAMES = ['productCode', 'productName', 'quantity', 'receivedBy', 'enteredBy', 'arrivalDate', 'remarks'];
 
   var form, codeField, nameField, codeList, nameList, submitButton;
   var notice, noticeText;
