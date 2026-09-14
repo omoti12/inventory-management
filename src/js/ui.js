@@ -314,12 +314,17 @@ App.ui = (function () {
         event.preventDefault();
         var data = new FormData(form);
         var shippedDate = data.get('shippedDate') || '';
+        /* 日付を変えていなければ、元の shippedAt（時刻込み）をそのまま維持する。まとめ表示
+           （groupShipmentRows）は同じ出庫操作かどうかを shippedAt の完全一致で判定しているため、
+           ここで毎回「今の時刻」を付け直すと、日付を変えていない編集でもその行だけ元のまとめ
+           から外れてしまう。実際に別の日付に変更した場合だけ、出庫フォームの出庫日入力と
+           同じ扱いで新しい時刻（今の時刻）を組み合わせる。 */
+        var originalDate = (row.shippedAt || '').slice(0, 10);
+        var shippedAt = shippedDate === originalDate ? row.shippedAt : combineDateWithNow(shippedDate);
         var values = {
           shippedBy: data.get('shippedBy') || '',
-          /* shippedDate はフォーム上の生の日付。実際に保存する shippedAt はこれを今の時刻と
-             組み合わせた値にする（出庫フォームの出庫日入力と同じ扱い）。 */
           shippedDate: shippedDate,
-          shippedAt: combineDateWithNow(shippedDate),
+          shippedAt: shippedAt,
           destinationCode: data.get('destinationCode') || '',
           destinationSubCode: data.get('destinationSubCode') || '',
           destinationName1: data.get('destinationName1') || '',
