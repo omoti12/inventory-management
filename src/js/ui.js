@@ -338,9 +338,16 @@ App.ui = (function () {
         var missing = (App.store.SHIPMENT_FIELDS || []).filter(function (field) {
           return String(values[field.key]).trim() === '';
         });
-        if (missing.length > 0) {
-          var errors = {};
-          missing.forEach(function (field) { errors[field.key] = field.label + 'を入力してください。'; });
+        var errors = {};
+        missing.forEach(function (field) { errors[field.key] = field.label + 'を入力してください。'; });
+        (App.store.ORDER_NUMBER_KEYS || []).forEach(function (key) {
+          if (errors[key]) return;
+          if (!App.store.isHalfWidthAlphanumeric(String(values[key]).trim())) {
+            var field = (App.store.SHIPMENT_FIELDS || []).filter(function (f) { return f.key === key; })[0];
+            errors[key] = (field ? field.label : key) + 'は半角英数字で入力してください。';
+          }
+        });
+        if (Object.keys(errors).length > 0) {
           showFieldErrors(form, errors);
           return;
         }
