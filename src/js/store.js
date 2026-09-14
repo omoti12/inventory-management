@@ -37,6 +37,25 @@ App.store = (function () {
     { key: 'orderNumber3', label: '受注番号3' }
   ];
 
+  /* 受注番号は社内の会計/販売システムへのCSV取込用の項目で、先方システムの仕様に
+     合わせて半角英数字のみを許可する（全角文字や記号が混ざると取込エラーになるため）。 */
+  var ORDER_NUMBER_KEYS = ['orderNumber1', 'orderNumber2', 'orderNumber3'];
+
+  function isHalfWidthAlphanumeric(value) {
+    return /^[A-Za-z0-9]*$/.test(value);
+  }
+
+  /** SHIPMENT_FIELDSのうち受注番号1〜3だけ、半角英数字かどうかも検証してerrorsに追加する。 */
+  function validateOrderNumberFormat(input, errors) {
+    ORDER_NUMBER_KEYS.forEach(function (key) {
+      if (errors[key]) return;
+      if (!isHalfWidthAlphanumeric(text(input[key]))) {
+        var field = SHIPMENT_FIELDS.filter(function (f) { return f.key === key; })[0];
+        errors[key] = (field ? field.label : key) + 'は半角英数字で入力してください。';
+      }
+    });
+  }
+
   function text(value) {
     return value === null || value === undefined ? '' : String(value).trim();
   }
@@ -912,6 +931,7 @@ App.store = (function () {
         errors[field.key] = field.label + 'を入力してください。';
       }
     });
+    validateOrderNumberFormat(input, errors);
 
     var targets = (itemIds || [])
       .map(findItem)
@@ -1147,6 +1167,7 @@ App.store = (function () {
         errors[field.key] = field.label + 'を入力してください。';
       }
     });
+    validateOrderNumberFormat(input, errors);
     if (Object.keys(errors).length > 0) return Promise.resolve({ ok: false, errors: errors });
 
     var fields = {
@@ -1434,6 +1455,8 @@ App.store = (function () {
   return {
     PRODUCT_FIELDS: PRODUCT_FIELDS,
     SHIPMENT_FIELDS: SHIPMENT_FIELDS,
+    ORDER_NUMBER_KEYS: ORDER_NUMBER_KEYS,
+    isHalfWidthAlphanumeric: isHalfWidthAlphanumeric,
     load: load,
     listProducts: listProducts,
     getProduct: getProduct,

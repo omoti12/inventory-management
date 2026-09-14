@@ -486,6 +486,9 @@ App.filterShipping = (function () {
       if (input.value.trim() === '') {
         if (message) message.textContent = field.label + 'を入力してください。';
         input.classList.add('is-invalid');
+      } else if (App.store.ORDER_NUMBER_KEYS.indexOf(input.name) !== -1 && !App.store.isHalfWidthAlphanumeric(input.value.trim())) {
+        if (message) message.textContent = field.label + 'は半角英数字で入力してください。';
+        input.classList.add('is-invalid');
       }
     });
   }

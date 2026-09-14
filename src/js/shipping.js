@@ -419,7 +419,9 @@ App.shipping = (function () {
       updateSubmitState();
     });
 
-    /* 入力欄から離れたときに、未入力ならその場でエラーを出す。 */
+    /* 入力欄から離れたときに、未入力ならその場でエラーを出す。受注番号1〜3は
+       半角英数字以外が入っていた場合もその場で知らせる（送信前に気づかせるため。
+       実際の最終チェックはApp.store.ship()側で行う）。 */
     form.addEventListener('focusout', function (event) {
       var input = event.target;
       if (!input.name) return;
@@ -428,6 +430,9 @@ App.shipping = (function () {
       var message = form.querySelector('[data-error-for="' + input.name + '"]');
       if (input.value.trim() === '') {
         if (message) message.textContent = field.label + 'を入力してください。';
+        input.classList.add('is-invalid');
+      } else if (App.store.ORDER_NUMBER_KEYS.indexOf(input.name) !== -1 && !App.store.isHalfWidthAlphanumeric(input.value.trim())) {
+        if (message) message.textContent = field.label + 'は半角英数字で入力してください。';
         input.classList.add('is-invalid');
       }
     });
