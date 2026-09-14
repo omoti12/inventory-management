@@ -425,10 +425,28 @@ App.ui = (function () {
     if (view && typeof view.onShow === 'function') view.onShow();
   }
 
+  /**
+   * 横に長い表（入庫履歴・出庫履歴など）は行数が多いとページごと縦に伸びてしまい、
+   * 横スクロールバーがページの一番下に来てしまう。そこまでスクロールしなくても、
+   * Shiftキーを押しながらマウスホイールを回せばその場で横スクロールできるようにする
+   * （トラックパッドの横スワイプやブラウザが元々横スクロールとして扱った場合は
+   * 二重に動かないよう、縦方向の入力しか来ていない時だけ処理する）。
+   */
+  function enableShiftWheelHorizontalScroll() {
+    document.addEventListener('wheel', function (event) {
+      if (!event.shiftKey || event.deltaX !== 0) return;
+      var wrap = event.target.closest('.table-wrap');
+      if (!wrap || wrap.scrollWidth <= wrap.clientWidth) return;
+      wrap.scrollLeft += event.deltaY;
+      event.preventDefault();
+    }, { passive: false });
+  }
+
   function init() {
     document.querySelectorAll('#main-tabs .tab').forEach(function (tab) {
       tab.addEventListener('click', function () { showView(tab.dataset.view); });
     });
+    enableShiftWheelHorizontalScroll();
   }
 
   return {
