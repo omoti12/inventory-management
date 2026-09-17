@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.filterHistory = (function () {
   'use strict';
 
-  var COLUMNS = 12;
+  var COLUMNS = 13;
 
   var searchForm, body, countLabel, sortButton, sortArrow, exportExternalButton;
   var selectAllCheckbox, monthInput, selectMonthButton;
@@ -23,6 +23,13 @@ App.filterHistory = (function () {
     var d = new Date();
     var pad = function (n) { return n < 10 ? '0' + n : String(n); };
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  /** 受注番号1〜3を「1-2-3」の形でまとめて表示する。すべて未入力なら「—」。 */
+  function formatOrderNumber(row) {
+    var parts = [row.orderNumber1, row.orderNumber2, row.orderNumber3].map(function (v) { return v || ''; });
+    if (!parts.some(function (v) { return v; })) return '—';
+    return parts.join('-');
   }
 
   /** 外部システム用CSVの日付欄に合わせた「YYYY/M/D」形式（0埋めしない）。 */
@@ -283,7 +290,8 @@ App.filterHistory = (function () {
       row.arrivalDate || '—',
       row.shippedBy,
       row.destinationName1 || '—',
-      row.destinationName2 || '—'
+      row.destinationName2 || '—',
+      formatOrderNumber(row)
     ].forEach(function (value) {
       tr.appendChild(App.ui.el('td', null, value));
     });
@@ -316,6 +324,7 @@ App.filterHistory = (function () {
     tr.appendChild(App.ui.el('td', null, group.shippedBy));
     tr.appendChild(App.ui.el('td', null, group.destinationName1 || '—'));
     tr.appendChild(App.ui.el('td', null, group.destinationName2 || '—'));
+    tr.appendChild(App.ui.el('td', null, formatOrderNumber(group)));
     tr.appendChild(App.ui.el('td', 'col-remarks', group.remarks || ''));
     tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(group.shippedAt)));
 
@@ -362,6 +371,7 @@ App.filterHistory = (function () {
     tr.appendChild(App.ui.el('td', null, row.productName));
     tr.appendChild(App.ui.el('td', null, row.serialNo));
     tr.appendChild(App.ui.el('td', null, row.arrivalDate || '—'));
+    tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
