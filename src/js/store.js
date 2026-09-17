@@ -1092,6 +1092,9 @@ App.store = (function () {
           shippedBy: row.shippedBy,
           destinationName1: row.destinationName1,
           destinationName2: row.destinationName2,
+          orderNumber1: row.orderNumber1,
+          orderNumber2: row.orderNumber2,
+          orderNumber3: row.orderNumber3,
           remarks: row.remarks,
           rows: []
         };
