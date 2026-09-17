@@ -907,7 +907,7 @@
     <div class="view__head">
       <div>
         <h2 class="view__title">フィルター出庫</h2>
-        <p class="view__desc">この画面で在庫を検索して追加するか、フィルター在庫一覧で選んだ商品に出庫情報を入力します。</p>
+        <p class="view__desc">この画面でバーコードから在庫を追加するか、フィルター在庫一覧で選んだ商品に出庫情報を入力します。</p>
       </div>
     </div>
 
@@ -917,15 +917,6 @@
       </div>
       <form class="form" id="filter-shipping-form" autocomplete="off" novalidate>
         <div class="form__grid">
-          <div class="form-field form-field--wide">
-            <label for="filter-shipping-quick-serial">製造番号ですぐ追加 <span class="optional">任意</span></label>
-            <div class="field-row">
-              <input type="text" id="filter-shipping-quick-serial" placeholder="例：0001">
-              <button type="button" class="btn btn--ghost btn--sm" id="filter-shipping-quick-scan-btn">バーコードを読み取る</button>
-              <button type="button" class="btn btn--ghost btn--sm" id="filter-shipping-quick-add-btn">追加</button>
-            </div>
-            <p class="form-note">スキャンするか製造番号を入力してEnter/追加を押すと、下の「出庫する商品」にその1件だけをすぐ追加します。</p>
-          </div>
           <div class="form-field">
             <label for="filter-shipping-person">出庫した人 <span class="req">必須</span></label>
             <select id="filter-shipping-person" name="shippedBy">
@@ -1022,44 +1013,19 @@
 
     <div class="card">
       <div class="card__head">
-        <h3 class="card__title">在庫を検索して追加</h3>
+        <h3 class="card__title">バーコードで追加</h3>
       </div>
-      <form class="search" id="filter-shipping-search" autocomplete="off">
-        <div class="search__grid">
-          <div class="form-field">
-            <label for="filter-shipping-search-code">商品コード</label>
-            <input type="text" id="filter-shipping-search-code" name="productCode" placeholder="例：F-100">
+      <form class="form" id="filter-shipping-add-form" autocomplete="off">
+        <div class="form-field form-field--wide">
+          <label for="filter-shipping-add-serial">製造番号</label>
+          <div class="field-row">
+            <input type="text" id="filter-shipping-add-serial" placeholder="例：0001">
+            <button type="button" class="btn btn--ghost btn--sm" id="filter-shipping-add-scan-btn">バーコードを読み取る</button>
+            <button type="button" class="btn btn--ghost btn--sm" id="filter-shipping-add-btn">追加</button>
           </div>
-          <div class="form-field">
-            <label for="filter-shipping-search-name">製品名</label>
-            <input type="text" id="filter-shipping-search-name" name="productName" placeholder="例：エアフィルター">
-          </div>
-          <div class="form-field">
-            <label for="filter-shipping-search-serial">製造番号</label>
-            <div class="field-row">
-              <input type="text" id="filter-shipping-search-serial" name="serialNo" placeholder="例：0001">
-              <button type="button" class="btn btn--ghost btn--sm" id="filter-shipping-scan-btn">バーコードを読み取る</button>
-            </div>
-          </div>
-        </div>
-        <div class="search__foot">
-          <button type="reset" class="btn btn--ghost">条件をクリア</button>
+          <p class="form-note">スキャンするか製造番号を入力してEnter/追加を押すと、上の「出庫する商品」にその1件を追加します。</p>
         </div>
       </form>
-      <div class="table-wrap table-wrap--scroll">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>商品コード</th>
-              <th>製品名</th>
-              <th class="col-num">在庫数</th>
-              <th class="col-num">出庫したい個数</th>
-              <th class="col-action">操作</th>
-            </tr>
-          </thead>
-          <tbody id="filter-shipping-search-body"></tbody>
-        </table>
-      </div>
     </div>
   </section>
 
