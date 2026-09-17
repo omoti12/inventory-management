@@ -6,22 +6,21 @@ App.filterShipping = (function () {
   'use strict';
 
   var TARGET_COLUMNS = 6;
-  var SEARCH_COLUMNS = 5;
 
   var targetIds = [];
   var form, itemsBody, countLabel, submitButton, hint;
-  var searchForm, searchBody;
   var destinationCodeField, destinationSubCodeField, destinationCodeList;
   var destinationName1Field, destinationName1List;
-  var quickSerialField;
+  var addSerialField;
 
   /**
-   * 「製造番号ですぐ追加」欄：製造番号を完全一致で検索し、見つかった在庫1件だけをその場で
-   * 出庫対象に追加する。下の「在庫を検索して追加」（絞り込んで数量を指定するやり方）とは
-   * 別の入り口で、バーコードを読み取ったその場で1件だけすぐ追加したい時のためのもの。
+   * 「バーコードで追加」欄：製造番号を完全一致で検索し、見つかった在庫1件だけをその場で
+   * 出庫対象に追加する。以前は商品コード・製品名で絞り込んで数量を指定する「在庫を検索して
+   * 追加」欄も別にあったが、フィルター品は1件＝1製造番号でバーコード運用と相性が良いため、
+   * この製造番号の完全一致追加だけに一本化した。
    */
-  function quickAddBySerialNo() {
-    var value = quickSerialField.value.trim();
+  function addBySerialNo() {
+    var value = addSerialField.value.trim();
     if (!value) return;
 
     var matches = App.store.findInStockFilterItemsBySerialNo(value);
@@ -33,15 +32,15 @@ App.filterShipping = (function () {
     var match = matches[0];
     if (targetIds.indexOf(match.id) !== -1) {
       App.ui.toast('製造番号「' + value + '」は、すでに出庫対象に追加されています。', 'error');
-      quickSerialField.value = '';
+      addSerialField.value = '';
       return;
     }
 
     targetIds.push(match.id);
     render();
     App.ui.toast(match.productCode + ' / 製造番号 ' + match.serialNo + ' を出庫対象に追加しました。', 'success');
-    quickSerialField.value = '';
-    quickSerialField.focus();
+    addSerialField.value = '';
+    addSerialField.focus();
   }
 
   /** 入荷日が古いものから先に出庫する（入荷日不明のものは後ろに回す）。 */
@@ -93,7 +92,7 @@ App.filterShipping = (function () {
     submitButton.disabled = missing.length > 0 || count === 0;
 
     if (count === 0) {
-      hint.textContent = '下の検索から追加するか、フィルター在庫一覧から出庫する商品を選択してください。';
+      hint.textContent = '下のバーコード欄から追加するか、フィルター在庫一覧から出庫する商品を選択してください。';
     } else if (missing.length > 0) {
       hint.textContent = '未入力：' + missing.map(function (f) { return f.label; }).join('、');
     } else {
@@ -136,103 +135,6 @@ App.filterShipping = (function () {
       tr.appendChild(actionCell);
 
       itemsBody.appendChild(tr);
-    });
-  }
-
-  function searchFilter() {
-    var data = new FormData(searchForm);
-    return {
-      productCode: data.get('productCode') || '',
-      productName: data.get('productName') || '',
-      serialNo: data.get('serialNo') || ''
-    };
-  }
-
-  /** まだ出庫リストに入れていないフィルター在庫を、商品コード単位でまとめて集計する。 */
-  function searchGroups() {
-    var available = App.store.listFilterInStock(searchFilter())
-      .filter(function (item) { return targetIds.indexOf(item.id) === -1; });
-
-    var map = {};
-    var order = [];
-    available.forEach(function (item) {
-      if (!map[item.productId]) {
-        map[item.productId] = {
-          productId: item.productId,
-          productCode: item.productCode,
-          productName: item.productName,
-          count: 0,
-          itemIds: []
-        };
-        order.push(item.productId);
-      }
-      map[item.productId].count += 1;
-      map[item.productId].itemIds.push(item.id);
-    });
-    return order.map(function (key) { return map[key]; });
-  }
-
-  /**
-   * 指定商品コードの在庫から、入荷日が古いものから順に指定数量ぶんを出庫対象に加える
-   * （shipping.js の allocateForShipment と違い、フィルター品はバッチ分割の概念が無く
-   * 1件＝1製造番号のまま対象に加えるだけでよい）。
-   */
-  function addGroupToTargets(productId, quantity) {
-    var group = searchGroups().filter(function (g) { return g.productId === productId; })[0];
-    if (!group) return;
-    var ids = App.store.getItems(group.itemIds)
-      .sort(byArrivalDateAsc)
-      .slice(0, quantity)
-      .map(function (item) { return item.id; });
-    ids.forEach(function (id) { if (targetIds.indexOf(id) === -1) targetIds.push(id); });
-    render();
-  }
-
-  /**
-   * 商品まとめの一覧として検索結果を表示し、出庫したい個数を指定して追加できるようにする
-   * （通常の出庫の在庫検索と同じ操作感）。製造番号で絞り込めば特定の1件だけを対象にできる。
-   */
-  function renderSearch() {
-    var groups = searchGroups();
-
-    App.ui.clear(searchBody);
-
-    if (groups.length === 0) {
-      searchBody.appendChild(App.ui.emptyRow(SEARCH_COLUMNS, '該当する在庫がありません。'));
-      return;
-    }
-
-    groups.forEach(function (group) {
-      var tr = App.ui.el('tr');
-      tr.appendChild(App.ui.el('td', null, group.productCode));
-      tr.appendChild(App.ui.el('td', null, group.productName));
-      tr.appendChild(App.ui.el('td', 'col-num', group.count + ' 個'));
-
-      var qtyCell = App.ui.el('td', 'col-num');
-      var qtyInput = App.ui.el('input');
-      qtyInput.type = 'number';
-      qtyInput.min = '0';
-      qtyInput.max = String(group.count);
-      qtyInput.step = '1';
-      qtyInput.value = '0';
-      qtyInput.style.width = '80px';
-      qtyInput.setAttribute('aria-label', group.productCode + ' の出庫したい個数');
-      qtyCell.appendChild(qtyInput);
-      tr.appendChild(qtyCell);
-
-      var actionCell = App.ui.el('td', 'col-action');
-      var addButton = App.ui.el('button', 'btn btn--ghost btn--sm', '追加');
-      addButton.type = 'button';
-      addButton.addEventListener('click', function () {
-        var qty = parseInt(qtyInput.value, 10);
-        if (!qty || qty < 1) return;
-        if (qty > group.count) qty = group.count;
-        addGroupToTargets(group.productId, qty);
-      });
-      actionCell.appendChild(addButton);
-      tr.appendChild(actionCell);
-
-      searchBody.appendChild(tr);
     });
   }
 
@@ -340,7 +242,6 @@ App.filterShipping = (function () {
 
   function render() {
     renderTargets();
-    renderSearch();
     updateSubmitState();
   }
 
@@ -415,8 +316,6 @@ App.filterShipping = (function () {
     countLabel = document.getElementById('filter-shipping-count');
     submitButton = document.getElementById('filter-shipping-submit');
     hint = document.getElementById('filter-shipping-hint');
-    searchForm = document.getElementById('filter-shipping-search');
-    searchBody = document.getElementById('filter-shipping-search-body');
     destinationCodeField = document.getElementById('filter-shipping-destination-code');
     destinationSubCodeField = document.getElementById('filter-shipping-destination-sub-code');
     destinationCodeList = document.getElementById('filter-shipping-destination-code-list');
@@ -428,41 +327,30 @@ App.filterShipping = (function () {
     destinationName1Field.addEventListener('change', syncDestinationFromName);
     refreshDestinations();
 
-    var onSearchInput = App.ui.debounce(renderSearch, 200);
-    searchForm.addEventListener('input', onSearchInput);
-    searchForm.addEventListener('submit', function (event) { event.preventDefault(); renderSearch(); });
-    searchForm.addEventListener('reset', function () { setTimeout(renderSearch, 0); });
-
-    var scanButton = document.getElementById('filter-shipping-scan-btn');
-    if (scanButton) {
-      scanButton.addEventListener('click', function () {
-        App.scanner.open().then(function (value) {
-          if (!value) return;
-          searchForm.elements.serialNo.value = value;
-          App.ui.toast('製造番号を読み取りました：' + value, 'success');
-          renderSearch();
-        });
-      });
-    }
-
-    quickSerialField = document.getElementById('filter-shipping-quick-serial');
-    var quickScanButton = document.getElementById('filter-shipping-quick-scan-btn');
-    var quickAddButton = document.getElementById('filter-shipping-quick-add-btn');
+    var addForm = document.getElementById('filter-shipping-add-form');
+    addSerialField = document.getElementById('filter-shipping-add-serial');
+    var addScanButton = document.getElementById('filter-shipping-add-scan-btn');
+    var addButton = document.getElementById('filter-shipping-add-btn');
 
     /* バーコードスキャナーはキーボード入力として値を送った後にEnterまで送ってくることが
-       多い。<form>内の入力欄でEnterを押すと通常は送信（＝出庫する）が実行されてしまうため、
-       ここだけは横取りしてすぐ追加の処理に回す。 */
-    quickSerialField.addEventListener('keydown', function (event) {
+       多い。この欄には送信ボタン（type="submit"）が無いため<form>のEnterキーによる暗黙の
+       送信は起きないが、念のためsubmitイベントもpreventDefaultしつつ、確実にEnterで
+       追加処理が走るようkeydownでも横取りする。 */
+    addForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      addBySerialNo();
+    });
+    addSerialField.addEventListener('keydown', function (event) {
       if (event.key !== 'Enter') return;
       event.preventDefault();
-      quickAddBySerialNo();
+      addBySerialNo();
     });
-    quickAddButton.addEventListener('click', quickAddBySerialNo);
-    quickScanButton.addEventListener('click', function () {
+    addButton.addEventListener('click', addBySerialNo);
+    addScanButton.addEventListener('click', function () {
       App.scanner.open().then(function (value) {
         if (!value) return;
-        quickSerialField.value = value;
-        quickAddBySerialNo();
+        addSerialField.value = value;
+        addBySerialNo();
       });
     });
 
