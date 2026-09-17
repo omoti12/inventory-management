@@ -5,7 +5,7 @@ App.views = App.views || {};
 App.history = (function () {
   'use strict';
 
-  var COLUMNS = 13;
+  var COLUMNS = 14;
 
   var searchForm, body, countLabel, sortButton, sortArrow, exportButton, exportExternalButton;
   var selectAllCheckbox, monthInput, selectMonthButton;
@@ -23,6 +23,13 @@ App.history = (function () {
     var d = new Date();
     var pad = function (n) { return n < 10 ? '0' + n : String(n); };
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  /** 受注番号1〜3を「1-2-3」の形でまとめて表示する。すべて未入力なら「—」。 */
+  function formatOrderNumber(row) {
+    var parts = [row.orderNumber1, row.orderNumber2, row.orderNumber3].map(function (v) { return v || ''; });
+    if (!parts.some(function (v) { return v; })) return '—';
+    return parts.join('-');
   }
 
   /** 外部システム用CSVの日付欄に合わせた「YYYY/M/D」形式（0埋めしない）。 */
@@ -339,6 +346,7 @@ App.history = (function () {
     tr.appendChild(selectCell(key));
     [
       row.productCode,
+      formatOrderNumber(row),
       row.productName,
       row.storageLocation || '—',
       row.quantity + ' 個',
@@ -374,6 +382,7 @@ App.history = (function () {
     toggleCell.appendChild(toggleButton);
     tr.appendChild(toggleCell);
 
+    tr.appendChild(App.ui.el('td', null, formatOrderNumber(group)));
     ['—', '—'].forEach(function (value) { tr.appendChild(App.ui.el('td', null, value)); });
 
     var totalQty = group.rows.reduce(function (sum, r) { return sum + (parseInt(r.quantity, 10) || 0); }, 0);
@@ -437,6 +446,9 @@ App.history = (function () {
           productName: row.productName,
           storageLocation: row.storageLocation,
           arrivalDate: row.arrivalDate,
+          orderNumber1: row.orderNumber1,
+          orderNumber2: row.orderNumber2,
+          orderNumber3: row.orderNumber3,
           sameArrivalDate: true,
           totalQty: 0,
           rows: []
@@ -456,6 +468,7 @@ App.history = (function () {
     var tr = App.ui.el('tr', 'row--batch-child');
     tr.appendChild(App.ui.el('td', 'col-check')); /* 内訳は出庫操作単位の選択に含まれるため、ここでは選ばせない。 */
     tr.appendChild(App.ui.el('td', null, productGroup.productCode));
+    tr.appendChild(App.ui.el('td', null, formatOrderNumber(productGroup)));
     tr.appendChild(App.ui.el('td', null, productGroup.productName));
     tr.appendChild(App.ui.el('td', null, productGroup.storageLocation || '—'));
     tr.appendChild(App.ui.el('td', 'col-num', productGroup.totalQty + ' 個'));

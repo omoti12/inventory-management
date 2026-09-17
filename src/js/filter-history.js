@@ -285,13 +285,13 @@ App.filterHistory = (function () {
     tr.appendChild(selectCell(key));
     [
       row.productCode,
+      formatOrderNumber(row),
       row.productName,
       row.serialNo,
       row.arrivalDate || '—',
       row.shippedBy,
       row.destinationName1 || '—',
-      row.destinationName2 || '—',
-      formatOrderNumber(row)
+      row.destinationName2 || '—'
     ].forEach(function (value) {
       tr.appendChild(App.ui.el('td', null, value));
     });
@@ -319,12 +319,12 @@ App.filterHistory = (function () {
     toggleCell.appendChild(toggleButton);
     tr.appendChild(toggleCell);
 
+    tr.appendChild(App.ui.el('td', null, formatOrderNumber(group)));
     ['—', '—', '—'].forEach(function (value) { tr.appendChild(App.ui.el('td', null, value)); });
 
     tr.appendChild(App.ui.el('td', null, group.shippedBy));
     tr.appendChild(App.ui.el('td', null, group.destinationName1 || '—'));
     tr.appendChild(App.ui.el('td', null, group.destinationName2 || '—'));
-    tr.appendChild(App.ui.el('td', null, formatOrderNumber(group)));
     tr.appendChild(App.ui.el('td', 'col-remarks', group.remarks || ''));
     tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(group.shippedAt)));
 
@@ -368,10 +368,10 @@ App.filterHistory = (function () {
     var tr = App.ui.el('tr', 'row--batch-child');
     tr.appendChild(App.ui.el('td', 'col-check')); /* 内訳は出庫操作単位の選択に含まれるため、ここでは選ばせない。 */
     tr.appendChild(App.ui.el('td', null, row.productCode));
+    tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, row.productName));
     tr.appendChild(App.ui.el('td', null, row.serialNo));
     tr.appendChild(App.ui.el('td', null, row.arrivalDate || '—'));
-    tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
     tr.appendChild(App.ui.el('td', null, '—'));
