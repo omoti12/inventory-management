@@ -1012,6 +1012,8 @@ App.store = (function () {
   function matchesShipmentRow(row, filter) {
     var f = filter || {};
     if (f.status && f.status !== 'all' && row.status !== f.status) return false;
+    /* 月（"YYYY-MM"）の絞り込み。月次締め・CSV出力の月選択と同じく、出庫日時の先頭7文字で判定する。 */
+    if (f.month && text(row.shippedAt).slice(0, 7) !== f.month) return false;
     var keyword = text(f.keyword);
     if (!keyword) return true;
     return [
