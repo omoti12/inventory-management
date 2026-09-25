@@ -44,7 +44,8 @@ App.filterHistory = (function () {
     var data = new FormData(searchForm);
     return {
       status: data.get('status') || 'all',
-      keyword: data.get('keyword') || ''
+      keyword: data.get('keyword') || '',
+      month: monthInput.value || ''
     };
   }
 
@@ -478,6 +479,7 @@ App.filterHistory = (function () {
       render();
     });
     selectMonthButton.addEventListener('click', function () { selectMonth(monthInput.value); });
+    monthInput.addEventListener('change', render);
   }
 
   App.views['filter-history'] = { onShow: render };
