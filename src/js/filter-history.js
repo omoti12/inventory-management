@@ -191,9 +191,12 @@ App.filterHistory = (function () {
    * （出庫履歴のonExportExternalCsv()と同じ列構成）。フィルター品には数量の概念が無く
    * 1行＝1個のため、フリー在庫分数量には常に1を入れる。今表示している絞り込み・並び順の
    * まま出力する。チェックボックスで一部の出庫操作だけ選んでいれば、その分だけを出力する。
+   * キャンセル済みの記録は、会計/販売システムには実際には出庫していないものとして扱うべきなので、
+   * まとめ行の一部として選択されていても出力対象から除く。
    */
   function onExportExternalCsv() {
-    var rows = selectedRowsOnly(App.store.listFilterShipments(currentFilter(), sortOrder));
+    var rows = selectedRowsOnly(App.store.listFilterShipments(currentFilter(), sortOrder))
+      .filter(function (row) { return row.status !== 'cancelled'; });
     var csvRows = [
       ['出荷日', '出荷先コード', '出荷先小番', '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '商品コード', 'フリー在庫分数量']
     ];
