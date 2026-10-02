@@ -189,9 +189,12 @@ App.history = (function () {
   /**
    * 今表示している絞り込み・並び順のまま、出庫履歴をCSVでダウンロードする。
    * チェックボックスで一部の出庫操作だけ選んでいれば、その分だけを出力する。
+   * キャンセル済みの記録は、まとめ行（1回の出庫操作）の一部として選択されていても、
+   * 実際には出庫していないものとして出力対象から除く。
    */
   function onExportCsv() {
-    var rows = selectedRowsOnly(App.store.listShipments(currentFilter(), 'normal', sortOrder));
+    var rows = selectedRowsOnly(App.store.listShipments(currentFilter(), 'normal', sortOrder))
+      .filter(function (row) { return row.status !== 'cancelled'; });
     var csvRows = [
       ['商品コード', '製品名', '保管場所', '数量', '入荷日', '出庫した人', '出荷先コード', '出荷先小番',
         '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '備考', '出庫日時', '状態']
@@ -229,9 +232,12 @@ App.history = (function () {
    * （groupShipmentRows）の中で同じ商品（groupRowsByProduct）はフリー在庫分数量を合算し、
    * 1商品＝1行にまとめてから出力する（画面上のまとめ表示の内訳と同じ集約）。
    * チェックボックスで一部の出庫操作だけ選んでいれば、その分だけを出力する。
+   * キャンセル済みの記録は、会計/販売システムには実際には出庫していないものとして扱うべきなので、
+   * まとめ行の一部として選択されていても出力対象から除く。
    */
   function onExportExternalCsv() {
-    var rows = selectedRowsOnly(App.store.listShipments(currentFilter(), 'normal', sortOrder));
+    var rows = selectedRowsOnly(App.store.listShipments(currentFilter(), 'normal', sortOrder))
+      .filter(function (row) { return row.status !== 'cancelled'; });
     var csvRows = [
       ['出荷日', '出荷先コード', '出荷先小番', '出荷先名1', '出荷先名2', '受注番号1', '受注番号2', '受注番号3', '商品コード', 'フリー在庫分数量']
     ];
