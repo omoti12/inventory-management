@@ -781,6 +781,10 @@ CSV出力（`onExportCsv()`/`onExportExternalCsv()`）はこのグループ化�
   `findInStockFilterItemsBySerialNo(serialNo)`で製造番号の完全一致・在庫中のものだけを探し、
   見つかった1件をその場で出庫対象に追加する。見つからなければエラートースト、既に出庫対象に
   追加済みならその旨のトーストを出す。
+- 同じ製造番号の在庫が複数ある場合（フィルター入庫で数量を指定して同じ製造番号をまとめて
+  登録した場合など）は、「個数」欄（`#filter-shipping-add-qty`、既定1）で追加する個数を
+  選べる。まだ出庫対象に入れていない在庫から入荷日の古い順に指定個数ぶんを追加し、
+  在庫が足りなければある分だけ追加してその旨を、残りがあれば残り在庫数をトーストで知らせる。
 - この入力欄（`#filter-shipping-add-serial`）は出庫本体のフォーム（`#filter-shipping-form`）
   とは別の小さな`<form>`（`#filter-shipping-add-form`）に入れている。送信ボタン
   （`type="submit"`）を持たないため、この`<form>`内でEnterを押しても暗黙の送信は起きないが、
