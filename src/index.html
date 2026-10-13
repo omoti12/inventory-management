@@ -320,6 +320,7 @@
               <span class="split-field__sep">-</span>
               <input type="text" id="shipping-destination-sub-code" name="destinationSubCode" placeholder="小番">
             </div>
+            <button type="button" class="btn btn--ghost btn--sm btn--pick" id="shipping-destination-pick-btn">出荷先を一覧から選ぶ</button>
             <p class="form-error" data-error-for="destinationCode"></p>
             <p class="form-error" data-error-for="destinationSubCode"></p>
             <p class="form-note">出荷先マスタに登録済みのコード・小番を入力すると、出荷先名1/2が自動で入力されます。</p>
@@ -947,6 +948,7 @@
               <span class="split-field__sep">-</span>
               <input type="text" id="filter-shipping-destination-sub-code" name="destinationSubCode" placeholder="小番">
             </div>
+            <button type="button" class="btn btn--ghost btn--sm btn--pick" id="filter-shipping-destination-pick-btn">出荷先を一覧から選ぶ</button>
             <p class="form-error" data-error-for="destinationCode"></p>
             <p class="form-error" data-error-for="destinationSubCode"></p>
             <p class="form-note">出荷先マスタに登録済みのコード・小番を入力すると、出荷先名1/2が自動で入力されます。</p>
@@ -1450,6 +1452,16 @@
     <button type="button" class="btn btn--ghost" id="scanner-switch-camera" hidden>カメラを切り替える</button>
     <button type="button" class="btn btn--ghost" id="scanner-manual" hidden>手入力する</button>
     <button type="button" class="btn btn--ghost" id="scanner-close">閉じる</button>
+  </div>
+</dialog>
+
+<dialog class="dialog dialog--wide" id="destination-picker-dialog">
+  <h3 class="dialog__title">出荷先を選ぶ</h3>
+  <input type="text" id="destination-picker-search" placeholder="出荷先名・コードで絞り込み" autocomplete="off">
+  <ul class="picker-list" id="destination-picker-list"></ul>
+  <p class="form-note" id="destination-picker-empty" hidden></p>
+  <div class="dialog__foot">
+    <button type="button" class="btn btn--ghost" id="destination-picker-cancel" autofocus>閉じる</button>
   </div>
 </dialog>
 

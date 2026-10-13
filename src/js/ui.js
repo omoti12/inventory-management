@@ -269,6 +269,74 @@ App.ui = (function () {
     });
   }
 
+  /* --- 出荷先を一覧から選ぶダイアログ ------------------------------------- */
+
+  /**
+   * 出荷先マスタの一覧から1件を選ぶダイアログを開く。<datalist>の候補はiPadなどのタブレットでは
+   * 一覧として見られない（文字を入力した時に小さな候補が出るだけ）ため、タップで選べる一覧を
+   * 別に用意した。選ばれた出荷先（listDestinations()の1件）を、閉じられたら null をresolveする
+   * Promiseを返す。
+   */
+  function pickDestination() {
+    var dialog = document.getElementById('destination-picker-dialog');
+    var searchField = document.getElementById('destination-picker-search');
+    var list = document.getElementById('destination-picker-list');
+    var emptyNote = document.getElementById('destination-picker-empty');
+    var cancelButton = document.getElementById('destination-picker-cancel');
+    var all = App.store.listDestinations();
+
+    /* ダブルタップなどで開いている最中にもう一度呼ばれても、二重に開こうとしない。 */
+    if (typeof dialog.showModal !== 'function' || dialog.open) return Promise.resolve(null);
+
+    return new Promise(function (resolve) {
+      function done(result) {
+        searchField.removeEventListener('input', renderList);
+        cancelButton.removeEventListener('click', onCancel);
+        dialog.removeEventListener('cancel', onCancel);
+        if (dialog.open) dialog.close();
+        resolve(result);
+      }
+      function onCancel(event) {
+        if (event) event.preventDefault();
+        done(null);
+      }
+
+      function renderList() {
+        var keyword = searchField.value.trim().toLowerCase();
+        var shown = all.filter(function (d) {
+          if (!keyword) return true;
+          return [d.destinationName1, d.destinationName2, d.destinationCode, d.destinationSubCode].some(function (v) {
+            return String(v || '').toLowerCase().indexOf(keyword) !== -1;
+          });
+        });
+
+        clear(list);
+        emptyNote.hidden = shown.length > 0;
+        emptyNote.textContent = all.length === 0
+          ? '出荷先マスタに出荷先が登録されていません。「出荷先マスタ」画面で登録してください。'
+          : '該当する出荷先がありません。';
+
+        shown.forEach(function (d) {
+          var item = el('li');
+          var button = el('button', 'picker-item');
+          button.type = 'button';
+          button.appendChild(el('span', 'picker-item__name', d.destinationName1 + (d.destinationName2 ? '　' + d.destinationName2 : '')));
+          button.appendChild(el('span', 'picker-item__code', d.destinationCode + ' - ' + d.destinationSubCode));
+          button.addEventListener('click', function () { done(d); });
+          item.appendChild(button);
+          list.appendChild(item);
+        });
+      }
+
+      searchField.value = '';
+      renderList();
+      searchField.addEventListener('input', renderList);
+      cancelButton.addEventListener('click', onCancel);
+      dialog.addEventListener('cancel', onCancel);
+      dialog.showModal();
+    });
+  }
+
   /* --- 出庫履歴の編集ダイアログ ------------------------------------------ */
 
   /**
@@ -476,6 +544,7 @@ App.ui = (function () {
     showFieldErrors: showFieldErrors,
     toast: toast,
     confirm: confirmDialog,
+    pickDestination: pickDestination,
     editShipment: editShipment,
     showView: showView,
     getCurrentView: getCurrentView,
