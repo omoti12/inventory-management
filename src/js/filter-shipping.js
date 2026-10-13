@@ -11,7 +11,7 @@ App.filterShipping = (function () {
   var form, itemsBody, countLabel, submitButton, hint;
   var destinationCodeField, destinationSubCodeField, destinationCodeList;
   var destinationName1Field, destinationName1List;
-  var addSerialField;
+  var addSerialField, addQtyField;
 
   /**
    * 「バーコードで追加」欄：製造番号を完全一致で検索し、見つかった在庫1件だけをその場で
@@ -23,23 +23,40 @@ App.filterShipping = (function () {
     var value = addSerialField.value.trim();
     if (!value) return;
 
+    var quantity = parseInt(addQtyField.value, 10);
+    if (!quantity || quantity < 1) {
+      App.ui.toast('個数は1以上の整数で入力してください。', 'error');
+      return;
+    }
+
     var matches = App.store.findInStockFilterItemsBySerialNo(value);
     if (matches.length === 0) {
       App.ui.toast('製造番号「' + value + '」の在庫が見つかりません（出庫済みか、登録されていない可能性があります）。', 'error');
       return;
     }
 
-    var match = matches[0];
-    if (targetIds.indexOf(match.id) !== -1) {
-      App.ui.toast('製造番号「' + value + '」は、すでに出庫対象に追加されています。', 'error');
+    /* 同じ製造番号の在庫が複数ある場合は、まだ出庫対象に入れていないものから入荷日の古い順に
+       指定個数ぶんを追加する。 */
+    var available = matches
+      .filter(function (match) { return targetIds.indexOf(match.id) === -1; })
+      .sort(byArrivalDateAsc);
+    if (available.length === 0) {
+      App.ui.toast('製造番号「' + value + '」は、すでにすべて出庫対象に追加されています。', 'error');
       addSerialField.value = '';
       return;
     }
 
-    targetIds.push(match.id);
+    var count = Math.min(quantity, available.length);
+    available.slice(0, count).forEach(function (match) { targetIds.push(match.id); });
     render();
-    App.ui.toast(match.productCode + ' / 製造番号 ' + match.serialNo + ' を出庫対象に追加しました。', 'success');
+
+    var message = available[0].productCode + ' / 製造番号 ' + value + ' を ' + count + ' 個、出庫対象に追加しました。';
+    if (count < quantity) message += '（在庫が ' + count + ' 個しか無かったため）';
+    else if (available.length > count) message += '（この製造番号の残り在庫 ' + (available.length - count) + ' 個）';
+    App.ui.toast(message, 'success');
+
     addSerialField.value = '';
+    addQtyField.value = '1';
     addSerialField.focus();
   }
 
@@ -329,6 +346,7 @@ App.filterShipping = (function () {
 
     var addForm = document.getElementById('filter-shipping-add-form');
     addSerialField = document.getElementById('filter-shipping-add-serial');
+    addQtyField = document.getElementById('filter-shipping-add-qty');
     var addScanButton = document.getElementById('filter-shipping-add-scan-btn');
     var addButton = document.getElementById('filter-shipping-add-btn');
 

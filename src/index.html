@@ -1023,7 +1023,12 @@
             <button type="button" class="btn btn--ghost btn--sm" id="filter-shipping-add-scan-btn">バーコードを読み取る</button>
             <button type="button" class="btn btn--ghost btn--sm" id="filter-shipping-add-btn">追加</button>
           </div>
-          <p class="form-note">スキャンするか製造番号を入力してEnter/追加を押すと、上の「出庫する商品」にその1件を追加します。</p>
+          <p class="form-note">スキャンするか製造番号を入力してEnter/追加を押すと、上の「出庫する商品」に追加します。</p>
+        </div>
+        <div class="form-field">
+          <label for="filter-shipping-add-qty">個数</label>
+          <input type="number" id="filter-shipping-add-qty" min="1" step="1" value="1">
+          <p class="form-note">同じ製造番号の在庫が複数ある場合に、出庫する個数を指定します（通常は1のままで構いません）。</p>
         </div>
       </form>
     </div>
