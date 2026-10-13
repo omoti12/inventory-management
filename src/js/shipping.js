@@ -278,6 +278,15 @@ App.shipping = (function () {
     fillDestinationName(destination);
   }
 
+  /** 「出荷先を一覧から選ぶ」で選んだ出荷先を、コード・小番・出荷先名1/2にまとめて入力する。 */
+  function setDestination(destination) {
+    destinationCodeField.value = destination.destinationCode;
+    destinationSubCodeField.value = destination.destinationSubCode;
+    destinationName1Field.value = destination.destinationName1;
+    form.elements.destinationName2.value = destination.destinationName2;
+    [destinationCodeField, destinationSubCodeField, destinationName1Field, form.elements.destinationName2].forEach(fireInput);
+  }
+
   function fillDestinationCode(destination) {
     destinationCodeField.value = destination.destinationCode;
     destinationSubCodeField.value = destination.destinationSubCode;
@@ -401,6 +410,11 @@ App.shipping = (function () {
     destinationCodeField.addEventListener('change', syncDestinationFromCode);
     destinationSubCodeField.addEventListener('change', syncDestinationFromSubCode);
     destinationName1Field.addEventListener('change', syncDestinationFromName);
+    document.getElementById('shipping-destination-pick-btn').addEventListener('click', function () {
+      App.ui.pickDestination().then(function (destination) {
+        if (destination) setDestination(destination);
+      });
+    });
     refreshDestinations();
 
     var onSearchInput = App.ui.debounce(renderSearch, 200);
