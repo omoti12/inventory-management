@@ -226,7 +226,7 @@ App.filterInboundHistory = (function () {
       remarksCell.appendChild(remarksInput);
       tr.appendChild(remarksCell);
 
-      tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(row.registeredAt)));
+      tr.appendChild(App.ui.el('td', null, App.ui.formatDate(row.registeredAt)));
 
       var statusCell = App.ui.el('td');
       statusCell.appendChild(statusBadge(row.status));
@@ -249,7 +249,7 @@ App.filterInboundHistory = (function () {
       tr.appendChild(App.ui.el('td', null, row.arrivalDate || '—'));
       tr.appendChild(App.ui.el('td', null, row.receivedBy || '—'));
       tr.appendChild(App.ui.el('td', 'col-remarks', row.remarks || ''));
-      tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(row.registeredAt)));
+      tr.appendChild(App.ui.el('td', null, App.ui.formatDate(row.registeredAt)));
 
       var statusCell2 = App.ui.el('td');
       statusCell2.appendChild(statusBadge(row.status));
