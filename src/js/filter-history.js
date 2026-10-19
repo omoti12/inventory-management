@@ -300,7 +300,7 @@ App.filterHistory = (function () {
       tr.appendChild(App.ui.el('td', null, value));
     });
     tr.appendChild(App.ui.el('td', 'col-remarks', row.remarks || ''));
-    tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(row.shippedAt)));
+    tr.appendChild(App.ui.el('td', null, App.ui.formatDate(row.shippedAt)));
 
     var statusCell = App.ui.el('td');
     statusCell.appendChild(statusBadge(row.status));
@@ -330,7 +330,7 @@ App.filterHistory = (function () {
     tr.appendChild(App.ui.el('td', null, group.destinationName1 || '—'));
     tr.appendChild(App.ui.el('td', null, group.destinationName2 || '—'));
     tr.appendChild(App.ui.el('td', 'col-remarks', group.remarks || ''));
-    tr.appendChild(App.ui.el('td', null, App.ui.formatDateTime(group.shippedAt)));
+    tr.appendChild(App.ui.el('td', null, App.ui.formatDate(group.shippedAt)));
 
     var statusCell = App.ui.el('td');
     statusCell.appendChild(statusBadge(groupStatus(group.rows)));

@@ -85,6 +85,14 @@ App.ui = (function () {
       ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
+  /** 日時（ISO文字列）から日付だけを「YYYY/MM/DD」で返す（履歴一覧の表示用。時刻は出さない）。 */
+  function formatDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate());
+  }
+
   /**
    * 「YYYY-MM-DD」の日付（<input type="date">の値）に、今の時刻を組み合わせてISO日時にする。
    * 出庫日を任意で指定できるようにするための変換で、時刻までは指定させないため今の時刻を使う。
@@ -537,6 +545,7 @@ App.ui = (function () {
     debounce: debounce,
     formatMonth: formatMonth,
     formatDateTime: formatDateTime,
+    formatDate: formatDate,
     combineDateWithNow: combineDateWithNow,
     parseCsvFile: parseCsvFile,
     downloadCsv: downloadCsv,
