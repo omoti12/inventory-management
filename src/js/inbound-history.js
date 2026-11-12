@@ -11,7 +11,8 @@ App.inboundHistory = (function () {
      選択肢にする。増減したらここも合わせて直す。 */
   var STAFF_NAMES = [
     '平澤 基至', '小池 悟', '池田 和弘', '瀧澤 太樹', '後藤 大樹',
-    '西脇 利将', '内田 由季子', '笠原 義彦', '田中 春樹', '舩山 亜由美'
+    '西脇 利将', '内田 由季子', '笠原 義彦', '田中 春樹', '舩山 亜由美',
+    '鎌田 景子'
   ];
 
   var searchForm, body, countLabel, sortButton, sortArrow, selectAllCheckbox, bulkDeleteButton;
